@@ -24,8 +24,8 @@
         .intro-section { background: #fff; padding: 40px; border-radius: 15px; margin-bottom: 40px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); text-align: center; }
         .intro-text { font-size: 1.3em; color: #34495e; line-height: 1.8; margin-bottom: 30px; }
         
-        .initiatives-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; }
-        .initiative-card { background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); transition: transform 0.3s; border-left: 5px solid #3498db; }
+        .initiatives-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 35px; }
+        .initiative-card { background: #fff; padding: 35px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); transition: transform 0.3s; border-left: 5px solid #3498db; }
         .initiative-card:hover { transform: translateY(-5px); }
         .initiative-icon { font-size: 3em; color: #3498db; text-align: center; margin-bottom: 20px; }
         .initiative-title { font-size: 1.5em; color: #2c3e50; margin-bottom: 15px; font-weight: bold; }
@@ -87,7 +87,7 @@
             {% for title, description, image_url, is_featured in initiatives_data %}
             <div class="initiative-card{% if is_featured %} featured{% endif %}">
                 {% if image_url %}
-                    <img src="{{ image_url }}" alt="{{ title }}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 10px; margin-bottom: 20px;">
+                    <img src="{{ image_url }}" alt="{{ title }}" style="width: 100%; height: 280px; object-fit: cover; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
                 {% else %}
                     <div class="initiative-icon"><i class="fas fa-shield-alt"></i></div>
                 {% endif %}

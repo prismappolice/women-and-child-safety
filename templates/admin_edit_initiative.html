@@ -83,7 +83,7 @@
         </h1>
         
         <div class="form-container">
-            <form method="POST">
+            <form method="POST" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="title">Initiative Title *</label>
                     <input type="text" id="title" name="title" value="{{ initiative[1] }}" required>
@@ -95,8 +95,37 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="image_url">Image URL</label>
-                    <input type="url" id="image_url" name="image_url" value="{{ initiative[3] or '' }}">
+                    <label>Initiative Image</label>
+                    
+                    {% if initiative[3] %}
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Current Image:</label>
+                            <img src="{{ initiative[3] }}" alt="Current Initiative Image" style="max-width: 300px; max-height: 200px; border-radius: 8px; border: 2px solid #ecf0f1;">
+                        </div>
+                    {% endif %}
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label for="image" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
+                            <i class="fas fa-upload"></i> Upload New Image (Optional)
+                        </label>
+                        <input type="file" id="image" name="image" accept="image/*" onchange="previewImage(this)" style="margin-bottom: 10px;">
+                        <div id="imagePreview" style="margin-top: 10px; display: none;">
+                            <img id="preview" style="max-width: 300px; max-height: 200px; border-radius: 8px; border: 2px solid #ecf0f1;">
+                        </div>
+                        <div class="help-text">Upload JPG, PNG, or GIF files to replace current image</div>
+                    </div>
+                    
+                    <div style="text-align: center; margin: 15px 0; color: #7f8c8d;">
+                        <strong>— OR —</strong>
+                    </div>
+                    
+                    <div>
+                        <label for="image_url" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
+                            <i class="fas fa-link"></i> Image URL
+                        </label>
+                        <input type="url" id="image_url" name="image_url" value="{{ initiative[3] or '' }}" placeholder="https://example.com/image.jpg">
+                        <div class="help-text">Or paste an image URL (this will override uploaded file)</div>
+                    </div>
                 </div>
                 
                 <div class="checkbox-group">
@@ -120,5 +149,25 @@
             </form>
         </div>
     </div>
+
+    <script>
+        function previewImage(input) {
+            const preview = document.getElementById('preview');
+            const previewContainer = document.getElementById('imagePreview');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                };
+                
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                previewContainer.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>

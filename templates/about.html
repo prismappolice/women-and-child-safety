@@ -66,7 +66,9 @@
         .leader-photo { width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 2.5em; }
         .leader-name { font-size: 1.4em; color: #2c3e50; margin-bottom: 10px; font-weight: bold; }
         .leader-designation { color: #3498db; font-weight: 600; margin-bottom: 15px; }
+        .leader-department { color: #7f8c8d; font-style: italic; margin-bottom: 15px; }
         .leader-contact { color: #7f8c8d; font-size: 0.9em; line-height: 1.6; }
+        .leader-bio { color: #34495e; font-size: 0.9em; line-height: 1.5; margin-top: 15px; text-align: left; }
         
         /* Success Stories Styles */
         .success-stories { margin-top: 30px; }
@@ -256,77 +258,42 @@
                 </p>
                 
                 <div class="leadership-grid">
+                    {% for officer in officers %}
+                    <div class="leader-card">
+                        <div class="leader-photo">
+                            {% if officer[6] %}
+                                <img src="{{ officer[6] }}" alt="{{ officer[1] }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                            {% else %}
+                                <i class="fas fa-user"></i>
+                            {% endif %}
+                        </div>
+                        <h3 class="leader-name">{{ officer[1] }}</h3>
+                        <p class="leader-designation">{{ officer[2] }}</p>
+                        {% if officer[3] %}
+                            <p class="leader-department">{{ officer[3] }}</p>
+                        {% endif %}
+                        <div class="leader-contact">
+                            {% if officer[5] %}
+                                <p><i class="fas fa-envelope"></i> {{ officer[5] }}</p>
+                            {% endif %}
+                            {% if officer[4] %}
+                                <p><i class="fas fa-phone"></i> {{ officer[4] }}</p>
+                            {% endif %}
+                        </div>
+                        {% if officer[7] %}
+                            <p class="leader-bio">{{ officer[7] }}</p>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <!-- Fallback if no officers found -->
                     <div class="leader-card">
                         <div class="leader-photo">
                             <i class="fas fa-user"></i>
                         </div>
-                        <h3 class="leader-name">IPS Officer Name</h3>
-                        <p class="leader-designation">Director General of Police (Women Safety)</p>
-                        <div class="leader-contact">
-                            <p><i class="fas fa-envelope"></i> dgp.womensafety@appolice.gov.in</p>
-                            <p><i class="fas fa-phone"></i> +91-40-2761-4444</p>
-                        </div>
+                        <h3 class="leader-name">No Officers Found</h3>
+                        <p class="leader-designation">Please add officers through admin panel</p>
                     </div>
-                    
-                    <div class="leader-card">
-                        <div class="leader-photo">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <h3 class="leader-name">IPS Officer Name</h3>
-                        <p class="leader-designation">Additional Director General (Women Safety)</p>
-                        <div class="leader-contact">
-                            <p><i class="fas fa-envelope"></i> adg.womensafety@appolice.gov.in</p>
-                            <p><i class="fas fa-phone"></i> +91-40-2761-5555</p>
-                        </div>
-                    </div>
-                    
-                    <div class="leader-card">
-                        <div class="leader-photo">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <h3 class="leader-name">IPS Officer Name</h3>
-                        <p class="leader-designation">Inspector General (Women Safety Wing)</p>
-                        <div class="leader-contact">
-                            <p><i class="fas fa-envelope"></i> ig.womensafety@appolice.gov.in</p>
-                            <p><i class="fas fa-phone"></i> +91-40-2761-6666</p>
-                        </div>
-                    </div>
-                    
-                    <div class="leader-card">
-                        <div class="leader-photo">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <h3 class="leader-name">IPS Officer Name</h3>
-                        <p class="leader-designation">Deputy Inspector General (Operations)</p>
-                        <div class="leader-contact">
-                            <p><i class="fas fa-envelope"></i> dig.operations@appolice.gov.in</p>
-                            <p><i class="fas fa-phone"></i> +91-40-2761-7777</p>
-                        </div>
-                    </div>
-                    
-                    <div class="leader-card">
-                        <div class="leader-photo">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <h3 class="leader-name">IAS Officer Name</h3>
-                        <p class="leader-designation">Principal Secretary (Women & Child Welfare)</p>
-                        <div class="leader-contact">
-                            <p><i class="fas fa-envelope"></i> ps.wcd@ap.gov.in</p>
-                            <p><i class="fas fa-phone"></i> +91-40-2345-1234</p>
-                        </div>
-                    </div>
-                    
-                    <div class="leader-card">
-                        <div class="leader-photo">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <h3 class="leader-name">Superintendent Name</h3>
-                        <p class="leader-designation">Superintendent of Police (Women Safety)</p>
-                        <div class="leader-contact">
-                            <p><i class="fas fa-envelope"></i> sp.womensafety@appolice.gov.in</p>
-                            <p><i class="fas fa-phone"></i> +91-40-2761-8888</p>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
             

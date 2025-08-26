@@ -62,7 +62,7 @@
         </h1>
         
         <div class="form-container">
-            <form method="POST">
+            <form method="POST" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="title">Initiative Title</label>
                     <input type="text" id="title" name="title" required placeholder="e.g., Self Defense Training Program">
@@ -76,9 +76,29 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="image_url">Image URL (optional)</label>
-                    <input type="url" id="image_url" name="image_url" placeholder="https://example.com/image.jpg">
-                    <div class="help-text">URL of an image that represents this initiative (optional)</div>
+                    <label>Initiative Image</label>
+                    <div style="margin-bottom: 15px;">
+                        <label for="image" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
+                            <i class="fas fa-upload"></i> Upload Image File (Recommended)
+                        </label>
+                        <input type="file" id="image" name="image" accept="image/*" onchange="previewImage(this)" style="margin-bottom: 10px;">
+                        <div id="imagePreview" style="margin-top: 10px; display: none;">
+                            <img id="preview" style="max-width: 300px; max-height: 200px; border-radius: 8px; border: 2px solid #ecf0f1;">
+                        </div>
+                        <div class="help-text">Upload JPG, PNG, or GIF files (max 5MB recommended)</div>
+                    </div>
+                    
+                    <div style="text-align: center; margin: 15px 0; color: #7f8c8d;">
+                        <strong>— OR —</strong>
+                    </div>
+                    
+                    <div>
+                        <label for="image_url" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
+                            <i class="fas fa-link"></i> Image URL (Alternative)
+                        </label>
+                        <input type="url" id="image_url" name="image_url" placeholder="https://example.com/image.jpg">
+                        <div class="help-text">Or paste an image URL if you prefer using external images</div>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -98,5 +118,25 @@
             </form>
         </div>
     </div>
+
+    <script>
+        function previewImage(input) {
+            const preview = document.getElementById('preview');
+            const previewContainer = document.getElementById('imagePreview');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                };
+                
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                previewContainer.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>

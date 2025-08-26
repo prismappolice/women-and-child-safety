@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 import sqlite3
 import os
+import time
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
@@ -142,9 +143,14 @@ def about():
     cursor = conn.cursor()
     cursor.execute('SELECT id, section_name, title, content, image_url, sort_order, is_active FROM about_content WHERE is_active = 1 ORDER BY sort_order, section_name')
     about_sections = cursor.fetchall()
+    
+    # Get officers data for leadership team
+    cursor.execute('SELECT id, name, designation, department, phone, email, image_url, bio, position_order, is_active FROM officers WHERE is_active = 1 ORDER BY position_order, name')
+    officers = cursor.fetchall()
+    
     conn.close()
     
-    return render_template('about.html', about_sections=about_sections)
+    return render_template('about.html', about_sections=about_sections, officers=officers)
 
 @app.route('/initiatives')
 def initiatives():
@@ -545,6 +551,28 @@ def admin_add_initiative():
         image_url = request.form.get('image_url')
         is_featured = 1 if request.form.get('is_featured') else 0
         
+        # Handle image upload (prioritize file upload over URL)
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                if allowed_file(file.filename):
+                    try:
+                        filename = secure_filename(file.filename)
+                        # Create unique filename
+                        filename = f"initiative_{int(time.time())}_{filename}"
+                        
+                        # Ensure upload directory exists
+                        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                        
+                        file_path = os.path.join(UPLOAD_FOLDER, filename)
+                        file.save(file_path)
+                        image_url = f'/static/uploads/{filename}'
+                        print(f"Initiative image saved to: {file_path}")  # Debug print
+                        print(f"Initiative image URL: {image_url}")  # Debug print
+                    except Exception as e:
+                        print(f"Error saving initiative image: {e}")  # Debug print
+                        flash(f'Error uploading image: {e}', 'error')
+        
         conn = sqlite3.connect('women_safety.db')
         cursor = conn.cursor()
         cursor.execute('''
@@ -573,6 +601,28 @@ def admin_edit_initiative(initiative_id):
         image_url = request.form.get('image_url')
         is_featured = 1 if request.form.get('is_featured') else 0
         is_active = 1 if request.form.get('is_active') else 0
+        
+        # Handle image upload (prioritize file upload over URL)
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                if allowed_file(file.filename):
+                    try:
+                        filename = secure_filename(file.filename)
+                        # Create unique filename
+                        filename = f"initiative_{int(time.time())}_{filename}"
+                        
+                        # Ensure upload directory exists
+                        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                        
+                        file_path = os.path.join(UPLOAD_FOLDER, filename)
+                        file.save(file_path)
+                        image_url = f'/static/uploads/{filename}'
+                        print(f"Initiative image updated and saved to: {file_path}")  # Debug print
+                        print(f"Initiative image URL: {image_url}")  # Debug print
+                    except Exception as e:
+                        print(f"Error saving initiative image: {e}")  # Debug print
+                        flash(f'Error uploading image: {e}', 'error')
         
         cursor.execute('''
             UPDATE initiatives 
@@ -1010,6 +1060,142 @@ def admin_delete_volunteer(volunteer_id):
 def admin_logout():
     session.pop('admin_logged_in', None)
     return redirect(url_for('home'))
+
+# Officers Management Routes
+@app.route('/admin/officers')
+def admin_officers():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, name, designation, department, phone, email, position_order, is_active FROM officers ORDER BY position_order, name')
+    officers = cursor.fetchall()
+    conn.close()
+    
+    return render_template('admin_officers.html', officers=officers)
+
+@app.route('/admin/officers/add', methods=['GET', 'POST'])
+def admin_add_officer():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        name = request.form['name']
+        designation = request.form['designation']
+        department = request.form['department']
+        phone = request.form['phone']
+        email = request.form['email']
+        bio = request.form['bio']
+        position_order = request.form['position_order']
+        
+        # Handle image upload
+        image_url = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                if allowed_file(file.filename):
+                    try:
+                        filename = secure_filename(file.filename)
+                        # Create unique filename
+                        filename = f"officer_{int(time.time())}_{filename}"
+                        
+                        # Ensure upload directory exists
+                        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                        
+                        file_path = os.path.join(UPLOAD_FOLDER, filename)
+                        file.save(file_path)
+                        image_url = f'/static/uploads/{filename}'
+                        print(f"Image saved to: {file_path}")  # Debug print
+                        print(f"Image URL: {image_url}")  # Debug print
+                    except Exception as e:
+                        print(f"Error saving image: {e}")  # Debug print
+        
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO officers (name, designation, department, phone, email, image_url, bio, position_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (name, designation, department, phone, email, image_url, bio, position_order))
+        conn.commit()
+        conn.close()
+        
+        return redirect(url_for('admin_officers'))
+    
+    return render_template('admin_add_officer.html')
+
+@app.route('/admin/officers/edit/<int:officer_id>', methods=['GET', 'POST'])
+def admin_edit_officer(officer_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        name = request.form['name']
+        designation = request.form['designation']
+        department = request.form['department']
+        phone = request.form['phone']
+        email = request.form['email']
+        bio = request.form['bio']
+        position_order = request.form['position_order']
+        is_active = 1 if request.form.get('is_active') else 0
+        
+        # Get current image URL
+        cursor.execute('SELECT image_url FROM officers WHERE id=?', (officer_id,))
+        current_image = cursor.fetchone()
+        image_url = current_image[0] if current_image else None
+        
+        # Handle image upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                if allowed_file(file.filename):
+                    try:
+                        filename = secure_filename(file.filename)
+                        # Create unique filename
+                        filename = f"officer_{int(time.time())}_{filename}"
+                        
+                        # Ensure upload directory exists
+                        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                        
+                        file_path = os.path.join(UPLOAD_FOLDER, filename)
+                        file.save(file_path)
+                        image_url = f'/static/uploads/{filename}'
+                        print(f"Image updated to: {file_path}")  # Debug print
+                        print(f"Image URL: {image_url}")  # Debug print
+                    except Exception as e:
+                        print(f"Error updating image: {e}")  # Debug print
+        
+        cursor.execute('''
+            UPDATE officers 
+            SET name=?, designation=?, department=?, phone=?, email=?, image_url=?, bio=?, position_order=?, is_active=?
+            WHERE id=?
+        ''', (name, designation, department, phone, email, image_url, bio, position_order, is_active, officer_id))
+        conn.commit()
+        conn.close()
+        
+        return redirect(url_for('admin_officers'))
+    
+    cursor.execute('SELECT * FROM officers WHERE id=?', (officer_id,))
+    officer = cursor.fetchone()
+    conn.close()
+    
+    return render_template('admin_edit_officer.html', officer=officer)
+
+@app.route('/admin/officers/delete/<int:officer_id>')
+def admin_delete_officer(officer_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM officers WHERE id=?', (officer_id,))
+    conn.commit()
+    conn.close()
+    
+    return redirect(url_for('admin_officers'))
 
 if __name__ == '__main__':
     # Create upload folder if it doesn't exist
