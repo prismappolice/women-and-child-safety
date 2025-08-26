@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media & Events - AP Police Women & Child Safety Wing</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/chatbot.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; }
+        .logo { width: 120px; height: 120px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-weight: bold; font-size: 1.2em; color: #2c3e50; overflow: hidden; position: relative; }
+        .logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .main-title { color: #fff; font-size: 2.5em; font-weight: bold; text-align: center; flex: 1; }
+        .navbar { background: rgba(255,255,255,0.95); padding: 15px 60px; display: flex; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .nav-menu { display: flex; gap: 40px; font-size: 1.1em; }
+        .nav-menu a { color: #2c3e50; text-decoration: none; font-weight: 600; padding: 10px 15px; border-radius: 5px; transition: all 0.3s; }
+        .nav-menu a:hover, .nav-menu a.active { background: #3498db; color: #fff; }
+        .content { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        .page-title { font-size: 2.5em; color: #2c3e50; text-align: center; margin-bottom: 20px; }
+        .breadcrumb { text-align: center; margin-bottom: 40px; color: #7f8c8d; }
+        .breadcrumb a { color: #3498db; text-decoration: none; }
+        
+        .intro-section { background: #fff; padding: 30px; border-radius: 15px; margin-bottom: 40px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); text-align: center; }
+        .intro-text { font-size: 1.2em; color: #34495e; line-height: 1.6; }
+        
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; margin-bottom: 50px; }
+        .gallery-item { background: #fff; border-radius: 15px; overflow: hidden; box-shadow: 0 8px 25px rgba(0,0,0,0.1); transition: transform 0.3s; }
+        .gallery-item:hover { transform: translateY(-5px); }
+        .gallery-image { width: 100%; height: 250px; background: linear-gradient(45deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 3em; }
+        .gallery-content { padding: 25px; }
+        .gallery-title { font-size: 1.4em; color: #2c3e50; margin-bottom: 10px; font-weight: bold; }
+        .gallery-date { color: #7f8c8d; margin-bottom: 15px; font-size: 0.9em; }
+        .gallery-description { color: #34495e; line-height: 1.6; margin-bottom: 15px; }
+        .view-btn { background: #3498db; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s; }
+        .view-btn:hover { background: #2980b9; }
+        
+        .events-section { background: #fff; padding: 30px; border-radius: 15px; margin-bottom: 40px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .section-title { font-size: 2em; color: #2c3e50; margin-bottom: 30px; text-align: center; }
+        .event-item { border-left: 4px solid #3498db; padding-left: 20px; margin-bottom: 30px; }
+        .event-title { font-size: 1.3em; color: #2c3e50; margin-bottom: 10px; font-weight: bold; }
+        .event-date { color: #e74c3c; font-weight: bold; margin-bottom: 10px; }
+        .event-description { color: #7f8c8d; line-height: 1.6; }
+        
+        .footer { background: #2c3e50; color: #fff; padding: 40px 60px 20px; margin-top: 60px; }
+        .footer-bottom { text-align: center; color: #95a5a6; }
+        
+        @media (max-width: 768px) {
+            .header { padding: 10px 20px; flex-direction: column; gap: 20px; }
+            .main-title { font-size: 2em; }
+            .navbar { padding: 10px 20px; }
+            .nav-menu { flex-wrap: wrap; gap: 20px; }
+            .content { padding: 0 10px; }
+            .footer { padding: 40px 20px 20px; }
+            .gallery-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo"><img src="/static/images/shakthi_logo.png" alt="SHAKTHI Logo"></div>
+        <div class="main-title">AP Police Women & Child Safety Wing</div>
+        <div class="logo"><img src="/static/images/ap_police_logo.png" alt="AP Police Logo"></div>
+    </div>
+    
+    <div class="navbar">
+        <div class="nav-menu">
+            <a href="/">Home</a>
+            <a href="/about">About Us</a>
+            <a href="/initiatives">Initiatives</a>
+            <a href="/volunteer-registration">Volunteer</a>
+            <a href="/safety-tips">Safety Tips</a>
+            <a href="/pdf-resources">PDF Resources</a>
+            <a href="/contact">Contact Us</a>
+            <a href="/gallery" class="active">Media & Events</a>
+            <a href="/admin-login">Admin Login</a>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h1 class="page-title">Media & Events Gallery</h1>
+        <div class="breadcrumb">
+            <a href="/">Home</a> / Media & Events
+        </div>
+        
+        <div class="intro-section">
+            <p class="intro-text">
+                Explore our photo gallery showcasing various events, awareness programs, and community outreach activities 
+                conducted by the AP Women Safety Wing. These events demonstrate our commitment to women's safety and empowerment.
+            </p>
+        </div>
+        
+        <div class="gallery-grid">
+            <div class="gallery-item">
+                <div class="gallery-image"><i class="fas fa-users"></i></div>
+                <div class="gallery-content">
+                    <h3 class="gallery-title">Self Defense Training Workshop</h3>
+                    <p class="gallery-date">December 15, 2024</p>
+                    <p class="gallery-description">Women from various communities participated in a comprehensive self-defense training program conducted by certified trainers.</p>
+                    <a href="#" class="view-btn">
+                        <i class="fas fa-eye"></i> View Photos
+                    </a>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div class="gallery-image"><i class="fas fa-graduation-cap"></i></div>
+                <div class="gallery-content">
+                    <h3 class="gallery-title">Legal Awareness Campaign</h3>
+                    <p class="gallery-date">December 10, 2024</p>
+                    <p class="gallery-description">A successful legal awareness program educating women about their rights and available legal protections.</p>
+                    <a href="#" class="view-btn">
+                        <i class="fas fa-eye"></i> View Photos
+                    </a>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div class="gallery-image"><i class="fas fa-laptop"></i></div>
+                <div class="gallery-content">
+                    <h3 class="gallery-title">Cyber Safety Seminar</h3>
+                    <p class="gallery-date">December 5, 2024</p>
+                    <p class="gallery-description">Educational seminar on cyber safety, online harassment prevention, and digital literacy for women and children.</p>
+                    <a href="#" class="view-btn">
+                        <i class="fas fa-eye"></i> View Photos
+                    </a>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div class="gallery-image"><i class="fas fa-heart"></i></div>
+                <div class="gallery-content">
+                    <h3 class="gallery-title">Community Outreach Program</h3>
+                    <p class="gallery-date">November 28, 2024</p>
+                    <p class="gallery-description">Reaching out to rural communities to spread awareness about women's safety initiatives and available support services.</p>
+                    <a href="#" class="view-btn">
+                        <i class="fas fa-eye"></i> View Photos
+                    </a>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div class="gallery-image"><i class="fas fa-shield-alt"></i></div>
+                <div class="gallery-content">
+                    <h3 class="gallery-title">Safety Equipment Distribution</h3>
+                    <p class="gallery-date">November 20, 2024</p>
+                    <p class="gallery-description">Distribution of safety equipment including pepper sprays, emergency whistles, and safety apps to women in vulnerable areas.</p>
+                    <a href="#" class="view-btn">
+                        <i class="fas fa-eye"></i> View Photos
+                    </a>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div class="gallery-image"><i class="fas fa-hands-helping"></i></div>
+                <div class="gallery-content">
+                    <h3 class="gallery-title">Volunteer Training Program</h3>
+                    <p class="gallery-date">November 15, 2024</p>
+                    <p class="gallery-description">Training session for new volunteers joining our mission to create safer communities for women across Andhra Pradesh.</p>
+                    <a href="#" class="view-btn">
+                        <i class="fas fa-eye"></i> View Photos
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="events-section">
+            <h2 class="section-title">Upcoming Events</h2>
+            
+            <div class="event-item">
+                <h3 class="event-title">International Women's Day Celebration</h3>
+                <p class="event-date">March 8, 2025</p>
+                <p class="event-description">Join us for a special celebration honoring women's achievements and promoting gender equality. The event will feature inspiring speakers, cultural programs, and recognition of outstanding women leaders.</p>
+            </div>
+            
+            <div class="event-item">
+                <h3 class="event-title">Monthly Safety Workshop</h3>
+                <p class="event-date">January 15, 2025</p>
+                <p class="event-description">Monthly safety workshop covering personal safety, emergency response, and self-defense techniques. Open to all women aged 16 and above.</p>
+            </div>
+            
+            <div class="event-item">
+                <h3 class="event-title">Cyber Security Awareness Week</h3>
+                <p class="event-date">February 10-17, 2025</p>
+                <p class="event-description">A week-long program focusing on digital safety, online privacy, and protection against cyber crimes. Special sessions for students and working professionals.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <div class="footer-bottom">
+            <p>&copy; 2024 AP Women Safety Wing. All rights reserved.</p>
+            <p>Emergency Helpline: 181 | Women's Helpline: 1091</p>
+        </div>
+    </div>
+    
+    <script src="/static/chatbot.js"></script>
+</body>
+</html>

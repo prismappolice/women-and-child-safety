@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - AP Police Women & Child Safety Wing</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/chatbot.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; }
+        .logo { width: 120px; height: 120px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-weight: bold; font-size: 1.2em; color: #2c3e50; overflow: hidden; position: relative; }
+        .logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .main-title { color: #fff; font-size: 2.5em; font-weight: bold; text-align: center; flex: 1; }
+        .navbar { background: rgba(255,255,255,0.95); padding: 15px 60px; display: flex; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .nav-menu { display: flex; gap: 40px; font-size: 1.1em; }
+        .nav-menu a { color: #2c3e50; text-decoration: none; font-weight: 600; padding: 10px 15px; border-radius: 5px; transition: all 0.3s; }
+        .nav-menu a:hover, .nav-menu a.active { background: #3498db; color: #fff; }
+        .content { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        .page-title { font-size: 2.5em; color: #2c3e50; text-align: center; margin-bottom: 20px; }
+        .breadcrumb { text-align: center; margin-bottom: 40px; color: #7f8c8d; }
+        .breadcrumb a { color: #3498db; text-decoration: none; }
+        
+        .intro-section { background: #fff; padding: 40px; border-radius: 15px; margin-bottom: 40px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); text-align: center; }
+        .intro-text { font-size: 1.3em; color: #34495e; line-height: 1.8; margin-bottom: 30px; }
+        
+        .mission-vision { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; margin-bottom: 40px; }
+        .mission-card { background: #fff; padding: 40px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid #3498db; }
+        .mission-card.vision { border-top-color: #e74c3c; }
+        .mission-icon { font-size: 4em; margin-bottom: 20px; }
+        .mission-card .mission-icon { color: #3498db; }
+        .mission-card.vision .mission-icon { color: #e74c3c; }
+        .mission-card h3 { font-size: 1.8em; color: #2c3e50; margin-bottom: 20px; }
+        .mission-card p { color: #7f8c8d; line-height: 1.6; font-size: 1.1em; }
+        
+        .values-section { background: #f8f9fa; padding: 40px; border-radius: 15px; margin-bottom: 40px; }
+        .values-title { font-size: 2em; color: #2c3e50; text-align: center; margin-bottom: 30px; }
+        .values-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; }
+        .value-item { background: #fff; padding: 25px; border-radius: 10px; text-align: center; transition: transform 0.3s; }
+        .value-item:hover { transform: translateY(-5px); }
+        .value-icon { font-size: 2.5em; color: #27ae60; margin-bottom: 15px; }
+        .value-item h4 { color: #2c3e50; margin-bottom: 10px; font-size: 1.2em; }
+        .value-item p { color: #7f8c8d; font-size: 0.9em; }
+        
+        /* Tab Styles */
+        .tabs-container { background: #fff; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); margin-bottom: 40px; overflow: hidden; }
+        .tab-buttons { display: flex; background: #f8f9fa; border-bottom: 1px solid #ecf0f1; }
+        .tab-button { flex: 1; padding: 20px; background: none; border: none; font-size: 1.1em; font-weight: 600; color: #7f8c8d; cursor: pointer; transition: all 0.3s; }
+        .tab-button:hover { background: #e9ecef; }
+        .tab-button.active { background: #3498db; color: #fff; }
+        .tab-content { display: none; padding: 40px; }
+        .tab-content.active { display: block; }
+        
+        .team-section { padding: 0; }
+        .team-title { font-size: 2em; color: #2c3e50; text-align: center; margin-bottom: 30px; }
+        .team-intro { text-align: center; color: #7f8c8d; margin-bottom: 40px; font-size: 1.1em; }
+        .team-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .stat-card { text-align: center; padding: 20px; background: #f8f9fa; border-radius: 10px; }
+        .stat-number { font-size: 2.5em; color: #3498db; font-weight: bold; margin-bottom: 5px; }
+        .stat-label { color: #7f8c8d; }
+        
+        /* Leadership Team Styles */
+        .leadership-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 30px; }
+        .leader-card { background: #f8f9fa; padding: 30px; border-radius: 15px; text-align: center; transition: transform 0.3s; }
+        .leader-card:hover { transform: translateY(-5px); }
+        .leader-photo { width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 2.5em; }
+        .leader-name { font-size: 1.4em; color: #2c3e50; margin-bottom: 10px; font-weight: bold; }
+        .leader-designation { color: #3498db; font-weight: 600; margin-bottom: 15px; }
+        .leader-contact { color: #7f8c8d; font-size: 0.9em; line-height: 1.6; }
+        
+        /* Success Stories Styles */
+        .success-stories { margin-top: 30px; }
+        .story-item { background: #f8f9fa; padding: 30px; border-radius: 15px; margin-bottom: 25px; border-left: 5px solid #27ae60; }
+        .story-title { font-size: 1.3em; color: #2c3e50; margin-bottom: 15px; font-weight: bold; }
+        .story-date { color: #27ae60; font-weight: 600; margin-bottom: 15px; }
+        .story-description { color: #34495e; line-height: 1.6; }
+        .story-stats { display: flex; justify-content: space-around; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ecf0f1; }
+        .story-stat { text-align: center; }
+        .story-stat-number { font-size: 1.5em; color: #27ae60; font-weight: bold; }
+        .story-stat-label { color: #7f8c8d; font-size: 0.9em; }
+        
+        .footer { background: #2c3e50; color: #fff; padding: 40px 60px 20px; margin-top: 60px; }
+        .footer-bottom { text-align: center; color: #95a5a6; }
+        
+        @media (max-width: 768px) {
+            .header { padding: 10px 20px; flex-direction: column; gap: 20px; }
+            .main-title { font-size: 2em; }
+            .navbar { padding: 10px 20px; }
+            .nav-menu { flex-wrap: wrap; gap: 20px; }
+            .content { padding: 0 10px; }
+            .footer { padding: 40px 20px 20px; }
+            .mission-vision { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo"><img src="/static/images/shakthi_logo.png" alt="SHAKTHI Logo"></div>
+        <div class="main-title">AP Police Women & Child Safety Wing</div>
+        <div class="logo"><img src="/static/images/ap_police_logo.png" alt="AP Police Logo"></div>
+    </div>
+    
+    <div class="navbar">
+        <div class="nav-menu">
+            <a href="/">Home</a>
+            <a href="/about" class="active">About Us</a>
+            <a href="/initiatives">Initiatives</a>
+            <a href="/volunteer-registration">Volunteer</a>
+            <a href="/safety-tips">Safety Tips</a>
+            <a href="/pdf-resources">PDF Resources</a>
+            <a href="/contact">Contact Us</a>
+            <a href="/gallery">Media & Events</a>
+            <a href="/admin-login">Admin Login</a>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h1 class="page-title">About Us</h1>
+        <div class="breadcrumb">
+            <a href="/">Home</a> / About Us
+        </div>
+        
+        <div class="intro-section">
+            {% for section in about_sections %}
+                {% if section[1] == 'intro' and section[6] %}
+                    <p class="intro-text">{{ section[3]|safe }}</p>
+                {% endif %}
+            {% endfor %}
+            {% if not about_sections|selectattr('1', 'equalto', 'intro')|selectattr('6', 'equalto', True)|list %}
+                <p class="intro-text">
+                    The AP Women Safety Wing stands as a beacon of hope and protection for women across Andhra Pradesh. 
+                    We are committed to creating a safer environment where every woman can live, work, and thrive without fear. 
+                    Through innovative initiatives, community engagement, and unwavering dedication, we strive to eliminate 
+                    violence against women and ensure their safety and empowerment.
+                </p>
+            {% endif %}
+        </div>
+        
+        <div class="tabs-container">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="showTab('about-wing')">About Our Wing</button>
+                <button class="tab-button" onclick="showTab('who-is-who')">Who is Who</button>
+                <button class="tab-button" onclick="showTab('success-stories')">Success Stories</button>
+            </div>
+            
+            <div id="about-wing" class="tab-content active">
+                <div class="mission-vision">
+                    {% for section in about_sections %}
+                        {% if section[1] == 'mission' and section[6] %}
+                            <div class="mission-card">
+                                <div class="mission-icon"><i class="fas fa-bullseye"></i></div>
+                                <h3>{{ section[2] }}</h3>
+                                <p>{{ section[3]|safe }}</p>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                    {% if not about_sections|selectattr('1', 'equalto', 'mission')|selectattr('6', 'equalto', True)|list %}
+                        <div class="mission-card">
+                            <div class="mission-icon"><i class="fas fa-bullseye"></i></div>
+                            <h3>Our Mission</h3>
+                            <p>To create a safe and secure environment for women in Andhra Pradesh by implementing comprehensive safety measures, providing immediate assistance during emergencies, and promoting awareness about women's rights and safety.</p>
+                        </div>
+                    {% endif %}
+                    
+                    {% for section in about_sections %}
+                        {% if section[1] == 'vision' and section[6] %}
+                            <div class="mission-card vision">
+                                <div class="mission-icon"><i class="fas fa-eye"></i></div>
+                                <h3>{{ section[2] }}</h3>
+                                <p>{{ section[3]|safe }}</p>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                    {% if not about_sections|selectattr('1', 'equalto', 'vision')|selectattr('6', 'equalto', True)|list %}
+                        <div class="mission-card vision">
+                            <div class="mission-icon"><i class="fas fa-eye"></i></div>
+                            <h3>Our Vision</h3>
+                            <p>A society where every woman feels safe, empowered, and respected. We envision an Andhra Pradesh where gender-based violence is eliminated and women can participate fully in all aspects of social, economic, and political life.</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="values-section">
+                    <h2 class="values-title">Our Core Values</h2>
+                    <div class="values-grid">
+                        <div class="value-item">
+                            <div class="value-icon"><i class="fas fa-shield-alt"></i></div>
+                            <h4>Protection</h4>
+                            <p>Ensuring the safety and security of women through proactive measures and rapid response systems.</p>
+                        </div>
+                        
+                        <div class="value-item">
+                            <div class="value-icon"><i class="fas fa-users"></i></div>
+                            <h4>Empowerment</h4>
+                            <p>Enabling women to become self-reliant and confident through education and skill development programs.</p>
+                        </div>
+                        
+                        <div class="value-item">
+                            <div class="value-icon"><i class="fas fa-balance-scale"></i></div>
+                            <h4>Justice</h4>
+                            <p>Ensuring fair treatment and legal support for all women, regardless of their background or circumstances.</p>
+                        </div>
+                        
+                        <div class="value-item">
+                            <div class="value-icon"><i class="fas fa-heart"></i></div>
+                            <h4>Compassion</h4>
+                            <p>Providing emotional support and care to women who have experienced trauma or violence.</p>
+                        </div>
+                        
+                        <div class="value-item">
+                            <div class="value-icon"><i class="fas fa-handshake"></i></div>
+                            <h4>Collaboration</h4>
+                            <p>Working together with communities, organizations, and stakeholders to achieve our goals.</p>
+                        </div>
+                        
+                        <div class="value-item">
+                            <div class="value-icon"><i class="fas fa-graduation-cap"></i></div>
+                            <h4>Education</h4>
+                            <p>Promoting awareness and education about women's rights, safety measures, and available resources.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="team-section">
+                    <h2 class="team-title">Our Strength</h2>
+                    <p class="team-intro">
+                        Our dedicated team of professionals works tirelessly to ensure the safety and well-being of women across Andhra Pradesh. 
+                        From police officers to counselors, from volunteers to administrators, every member plays a crucial role in our mission.
+                    </p>
+                    <div class="team-stats">
+                        <div class="stat-card">
+                            <div class="stat-number">500+</div>
+                            <div class="stat-label">Trained Personnel</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">1000+</div>
+                            <div class="stat-label">Active Volunteers</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">13</div>
+                            <div class="stat-label">District Offices</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">24/7</div>
+                            <div class="stat-label">Emergency Support</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="who-is-who" class="tab-content">
+                <h2 class="team-title">Leadership Team</h2>
+                <p class="team-intro">
+                    Meet our dedicated leadership team who guide and oversee the operations of the AP Women Safety Wing. 
+                    Each leader brings years of experience and unwavering commitment to women's safety and empowerment.
+                </p>
+                
+                <div class="leadership-grid">
+                    <div class="leader-card">
+                        <div class="leader-photo">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h3 class="leader-name">IPS Officer Name</h3>
+                        <p class="leader-designation">Director General of Police (Women Safety)</p>
+                        <div class="leader-contact">
+                            <p><i class="fas fa-envelope"></i> dgp.womensafety@appolice.gov.in</p>
+                            <p><i class="fas fa-phone"></i> +91-40-2761-4444</p>
+                        </div>
+                    </div>
+                    
+                    <div class="leader-card">
+                        <div class="leader-photo">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h3 class="leader-name">IPS Officer Name</h3>
+                        <p class="leader-designation">Additional Director General (Women Safety)</p>
+                        <div class="leader-contact">
+                            <p><i class="fas fa-envelope"></i> adg.womensafety@appolice.gov.in</p>
+                            <p><i class="fas fa-phone"></i> +91-40-2761-5555</p>
+                        </div>
+                    </div>
+                    
+                    <div class="leader-card">
+                        <div class="leader-photo">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h3 class="leader-name">IPS Officer Name</h3>
+                        <p class="leader-designation">Inspector General (Women Safety Wing)</p>
+                        <div class="leader-contact">
+                            <p><i class="fas fa-envelope"></i> ig.womensafety@appolice.gov.in</p>
+                            <p><i class="fas fa-phone"></i> +91-40-2761-6666</p>
+                        </div>
+                    </div>
+                    
+                    <div class="leader-card">
+                        <div class="leader-photo">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h3 class="leader-name">IPS Officer Name</h3>
+                        <p class="leader-designation">Deputy Inspector General (Operations)</p>
+                        <div class="leader-contact">
+                            <p><i class="fas fa-envelope"></i> dig.operations@appolice.gov.in</p>
+                            <p><i class="fas fa-phone"></i> +91-40-2761-7777</p>
+                        </div>
+                    </div>
+                    
+                    <div class="leader-card">
+                        <div class="leader-photo">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h3 class="leader-name">IAS Officer Name</h3>
+                        <p class="leader-designation">Principal Secretary (Women & Child Welfare)</p>
+                        <div class="leader-contact">
+                            <p><i class="fas fa-envelope"></i> ps.wcd@ap.gov.in</p>
+                            <p><i class="fas fa-phone"></i> +91-40-2345-1234</p>
+                        </div>
+                    </div>
+                    
+                    <div class="leader-card">
+                        <div class="leader-photo">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h3 class="leader-name">Superintendent Name</h3>
+                        <p class="leader-designation">Superintendent of Police (Women Safety)</p>
+                        <div class="leader-contact">
+                            <p><i class="fas fa-envelope"></i> sp.womensafety@appolice.gov.in</p>
+                            <p><i class="fas fa-phone"></i> +91-40-2761-8888</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="success-stories" class="tab-content">
+                <h2 class="team-title">Our Success Stories</h2>
+                <p class="team-intro">
+                    Here are some of our recent achievements and success cases that demonstrate the impact of our work 
+                    in making Andhra Pradesh safer for women.
+                </p>
+                
+                <div class="success-stories">
+                    <div class="story-item">
+                        <h3 class="story-title">SHE Teams Initiative Success</h3>
+                        <p class="story-date">December 2024</p>
+                        <p class="story-description">
+                            Our SHE Teams successfully prevented 150+ cases of harassment in public spaces this month. 
+                            Through proactive patrolling and immediate response, we've created safer environments in educational institutions, 
+                            workplaces, and public transportation systems across all 13 districts.
+                        </p>
+                        <div class="story-stats">
+                            <div class="story-stat">
+                                <div class="story-stat-number">150+</div>
+                                <div class="story-stat-label">Cases Prevented</div>
+                            </div>
+                            <div class="story-stat">
+                                <div class="story-stat-number">13</div>
+                                <div class="story-stat-label">Districts Covered</div>
+                            </div>
+                            <div class="story-stat">
+                                <div class="story-stat-number">2000+</div>
+                                <div class="story-stat-label">Women Protected</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="story-item">
+                        <h3 class="story-title">Bharosa Centers Impact</h3>
+                        <p class="story-date">November 2024</p>
+                        <p class="story-description">
+                            Our Bharosa Centers provided comprehensive support to 500+ women victims of violence, 
+                            offering legal aid, counseling, medical assistance, and rehabilitation services. 
+                            95% of the cases were successfully resolved with positive outcomes for the victims.
+                        </p>
+                        <div class="story-stats">
+                            <div class="story-stat">
+                                <div class="story-stat-number">500+</div>
+                                <div class="story-stat-label">Women Helped</div>
+                            </div>
+                            <div class="story-stat">
+                                <div class="story-stat-number">95%</div>
+                                <div class="story-stat-label">Success Rate</div>
+                            </div>
+                            <div class="story-stat">
+                                <div class="story-stat-number">24/7</div>
+                                <div class="story-stat-label">Support Available</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="story-item">
+                        <h3 class="story-title">Mahila Police Volunteer Program</h3>
+                        <p class="story-date">October 2024</p>
+                        <p class="story-description">
+                            Successfully trained and deployed 1000+ Mahila Police Volunteers across rural and urban areas. 
+                            These volunteers have become crucial bridge-builders between the community and police, 
+                            helping to report crimes early and provide immediate assistance to women in distress.
+                        </p>
+                        <div class="story-stats">
+                            <div class="story-stat">
+                                <div class="story-stat-number">1000+</div>
+                                <div class="story-stat-label">Volunteers Trained</div>
+                            </div>
+                            <div class="story-stat">
+                                <div class="story-stat-number">300+</div>
+                                <div class="story-stat-label">Villages Covered</div>
+                            </div>
+                            <div class="story-stat">
+                                <div class="story-stat-number">80%</div>
+                                <div class="story-stat-label">Crime Reduction</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="story-item">
+                        <h3 class="story-title">Digital Literacy & Cyber Safety</h3>
+                        <p class="story-date">September 2024</p>
+                        <p class="story-description">
+                            Conducted comprehensive digital literacy and cyber safety workshops for 5000+ women and girls. 
+                            These sessions covered online safety, privacy protection, and how to report cyber crimes. 
+                            As a result, cyber crime reports from women increased by 60%, indicating better awareness and confidence in reporting.
+                        </p>
+                        <div class="story-stats">
+                            <div class="story-stat">
+                                <div class="story-stat-number">5000+</div>
+                                <div class="story-stat-label">Women Trained</div>
+                            </div>
+                            <div class="story-stat">
+                                <div class="story-stat-number">60%</div>
+                                <div class="story-stat-label">More Reports</div>
+                            </div>
+                            <div class="story-stat">
+                                <div class="story-stat-number">100</div>
+                                <div class="story-stat-label">Workshops Conducted</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <div class="footer-bottom">
+            <p>&copy; 2024 AP Women Safety Wing. All rights reserved.</p>
+            <p>Emergency Helpline: 181 | Women's Helpline: 1091</p>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabId) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tab buttons
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabId).classList.add('active');
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+        }
+    </script>
+    <script src="/static/chatbot.js"></script>
+</body>
+</html>

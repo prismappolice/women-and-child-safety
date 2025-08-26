@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Add PDF Resource</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; color: #fff; }
+        .logo { font-size: 1.5em; font-weight: bold; }
+        .admin-title { font-size: 1.8em; text-align: center; }
+        .logout-btn { background: rgba(255,255,255,0.2); color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; }
+        
+        .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        .page-title { font-size: 2.2em; color: #2c3e50; margin-bottom: 30px; }
+        
+        .form-container { background: #fff; padding: 40px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 2px solid #ecf0f1; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #3498db; }
+        .form-group textarea { height: 120px; resize: vertical; }
+        
+        .file-input-group { position: relative; }
+        .file-input { display: none; }
+        .file-label { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 20px; border: 2px dashed #3498db; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: all 0.3s; }
+        .file-label:hover { background: #e9ecef; }
+        .file-selected { color: #27ae60; font-weight: 600; }
+        
+        .form-actions { display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; text-decoration: none; cursor: pointer; font-size: 16px; transition: all 0.3s; }
+        .btn-primary { background: #3498db; color: #fff; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-secondary { background: #95a5a6; color: #fff; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        
+        .back-btn { margin-bottom: 20px; }
+        .back-btn a { color: #3498db; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+        .back-btn a:hover { text-decoration: underline; }
+        
+        .icon-preview { display: inline-flex; align-items: center; gap: 10px; margin-top: 5px; font-size: 1.2em; color: #3498db; }
+        .help-text { font-size: 0.9em; color: #7f8c8d; margin-top: 5px; }
+        
+        .icon-suggestions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .icon-suggestion { padding: 5px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; cursor: pointer; font-size: 0.9em; transition: all 0.3s; }
+        .icon-suggestion:hover { background: #3498db; color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">SHAKTI</div>
+        <div class="admin-title">Admin Panel - Add PDF Resource</div>
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+    
+    <div class="container">
+        <div class="back-btn">
+            <a href="{{ url_for('admin_pdf_resources') }}">
+                <i class="fas fa-arrow-left"></i> Back to PDF Resources
+            </a>
+        </div>
+        
+        <h1 class="page-title">
+            <i class="fas fa-plus"></i> Add New PDF Resource
+        </h1>
+        
+        <div class="form-container">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="title">Title</label>
+                    <input type="text" id="title" name="title" required placeholder="e.g., Safety Guidelines for Women">
+                    <div class="help-text">Title that will be displayed on the website</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" required placeholder="Brief description of what this PDF contains..."></textarea>
+                    <div class="help-text">Description that will appear under the title on the website</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="icon">Font Awesome Icon Class</label>
+                    <input type="text" id="icon" name="icon" required value="fas fa-file-pdf" onkeyup="updateIconPreview()">
+                    <div class="help-text">Use Font Awesome icon classes</div>
+                    <div class="icon-preview" id="iconPreview">
+                        <i class="fas fa-file-pdf"></i> fas fa-file-pdf
+                    </div>
+                    <div class="icon-suggestions">
+                        <span class="icon-suggestion" onclick="setIcon('fas fa-file-pdf')">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </span>
+                        <span class="icon-suggestion" onclick="setIcon('fas fa-shield-alt')">
+                            <i class="fas fa-shield-alt"></i> Safety
+                        </span>
+                        <span class="icon-suggestion" onclick="setIcon('fas fa-gavel')">
+                            <i class="fas fa-gavel"></i> Legal
+                        </span>
+                        <span class="icon-suggestion" onclick="setIcon('fas fa-phone')">
+                            <i class="fas fa-phone"></i> Emergency
+                        </span>
+                        <span class="icon-suggestion" onclick="setIcon('fas fa-laptop')">
+                            <i class="fas fa-laptop"></i> Cyber
+                        </span>
+                        <span class="icon-suggestion" onclick="setIcon('fas fa-users')">
+                            <i class="fas fa-users"></i> Community
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pdf_file">PDF File</label>
+                    <div class="file-input-group">
+                        <input type="file" id="pdf_file" name="pdf_file" class="file-input" accept=".pdf" required onchange="updateFileName()">
+                        <label for="pdf_file" class="file-label" id="fileLabel">
+                            <i class="fas fa-upload"></i>
+                            <span id="fileName">Click to select PDF file</span>
+                        </label>
+                    </div>
+                    <div class="help-text">Upload a PDF file. Maximum file size: 10MB</div>
+                </div>
+                
+                <div class="form-actions">
+                    <a href="{{ url_for('admin_pdf_resources') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Add PDF Resource
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        function updateIconPreview() {
+            const iconInput = document.getElementById('icon');
+            const preview = document.getElementById('iconPreview');
+            const iconClass = iconInput.value.trim();
+            
+            if (iconClass) {
+                preview.innerHTML = `<i class="${iconClass}"></i> ${iconClass}`;
+            } else {
+                preview.innerHTML = '<i class="fas fa-file-pdf"></i> Preview will appear here';
+            }
+        }
+        
+        function setIcon(iconClass) {
+            document.getElementById('icon').value = iconClass;
+            updateIconPreview();
+        }
+        
+        function updateFileName() {
+            const fileInput = document.getElementById('pdf_file');
+            const fileName = document.getElementById('fileName');
+            
+            if (fileInput.files.length > 0) {
+                fileName.textContent = fileInput.files[0].name;
+                fileName.className = 'file-selected';
+            } else {
+                fileName.textContent = 'Click to select PDF file';
+                fileName.className = '';
+            }
+        }
+    </script>
+</body>
+</html>

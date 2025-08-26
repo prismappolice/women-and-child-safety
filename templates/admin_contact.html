@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Contact Page Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; color: #fff; }
+        .logo { font-size: 1.5em; font-weight: bold; }
+        .admin-title { font-size: 1.8em; text-align: center; }
+        .logout-btn { background: rgba(255,255,255,0.2); color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+        
+        .nav-bar { background: #34495e; padding: 15px 60px; }
+        .nav-menu { display: flex; gap: 30px; }
+        .nav-menu a { color: #ecf0f1; text-decoration: none; padding: 10px 15px; border-radius: 5px; transition: all 0.3s; }
+        .nav-menu a:hover, .nav-menu a.active { background: #3498db; }
+        
+        .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        .page-title { font-size: 2.2em; color: #2c3e50; margin-bottom: 30px; }
+        
+        .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .section-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .section-header { background: #34495e; color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .section-title { font-size: 1.3em; font-weight: 600; }
+        .add-btn { background: #27ae60; color: #fff; padding: 8px 15px; border: none; border-radius: 5px; text-decoration: none; font-size: 0.9em; transition: all 0.3s; }
+        .add-btn:hover { background: #229954; }
+        
+        .section-content { padding: 20px; }
+        .info-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 15px 0; border-bottom: 1px solid #ecf0f1; }
+        .info-item:last-child { border-bottom: none; }
+        .info-details { flex: 1; }
+        .info-label { font-weight: 600; color: #2c3e50; margin-bottom: 5px; }
+        .info-value { color: #7f8c8d; font-size: 0.9em; }
+        .info-actions { display: flex; gap: 5px; }
+        
+        .full-width { grid-column: 1 / -1; }
+        
+        .contact-form { padding: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 1em; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #3498db; }
+        .form-group textarea { height: 120px; resize: vertical; }
+        
+        .form-row { display: flex; gap: 20px; }
+        .form-row .form-group { flex: 1; }
+        
+        .btn { padding: 5px 10px; border: none; border-radius: 3px; text-decoration: none; font-size: 0.8em; cursor: pointer; transition: all 0.3s; }
+        .btn-edit { background: #3498db; color: #fff; }
+        .btn-edit:hover { background: #2980b9; }
+        .btn-delete { background: #e74c3c; color: #fff; }
+        .btn-delete:hover { background: #c0392b; }
+        .btn-primary { background: #27ae60; color: #fff; padding: 10px 20px; }
+        .btn-primary:hover { background: #229954; }
+        
+        .status-badge { padding: 3px 8px; border-radius: 10px; font-size: 0.7em; font-weight: bold; }
+        .status-active { background: #d5f4e6; color: #27ae60; }
+        .status-inactive { background: #fadbd8; color: #e74c3c; }
+        
+        .flash-messages { margin-bottom: 20px; }
+        .flash-message { padding: 15px; border-radius: 5px; margin-bottom: 10px; }
+        .flash-success { background: #d5f4e6; color: #27ae60; border: 1px solid #27ae60; }
+        .flash-error { background: #fadbd8; color: #e74c3c; border: 1px solid #e74c3c; }
+        
+        .empty-state { text-align: center; padding: 40px; color: #7f8c8d; }
+        .empty-state i { font-size: 3em; margin-bottom: 20px; opacity: 0.3; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">SHAKTI</div>
+        <div class="admin-title">Admin Panel - Contact Page Management</div>
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+    
+    <div class="nav-bar">
+        <div class="nav-menu">
+            <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('admin_about') }}">About Page</a>
+            <a href="{{ url_for('admin_home') }}">Home Page</a>
+            <a href="{{ url_for('admin_contact') }}" class="active">Contact Page</a>
+            <a href="{{ url_for('admin_gallery') }}">Gallery</a>
+            <a href="/">View Website</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <h1 class="page-title">
+            <i class="fas fa-phone-alt"></i> Contact Page Management
+        </h1>
+        
+        <div class="content-grid">
+            <!-- Contact Information -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">Contact Information</div>
+                    <a href="{{ url_for('admin_add_contact_info') }}" class="add-btn">
+                        <i class="fas fa-plus"></i> Add Contact
+                    </a>
+                </div>
+                <div class="section-content">
+                    {% if contact_info %}
+                        {% for contact in contact_info %}
+                        <div class="info-item">
+                            <div class="info-details">
+                                <div class="info-label">{{ contact[1].title() }}</div>
+                                <div class="info-value">{{ contact[2] }}</div>
+                                {% if contact[3] %}
+                                    <div class="info-value">{{ contact[3] }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="info-actions">
+                                <a href="{{ url_for('admin_edit_contact_info', contact_id=contact[0]) }}" class="btn btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('admin_delete_contact_info', contact_id=contact[0]) }}" 
+                                      style="display: inline;" 
+                                      onsubmit="return confirm('Delete this contact?')">
+                                    <button type="submit" class="btn btn-delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-address-book"></i>
+                            <p>No contact information added yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Office Locations -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">Office Locations</div>
+                    <a href="{{ url_for('admin_add_office_location') }}" class="add-btn">
+                        <i class="fas fa-plus"></i> Add Location
+                    </a>
+                </div>
+                <div class="section-content">
+                    {% set locations = contact_info|selectattr('1', 'equalto', 'office')|list %}
+                    {% if locations %}
+                        {% for location in locations %}
+                        <div class="info-item">
+                            <div class="info-details">
+                                <div class="info-label">{{ location[2] }}</div>
+                                <div class="info-value">{{ location[3] }}</div>
+                            </div>
+                            <div class="info-actions">
+                                <a href="{{ url_for('admin_edit_contact_info', contact_id=location[0]) }}" class="btn btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('admin_delete_contact_info', contact_id=location[0]) }}" 
+                                      style="display: inline;" 
+                                      onsubmit="return confirm('Delete this location?')">
+                                    <button type="submit" class="btn btn-delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <p>No office locations added yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Quick Contact Form Settings -->
+            <div class="section-card full-width">
+                <div class="section-header">
+                    <div class="section-title">Contact Form Settings</div>
+                </div>
+                <div class="contact-form">
+                    <form action="{{ url_for('admin_update_contact_form') }}" method="POST">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="form_title">Form Title</label>
+                                <input type="text" id="form_title" name="form_title" 
+                                       value="{{ form_settings.title if form_settings else 'Get in Touch' }}">
+                            </div>
+                            <div class="form-group">
+                                <label for="form_subtitle">Form Subtitle</label>
+                                <input type="text" id="form_subtitle" name="form_subtitle" 
+                                       value="{{ form_settings.subtitle if form_settings else 'We\'d love to hear from you' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="form_description">Form Description</label>
+                            <textarea id="form_description" name="form_description">{{ form_settings.description if form_settings else 'Please fill out the form below and we will get back to you as soon as possible.' }}</textarea>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="success_message">Success Message</label>
+                                <input type="text" id="success_message" name="success_message" 
+                                       value="{{ form_settings.success_message if form_settings else 'Thank you for your message! We will get back to you soon.' }}">
+                            </div>
+                            <div class="form-group">
+                                <label for="admin_email">Admin Email (for notifications)</label>
+                                <input type="email" id="admin_email" name="admin_email" 
+                                       value="{{ form_settings.admin_email if form_settings else 'admin@example.com' }}">
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Update Form Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

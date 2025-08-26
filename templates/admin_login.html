@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - AP Police Women & Child Safety Wing</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-container { background: #fff; padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); max-width: 400px; width: 90%; }
+        .login-header { text-align: center; margin-bottom: 40px; }
+        .logo { width: 80px; height: 80px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #fff; font-size: 1.5em; font-weight: bold; }
+        .login-title { font-size: 2em; color: #2c3e50; margin-bottom: 10px; }
+        .login-subtitle { color: #7f8c8d; font-size: 1.1em; }
+        
+        .form-group { margin-bottom: 25px; }
+        .form-label { display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 600; }
+        .form-input { width: 100%; padding: 15px; border: 2px solid #ecf0f1; border-radius: 10px; font-size: 1em; transition: all 0.3s; box-sizing: border-box; }
+        .form-input:focus { outline: none; border-color: #3498db; box-shadow: 0 0 10px rgba(52, 152, 219, 0.2); }
+        
+        .login-btn { width: 100%; background: linear-gradient(135deg, #3498db, #2980b9); color: #fff; padding: 15px; border: none; border-radius: 10px; font-size: 1.1em; font-weight: 600; cursor: pointer; transition: all 0.3s; margin-bottom: 20px; }
+        .login-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(52, 152, 219, 0.3); }
+        
+        .back-link { text-align: center; margin-top: 30px; }
+        .back-link a { color: #3498db; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+        .back-link a:hover { color: #2980b9; }
+        
+        .security-note { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 30px; }
+        .security-note h4 { color: #2c3e50; margin-bottom: 10px; }
+        .security-note p { color: #7f8c8d; font-size: 0.9em; line-height: 1.5; margin: 0; }
+        
+        @media (max-width: 480px) {
+            .login-container { padding: 30px 20px; }
+            .login-title { font-size: 1.5em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="logo">AP</div>
+            <h1 class="login-title">Admin Login</h1>
+            <p class="login-subtitle">Access the administrative dashboard</p>
+        </div>
+        
+        <form method="POST" action="/admin-login">
+            <div class="form-group">
+                <label for="username" class="form-label">
+                    <i class="fas fa-user"></i> Username
+                </label>
+                <input type="text" id="username" name="username" class="form-input" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="form-label">
+                    <i class="fas fa-lock"></i> Password
+                </label>
+                <input type="password" id="password" name="password" class="form-input" required>
+            </div>
+            
+            <button type="submit" class="login-btn">
+                <i class="fas fa-sign-in-alt"></i> Login to Dashboard
+            </button>
+        </form>
+        
+        <div class="back-link">
+            <a href="/">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </a>
+        </div>
+        
+        <div class="security-note">
+            <h4><i class="fas fa-shield-alt"></i> Security Notice</h4>
+            <p>This is a secure area restricted to authorized personnel only. All login attempts are logged and monitored. For access requests, contact the system administrator.</p>
+        </div>
+    </div>
+</body>
+</html>

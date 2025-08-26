@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volunteer Registration - AP Police Women & Child Safety Wing</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/chatbot.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; }
+        .logo { width: 120px; height: 120px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-weight: bold; font-size: 1.2em; color: #2c3e50; overflow: hidden; position: relative; }
+        .logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .main-title { color: #fff; font-size: 2.5em; font-weight: bold; text-align: center; flex: 1; }
+        .navbar { background: rgba(255,255,255,0.95); padding: 15px 60px; display: flex; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .nav-menu { display: flex; gap: 40px; font-size: 1.1em; }
+        .nav-menu a { color: #2c3e50; text-decoration: none; font-weight: 600; padding: 10px 15px; border-radius: 5px; transition: all 0.3s; }
+        .nav-menu a:hover, .nav-menu a.active { background: #3498db; color: #fff; }
+        .content { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        .page-title { font-size: 2.5em; color: #2c3e50; text-align: center; margin-bottom: 20px; }
+        .breadcrumb { text-align: center; margin-bottom: 40px; color: #7f8c8d; }
+        .breadcrumb a { color: #3498db; text-decoration: none; }
+        
+        .form-container { background: #fff; padding: 40px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .form-intro { text-align: center; margin-bottom: 40px; }
+        .form-intro h2 { color: #2c3e50; margin-bottom: 15px; }
+        .form-intro p { color: #7f8c8d; line-height: 1.6; }
+        
+        .form-group { margin-bottom: 25px; }
+        .form-label { display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 600; }
+        .form-input { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; }
+        .form-input:focus { outline: none; border-color: #3498db; }
+        .form-textarea { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; min-height: 120px; resize: vertical; transition: border-color 0.3s; }
+        .form-textarea:focus { outline: none; border-color: #3498db; }
+        .form-select { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; }
+        .form-select:focus { outline: none; border-color: #3498db; }
+        
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        .submit-btn { background: linear-gradient(135deg, #27ae60, #229954); color: #fff; padding: 15px 40px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: all 0.3s; width: 100%; }
+        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(39, 174, 96, 0.3); }
+        
+        .success-message { background: #d4edda; color: #155724; padding: 20px; border-radius: 8px; margin-bottom: 30px; text-align: center; border: 1px solid #c3e6cb; }
+        .success-message i { font-size: 2em; margin-bottom: 10px; display: block; }
+        
+        .requirements { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #3498db; }
+        .requirements h3 { color: #2c3e50; margin-bottom: 15px; }
+        .requirements ul { color: #555; line-height: 1.6; }
+        
+        .footer { background: #2c3e50; color: #fff; text-align: center; padding: 20px; margin-top: 50px; }
+        
+        @media (max-width: 768px) {
+            .form-row { grid-template-columns: 1fr; }
+            .content { padding: 0 10px; }
+            .header { padding: 10px 20px; flex-direction: column; gap: 20px; }
+            .main-title { font-size: 1.8em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+    <div class="logo"><img src="/static/images/shakthi_logo.png" alt="SHAKTHI Logo"></div>
+        <div class="main-title">AP Police Women & Child Safety Wing</div>
+    <div class="logo"><img src="/static/images/ap_police_logo.png" alt="AP Police Logo"></div>
+    </div>
+    
+    <div class="navbar">
+        <div class="nav-menu">
+            <a href="/">Home</a>
+            <a href="/about">About Us</a>
+            <a href="/initiatives">Initiatives</a>
+            <a href="/volunteer-registration" class="active">Volunteer</a>
+            <a href="/safety-tips">Safety Tips</a>
+            <a href="/pdf-resources">PDF Resources</a>
+            <a href="/contact">Contact Us</a>
+            <a href="/gallery">Media & Events</a>
+            <a href="/admin-login">Admin Login</a>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h1 class="page-title">Volunteer Registration</h1>
+        <div class="breadcrumb">
+            <a href="/">Home</a> / Volunteer Registration
+        </div>
+        
+        {% if get_flashed_messages() %}
+            {% for message in get_flashed_messages() %}
+                <div class="success-message">
+                    <i class="fas fa-check-circle"></i>
+                    <h3>Registration Successful!</h3>
+                    <p>{{ message }}</p>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <div class="requirements">
+            <h3><i class="fas fa-info-circle"></i> Volunteer Requirements</h3>
+            <ul>
+                <li>Must be 18 years or older</li>
+                <li>Commitment to women's safety and empowerment</li>
+                <li>Basic communication skills in local languages</li>
+                <li>Willingness to undergo background verification</li>
+                <li>Available for training and regular activities</li>
+            </ul>
+        </div>
+        
+        <div class="form-container">
+            <div class="form-intro">
+                <h2>Join Our Mission</h2>
+                <p>Be part of the change by volunteering with AP Women Safety Wing. Help us create a safer environment for women across Andhra Pradesh.</p>
+            </div>
+            
+            <form method="POST" action="/volunteer-registration">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="name">
+                            <i class="fas fa-user"></i> Full Name *
+                        </label>
+                        <input type="text" id="name" name="name" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="email">
+                            <i class="fas fa-envelope"></i> Email Address *
+                        </label>
+                        <input type="email" id="email" name="email" class="form-input" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="phone">
+                            <i class="fas fa-phone"></i> Phone Number *
+                        </label>
+                        <input type="tel" id="phone" name="phone" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="age">
+                            <i class="fas fa-calendar"></i> Age *
+                        </label>
+                        <input type="number" id="age" name="age" class="form-input" min="18" max="80" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="address">
+                        <i class="fas fa-map-marker-alt"></i> Address *
+                    </label>
+                    <textarea id="address" name="address" class="form-textarea" required placeholder="Enter your complete address including district"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="occupation">
+                            <i class="fas fa-briefcase"></i> Occupation
+                        </label>
+                        <input type="text" id="occupation" name="occupation" class="form-input" placeholder="Your current profession">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="education">
+                            <i class="fas fa-graduation-cap"></i> Education
+                        </label>
+                        <select id="education" name="education" class="form-select">
+                            <option value="">Select your education level</option>
+                            <option value="10th">10th Standard</option>
+                            <option value="12th">12th Standard</option>
+                            <option value="graduate">Graduate</option>
+                            <option value="postgraduate">Post Graduate</option>
+                            <option value="professional">Professional Degree</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="experience">
+                        <i class="fas fa-star"></i> Previous Volunteer Experience
+                    </label>
+                    <textarea id="experience" name="experience" class="form-textarea" placeholder="Describe any previous volunteer work or social service experience"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="motivation">
+                        <i class="fas fa-heart"></i> Why do you want to volunteer with us? *
+                    </label>
+                    <textarea id="motivation" name="motivation" class="form-textarea" required placeholder="Tell us what motivates you to work for women's safety"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="availability">
+                            <i class="fas fa-clock"></i> Availability
+                        </label>
+                        <select id="availability" name="availability" class="form-select">
+                            <option value="">Select your availability</option>
+                            <option value="weekdays">Weekdays</option>
+                            <option value="weekends">Weekends</option>
+                            <option value="both">Both Weekdays & Weekends</option>
+                            <option value="flexible">Flexible</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="skills">
+                            <i class="fas fa-tools"></i> Special Skills
+                        </label>
+                        <input type="text" id="skills" name="skills" class="form-input" placeholder="Languages, technical skills, etc.">
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-paper-plane"></i> Submit Application
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; 2024 AP Women Safety Wing. All rights reserved.</p>
+        <p>Emergency Helpline: 181 | Email: info@apwomensafety.gov.in</p>
+    </div>
+    
+    <script src="/static/chatbot.js"></script>
+</body>
+</html>

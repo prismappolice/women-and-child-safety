@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Edit About Section</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; color: #fff; }
+        .logo { font-size: 1.5em; font-weight: bold; }
+        .admin-title { font-size: 1.8em; text-align: center; }
+        .logout-btn { background: rgba(255,255,255,0.2); color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+        
+        .nav-bar { background: #34495e; padding: 15px 60px; }
+        .nav-menu { display: flex; gap: 30px; }
+        .nav-menu a { color: #ecf0f1; text-decoration: none; padding: 10px 15px; border-radius: 5px; transition: all 0.3s; }
+        .nav-menu a:hover, .nav-menu a.active { background: #3498db; }
+        
+        .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        .page-title { font-size: 2.2em; color: #2c3e50; margin-bottom: 30px; }
+        
+        .form-container { background: #fff; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 1em; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #3498db; }
+        .form-group textarea { height: 150px; resize: vertical; }
+        .form-group .help-text { font-size: 0.9em; color: #7f8c8d; margin-top: 5px; }
+        
+        .form-row { display: flex; gap: 20px; }
+        .form-row .form-group { flex: 1; }
+        
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+        .checkbox-group input[type="checkbox"] { width: auto; margin: 0; }
+        
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 30px; }
+        .btn { padding: 12px 30px; border: none; border-radius: 5px; font-size: 1em; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; transition: all 0.3s; }
+        .btn-primary { background: #3498db; color: #fff; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-secondary { background: #95a5a6; color: #fff; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        
+        .flash-messages { margin-bottom: 20px; }
+        .flash-message { padding: 15px; border-radius: 5px; margin-bottom: 10px; }
+        .flash-success { background: #d5f4e6; color: #27ae60; border: 1px solid #27ae60; }
+        .flash-error { background: #fadbd8; color: #e74c3c; border: 1px solid #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">SHAKTI</div>
+        <div class="admin-title">Admin Panel - Edit About Section</div>
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+    
+    <div class="nav-bar">
+        <div class="nav-menu">
+            <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('admin_about') }}" class="active">About Page</a>
+            <a href="{{ url_for('admin_home') }}">Home Page</a>
+            <a href="{{ url_for('admin_contact') }}">Contact Page</a>
+            <a href="{{ url_for('admin_gallery') }}">Gallery</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <h1 class="page-title">
+            <i class="fas fa-edit"></i> Edit About Section
+        </h1>
+        
+        <div class="form-container">
+            <form method="POST">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="section_name">Section Name</label>
+                        <select id="section_name" name="section_name" required>
+                            <option value="">Select Section Type</option>
+                            <option value="mission" {{ 'selected' if section[1] == 'mission' else '' }}>Our Mission</option>
+                            <option value="vision" {{ 'selected' if section[1] == 'vision' else '' }}>Our Vision</option>
+                            <option value="officers" {{ 'selected' if section[1] == 'officers' else '' }}>Officer Details</option>
+                            <option value="success_stories" {{ 'selected' if section[1] == 'success_stories' else '' }}>Success Stories</option>
+                            <option value="achievements" {{ 'selected' if section[1] == 'achievements' else '' }}>Achievements</option>
+                            <option value="objectives" {{ 'selected' if section[1] == 'objectives' else '' }}>Objectives</option>
+                            <option value="team" {{ 'selected' if section[1] == 'team' else '' }}>Our Team</option>
+                            <option value="history" {{ 'selected' if section[1] == 'history' else '' }}>Our History</option>
+                            <option value="impact" {{ 'selected' if section[1] == 'impact' else '' }}>Our Impact</option>
+                            <option value="partners" {{ 'selected' if section[1] == 'partners' else '' }}>Partners & Collaborations</option>
+                            <option value="services" {{ 'selected' if section[1] == 'services' else '' }}>Our Services</option>
+                            <option value="facilities" {{ 'selected' if section[1] == 'facilities' else '' }}>Facilities</option>
+                        </select>
+                        <div class="help-text">Choose the type of content</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="sort_order">Display Order</label>
+                        <input type="number" id="sort_order" name="sort_order" min="1" value="{{ section[5] }}" required>
+                        <div class="help-text">Order in which this section appears on the page</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="title">Section Title</label>
+                    <input type="text" id="title" name="title" value="{{ section[2] }}" required>
+                    <div class="help-text">Main heading for this section</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="content">Content</label>
+                    <textarea id="content" name="content" required>{{ section[3] }}</textarea>
+                    <div class="help-text">Main content for this section. HTML tags are allowed.</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="image_url">Image URL (Optional)</label>
+                    <input type="url" id="image_url" name="image_url" value="{{ section[4] or '' }}">
+                    <div class="help-text">Optional image to accompany this section</div>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="is_active" name="is_active" {{ 'checked' if section[6] else '' }}>
+                    <label for="is_active">Active (visible on website)</label>
+                </div>
+                
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Update Section
+                    </button>
+                    <a href="{{ url_for('admin_about') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to About Management
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

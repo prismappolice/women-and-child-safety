@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AP Police Women & Child Safety Wing</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/chatbot.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        
+        /* Header Styles */
+        .header { 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); 
+            padding: 20px 60px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+        }
+        .logo { 
+            width: 120px; 
+            height: 120px; 
+            background: #fff; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #2c3e50;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        .main-title { 
+            color: #fff; 
+            font-size: 2.5em; 
+            font-weight: bold; 
+            text-align: center; 
+            flex: 1; 
+        }
+        
+        /* Navigation Styles */
+        .navbar { 
+            background: rgba(255,255,255,0.95); 
+            padding: 15px 60px; 
+            display: flex; 
+            justify-content: center; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+        }
+        .nav-menu { 
+            display: flex; 
+            gap: 40px; 
+            font-size: 1.1em; 
+        }
+        .nav-menu a { 
+            color: #2c3e50; 
+            text-decoration: none; 
+            font-weight: 600; 
+            padding: 10px 15px; 
+            border-radius: 5px; 
+            transition: all 0.3s; 
+        }
+        .nav-menu a:hover, .nav-menu a.active { 
+            background: #3498db; 
+            color: #fff; 
+        }
+        
+        /* Main Content Styles */
+        .main-content {
+            display: flex;
+            align-items: center;
+            min-height: 70vh;
+            padding: 40px 60px;
+            gap: 40px;
+        }
+        
+        /* Welcome Section */
+        .welcome-section {
+            flex: 1;
+            background: linear-gradient(135deg, #20b2aa 0%, #17a2b8 50%, #28a745 100%);
+            padding: 50px;
+            border-radius: 20px;
+            color: #fff;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .welcome-header {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+        
+        .welcome-title {
+            font-size: 2.8em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        
+        .welcome-tagline {
+            font-size: 1.6em;
+            font-weight: 600;
+            margin-bottom: 25px;
+            color: #e8f8f5;
+        }
+        
+        .welcome-description {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            color: #e8f8f5;
+        }
+        
+        /* Emergency Buttons */
+        .emergency-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .emergency-btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .emergency-btn.red {
+            background: #dc3545;
+            color: #fff;
+        }
+        
+        .emergency-btn.yellow {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .emergency-btn.green {
+            background: #28a745;
+            color: #fff;
+        }
+        
+        .emergency-btn.orange {
+            background: #fd7e14;
+            color: #fff;
+        }
+        
+        .emergency-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .phone-number {
+            grid-column: span 2;
+            background: #28a745;
+            color: #fff;
+            font-size: 1.2em;
+        }
+        
+        /* Image Slideshow Section */
+        .slideshow-section {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .slideshow-container {
+            flex: 1;
+            background: linear-gradient(135deg, #20b2aa 0%, #17a2b8 50%, #28a745 100%);
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            min-height: 550px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .slideshow-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 15px;
+            transition: opacity 0.5s ease-in-out;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .slideshow-container img.active {
+            opacity: 1;
+        }
+        
+        .slideshow-container img.inactive {
+            opacity: 0;
+        }
+        }
+        
+        .shakti-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+        }
+        
+        .shakti-logo-fallback {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .shakti-logo-inner {
+            width: 300px;
+            height: 300px;
+            background: #fff;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 2;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.1);
+        }
+        
+        .shakti-emblem {
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .shakti-hands {
+            font-size: 4em;
+            color: #f39c12;
+        }
+        
+        .shakti-text {
+            font-size: 3em;
+            font-weight: bold;
+            color: #2c3e50;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+        }
+        
+        .shakti-subtitle {
+            font-size: 1em;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-content {
+                flex-direction: column;
+                padding: 20px;
+            }
+            
+            .shakti-logo {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .shakti-logo-inner {
+                width: 220px;
+                height: 220px;
+            }
+            
+            .shakti-emblem {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .shakti-text {
+                font-size: 2.5em;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                padding: 10px 20px;
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .main-title {
+                font-size: 2em;
+            }
+            
+            .navbar {
+                padding: 10px 20px;
+            }
+            
+            .nav-menu {
+                flex-wrap: wrap;
+                gap: 20px;
+                justify-content: center;
+            }
+            
+            .welcome-section {
+                padding: 30px;
+            }
+            
+            .welcome-title {
+                font-size: 2em;
+            }
+            
+            .emergency-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .phone-number {
+                grid-column: span 1;
+            }
+            
+            .shakti-logo {
+                width: 250px;
+                height: 250px;
+            }
+            
+            .shakti-logo-inner {
+                width: 180px;
+                height: 180px;
+            }
+            
+            .shakti-emblem {
+                width: 120px;
+                height: 120px;
+            }
+            
+            .shakti-text {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <img src="/static/images/shakthi_logo.png" alt="SHAKTHI Logo">
+        </div>
+        <div class="main-title">AP Police Women & Child Safety Wing</div>
+        <div class="logo">
+            <img src="/static/images/ap_police_logo.png" alt="AP Police Logo">
+        </div>
+    </div>
+    
+    <div class="navbar">
+        <div class="nav-menu">
+            <a href="/" class="active">Home</a>
+            <a href="/about">About Us</a>
+            <a href="/initiatives">Initiatives</a>
+            <a href="/volunteer-registration">Volunteer</a>
+            <a href="/safety-tips">Safety Tips</a>
+            <a href="/pdf-resources">PDF Resources</a>
+            <a href="/contact">Contact Us</a>
+            <a href="/gallery">Media & Events</a>
+            <a href="/admin-login">Admin Login</a>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="welcome-section">
+            {% set hero_content = home_content|selectattr('1', 'equalto', 'hero')|selectattr('6', 'equalto', True)|list %}
+            {% if hero_content %}
+                {% set hero = hero_content|first %}
+                <div class="welcome-header">WELCOME TO</div>
+                <div class="welcome-title">{{ hero[2] }}</div>
+                <div class="welcome-tagline">{{ hero[7] if hero[7] else 'Educate Empower Ensure Safety' }}</div>
+                <div class="welcome-description">{{ hero[3]|safe }}</div>
+            {% else %}
+                <div class="welcome-header">WELCOME TO</div>
+                <div class="welcome-title">Andhra Pradesh Women & Child Safety Wing</div>
+                <div class="welcome-tagline">Educate Empower Ensure Safety</div>
+                <div class="welcome-description">
+                    Standing alongside every woman and child to empower and encourage. 
+                    The AP Police Women & Child Safety Wing is committed to ensuring the 
+                    safety, dignity, and empowerment of women and children across Andhra Pradesh.
+                </div>
+            {% endif %}
+            
+            <div class="emergency-buttons">
+                <a href="tel:112" class="emergency-btn red">
+                    <i class="fas fa-phone"></i>
+                    EMERGENCY - DIAL 112
+                </a>
+                <a href="tel:1093" class="emergency-btn yellow">
+                    <i class="fas fa-shield-alt"></i>
+                    CYBER CRIME - 1093
+                </a>
+                <a href="https://wa.me/917993485111" class="emergency-btn phone-number" target="_blank">
+                    <i class="fab fa-whatsapp"></i>
+                    7993485111
+                </a>
+                <a href="tel:1098" class="emergency-btn orange">
+                    <i class="fas fa-child"></i>
+                    CHILD HELPLINE - 1098
+                </a>
+            </div>
+        </div>
+        
+        <div class="slideshow-section">
+            <div class="slideshow-container" id="imageSlideshow">
+                <img src="/static/images/slide1.jpg" alt="Slide 1" class="slide-image active">
+                <img src="/static/images/slide2.jpg" alt="Slide 2" class="slide-image inactive">
+                <img src="/static/images/slide3.jpg" alt="Slide 3" class="slide-image inactive">
+                <img src="/static/images/slide4.jpg" alt="Slide 4" class="slide-image inactive">
+                <img src="/static/images/slide5.jpg" alt="Slide 5" class="slide-image inactive">
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/chatbot.js"></script>
+    <script>
+        // Image Slideshow Functionality
+        let currentSlide = 0;
+        let slideInterval;
+        let isHovered = false;
+        
+        const slides = document.querySelectorAll('.slide-image');
+        const slideshow = document.getElementById('imageSlideshow');
+        
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                if (i === index) {
+                    slide.classList.add('active');
+                    slide.classList.remove('inactive');
+                } else {
+                    slide.classList.add('inactive');
+                    slide.classList.remove('active');
+                }
+            });
+        }
+        
+        function nextSlide() {
+            if (!isHovered) {
+                currentSlide = (currentSlide + 1) % slides.length;
+                showSlide(currentSlide);
+            }
+        }
+        
+        function startSlideshow() {
+            slideInterval = setInterval(nextSlide, 3000); // 3 seconds
+        }
+        
+        function stopSlideshow() {
+            clearInterval(slideInterval);
+        }
+        
+        // Event listeners for hover
+        slideshow.addEventListener('mouseenter', () => {
+            isHovered = true;
+            stopSlideshow();
+        });
+        
+        slideshow.addEventListener('mouseleave', () => {
+            isHovered = false;
+            startSlideshow();
+        });
+        
+        // Start the slideshow when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            startSlideshow();
+        });
+    </script>
+</body>
+</html>

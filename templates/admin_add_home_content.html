@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Add Home Content</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; color: #fff; }
+        .logo { font-size: 1.5em; font-weight: bold; }
+        .admin-title { font-size: 1.8em; text-align: center; }
+        .logout-btn { background: rgba(255,255,255,0.2); color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+        
+        .nav-bar { background: #34495e; padding: 15px 60px; }
+        .nav-menu { display: flex; gap: 30px; }
+        .nav-menu a { color: #ecf0f1; text-decoration: none; padding: 10px 15px; border-radius: 5px; transition: all 0.3s; }
+        .nav-menu a:hover, .nav-menu a.active { background: #3498db; }
+        
+        .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        .page-title { font-size: 2.2em; color: #2c3e50; margin-bottom: 30px; }
+        
+        .form-container { background: #fff; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 1em; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #3498db; }
+        .form-group textarea { height: 150px; resize: vertical; }
+        .form-group .help-text { font-size: 0.9em; color: #7f8c8d; margin-top: 5px; }
+        
+        .form-row { display: flex; gap: 20px; }
+        .form-row .form-group { flex: 1; }
+        
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+        .checkbox-group input[type="checkbox"] { width: auto; margin: 0; }
+        
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 30px; }
+        .btn { padding: 12px 30px; border: none; border-radius: 5px; font-size: 1em; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; transition: all 0.3s; }
+        .btn-primary { background: #27ae60; color: #fff; }
+        .btn-primary:hover { background: #229954; }
+        .btn-secondary { background: #95a5a6; color: #fff; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        
+        .section-info { background: #e3f2fd; padding: 20px; border-radius: 5px; margin-bottom: 30px; border-left: 4px solid #2196f3; }
+        .section-info h3 { color: #1976d2; margin-bottom: 10px; }
+        .section-info p { color: #424242; }
+        
+        .flash-messages { margin-bottom: 20px; }
+        .flash-message { padding: 15px; border-radius: 5px; margin-bottom: 10px; }
+        .flash-success { background: #d5f4e6; color: #27ae60; border: 1px solid #27ae60; }
+        .flash-error { background: #fadbd8; color: #e74c3c; border: 1px solid #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">SHAKTI</div>
+        <div class="admin-title">Admin Panel - Add Home Content</div>
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+    
+    <div class="nav-bar">
+        <div class="nav-menu">
+            <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('admin_about') }}">About Page</a>
+            <a href="{{ url_for('admin_home') }}" class="active">Home Page</a>
+            <a href="{{ url_for('admin_contact') }}">Contact Page</a>
+            <a href="{{ url_for('admin_gallery') }}">Gallery</a>
+
+        </div>
+    </div>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <h1 class="page-title">
+            <i class="fas fa-plus"></i> Add {{ section.title() }} Content
+        </h1>
+        
+        {% if section == 'hero' %}
+        <div class="section-info">
+            <h3><i class="fas fa-info-circle"></i> Hero Section Guidelines</h3>
+            <p>Hero content appears at the top of the homepage. Use compelling titles and clear descriptions to engage visitors immediately.</p>
+        </div>
+        {% elif section == 'features' %}
+        <div class="section-info">
+            <h3><i class="fas fa-info-circle"></i> Features Section Guidelines</h3>
+            <p>Feature content highlights key services or capabilities. Use icons and brief descriptions to showcase what makes your organization special.</p>
+        </div>
+        {% elif section == 'statistics' %}
+        <div class="section-info">
+            <h3><i class="fas fa-info-circle"></i> Statistics Section Guidelines</h3>
+            <p>Statistics show your impact with numbers. Use compelling metrics like "1000+ Women Helped" or "50+ Programs Conducted".</p>
+        </div>
+        {% elif section == 'testimonials' %}
+        <div class="section-info">
+            <h3><i class="fas fa-info-circle"></i> Testimonials Section Guidelines</h3>
+            <p>Testimonials build trust through real experiences. Include the person's name and role for authenticity.</p>
+        </div>
+        {% endif %}
+        
+        <div class="form-container">
+            <form action="{{ url_for('admin_add_home_content', section=section) }}" method="POST">
+                <input type="hidden" name="section_name" value="{{ section }}">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="title">{{ 'Headline' if section == 'hero' else 'Title' }}</label>
+                        <input type="text" id="title" name="title" 
+                               placeholder="{% if section == 'hero' %}Enter main headline{% elif section == 'features' %}Feature name{% elif section == 'statistics' %}Statistic label{% else %}Title{% endif %}" required>
+                        <div class="help-text">
+                            {% if section == 'hero' %}Main headline that appears prominently
+                            {% elif section == 'features' %}Name of the feature or service
+                            {% elif section == 'statistics' %}Label for the statistic (e.g., "Women Helped")
+                            {% elif section == 'testimonials' %}Person's name or title
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="display_order">Display Order</label>
+                        <input type="number" id="display_order" name="display_order" min="1" value="1" required>
+                        <div class="help-text">Order in which this appears in the section</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="content">
+                        {% if section == 'hero' %}Description
+                        {% elif section == 'statistics' %}Number/Value
+                        {% else %}Content{% endif %}
+                    </label>
+                    <textarea id="content" name="content" 
+                              placeholder="{% if section == 'hero' %}Compelling description of your mission{% elif section == 'features' %}Brief description of this feature{% elif section == 'statistics' %}The actual number (e.g., 1000+){% elif section == 'testimonials' %}The testimonial quote{% endif %}" required></textarea>
+                    <div class="help-text">
+                        {% if section == 'hero' %}Engaging description that motivates visitors
+                        {% elif section == 'features' %}Clear explanation of this feature's benefits
+                        {% elif section == 'statistics' %}The actual number or percentage
+                        {% elif section == 'testimonials' %}The full testimonial text
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="image_url">
+                        {% if section == 'features' %}Icon URL
+                        {% elif section == 'testimonials' %}Photo URL
+                        {% else %}Image URL{% endif %} (Optional)
+                    </label>
+                    <input type="url" id="image_url" name="image_url" 
+                           placeholder="{% if section == 'features' %}https://example.com/icon.png{% elif section == 'testimonials' %}https://example.com/person.jpg{% else %}https://example.com/image.jpg{% endif %}">
+                    <div class="help-text">
+                        {% if section == 'features' %}URL to an icon representing this feature
+                        {% elif section == 'testimonials' %}URL to the person's photo
+                        {% else %}Optional image to accompany this content
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if section == 'testimonials' %}
+                <div class="form-group">
+                    <label for="extra_info">Person's Role/Organization</label>
+                    <input type="text" id="extra_info" name="extra_info" placeholder="e.g., Volunteer, Community Leader">
+                    <div class="help-text">The person's role or organization for credibility</div>
+                </div>
+                {% elif section == 'features' %}
+                <div class="form-group">
+                    <label for="extra_info">Feature Link (Optional)</label>
+                    <input type="url" id="extra_info" name="extra_info" placeholder="https://example.com/feature-page">
+                    <div class="help-text">Optional link to more information about this feature</div>
+                </div>
+                {% endif %}
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="is_active" name="is_active" checked>
+                    <label for="is_active">Active (visible on website)</label>
+                </div>
+                
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Content
+                    </button>
+                    <a href="{{ url_for('admin_home') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

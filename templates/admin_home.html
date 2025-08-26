@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Home Page Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; color: #fff; }
+        .logo { font-size: 1.5em; font-weight: bold; }
+        .admin-title { font-size: 1.8em; text-align: center; }
+        .logout-btn { background: rgba(255,255,255,0.2); color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+        
+        .nav-bar { background: #34495e; padding: 15px 60px; }
+        .nav-menu { display: flex; gap: 30px; }
+        .nav-menu a { color: #ecf0f1; text-decoration: none; padding: 10px 15px; border-radius: 5px; transition: all 0.3s; }
+        .nav-menu a:hover, .nav-menu a.active { background: #3498db; }
+        
+        .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        .page-title { font-size: 2.2em; color: #2c3e50; margin-bottom: 30px; }
+        
+        .content-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; }
+        
+        .section-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .section-header { background: #34495e; color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .section-title { font-size: 1.3em; font-weight: 600; }
+        .add-btn { background: #27ae60; color: #fff; padding: 8px 15px; border: none; border-radius: 5px; text-decoration: none; font-size: 0.9em; transition: all 0.3s; }
+        .add-btn:hover { background: #229954; }
+        
+        .section-content { padding: 20px; }
+        .content-item { border-bottom: 1px solid #ecf0f1; padding: 15px 0; }
+        .content-item:last-child { border-bottom: none; }
+        .item-title { font-weight: 600; color: #2c3e50; margin-bottom: 5px; }
+        .item-content { color: #7f8c8d; font-size: 0.9em; margin-bottom: 10px; max-height: 60px; overflow: hidden; }
+        .item-actions { display: flex; gap: 10px; }
+        .btn { padding: 5px 10px; border: none; border-radius: 3px; text-decoration: none; font-size: 0.8em; cursor: pointer; transition: all 0.3s; }
+        .btn-edit { background: #3498db; color: #fff; }
+        .btn-edit:hover { background: #2980b9; }
+        .btn-delete { background: #e74c3c; color: #fff; }
+        .btn-delete:hover { background: #c0392b; }
+        
+        .status-badge { padding: 3px 8px; border-radius: 10px; font-size: 0.7em; font-weight: bold; }
+        .status-active { background: #d5f4e6; color: #27ae60; }
+        .status-inactive { background: #fadbd8; color: #e74c3c; }
+        
+        .flash-messages { margin-bottom: 20px; }
+        .flash-message { padding: 15px; border-radius: 5px; margin-bottom: 10px; }
+        .flash-success { background: #d5f4e6; color: #27ae60; border: 1px solid #27ae60; }
+        .flash-error { background: #fadbd8; color: #e74c3c; border: 1px solid #e74c3c; }
+        
+        .empty-state { text-align: center; padding: 40px; color: #7f8c8d; }
+        .empty-state i { font-size: 3em; margin-bottom: 20px; opacity: 0.3; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">SHAKTI</div>
+        <div class="admin-title">Admin Panel - Home Page Management</div>
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+    
+    <div class="nav-bar">
+        <div class="nav-menu">
+            <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('admin_about') }}">About Page</a>
+            <a href="{{ url_for('admin_home') }}" class="active">Home Page</a>
+            <a href="{{ url_for('admin_contact') }}">Contact Page</a>
+            <a href="{{ url_for('admin_gallery') }}">Gallery</a>
+            <a href="/">View Website</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <h1 class="page-title">
+            <i class="fas fa-home"></i> Home Page Content Management
+        </h1>
+        
+        <div class="content-sections">
+            <!-- Hero Section -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">Hero Section</div>
+                    <a href="{{ url_for('admin_add_home_content', section='hero') }}" class="add-btn">
+                        <i class="fas fa-plus"></i> Add Hero
+                    </a>
+                </div>
+                <div class="section-content">
+                    {% set hero_items = home_content|selectattr('1', 'equalto', 'hero')|list %}
+                    {% if hero_items %}
+                        {% for item in hero_items %}
+                        <div class="content-item">
+                            <div class="item-title">{{ item[2] }}</div>
+                            <div class="item-content">{{ item[3][:100] }}{% if item[3]|length > 100 %}...{% endif %}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div class="item-actions">
+                                    <a href="{{ url_for('admin_edit_home_content', content_id=item[0]) }}" class="btn btn-edit">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <form method="POST" action="{{ url_for('admin_delete_home_content', content_id=item[0]) }}" 
+                                          style="display: inline;" 
+                                          onsubmit="return confirm('Delete this item?')">
+                                        <button type="submit" class="btn btn-delete">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                                <span class="status-badge {{ 'status-active' if item[8] else 'status-inactive' }}">
+                                    {{ 'Active' if item[8] else 'Inactive' }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-image"></i>
+                            <p>No hero content added yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Features Section -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">Features</div>
+                    <a href="{{ url_for('admin_add_home_content', section='features') }}" class="add-btn">
+                        <i class="fas fa-plus"></i> Add Feature
+                    </a>
+                </div>
+                <div class="section-content">
+                    {% set feature_items = home_content|selectattr('1', 'equalto', 'features')|list %}
+                    {% if feature_items %}
+                        {% for item in feature_items %}
+                        <div class="content-item">
+                            <div class="item-title">{{ item[2] }}</div>
+                            <div class="item-content">{{ item[3][:100] }}{% if item[3]|length > 100 %}...{% endif %}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div class="item-actions">
+                                    <a href="{{ url_for('admin_edit_home_content', content_id=item[0]) }}" class="btn btn-edit">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <form method="POST" action="{{ url_for('admin_delete_home_content', content_id=item[0]) }}" 
+                                          style="display: inline;" 
+                                          onsubmit="return confirm('Delete this item?')">
+                                        <button type="submit" class="btn btn-delete">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                                <span class="status-badge {{ 'status-active' if item[8] else 'status-inactive' }}">
+                                    {{ 'Active' if item[8] else 'Inactive' }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-star"></i>
+                            <p>No features added yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Statistics Section -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">Statistics</div>
+                    <a href="{{ url_for('admin_add_home_content', section='statistics') }}" class="add-btn">
+                        <i class="fas fa-plus"></i> Add Statistic
+                    </a>
+                </div>
+                <div class="section-content">
+                    {% set stat_items = home_content|selectattr('1', 'equalto', 'statistics')|list %}
+                    {% if stat_items %}
+                        {% for item in stat_items %}
+                        <div class="content-item">
+                            <div class="item-title">{{ item[2] }}</div>
+                            <div class="item-content">{{ item[3][:100] }}{% if item[3]|length > 100 %}...{% endif %}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div class="item-actions">
+                                    <a href="{{ url_for('admin_edit_home_content', content_id=item[0]) }}" class="btn btn-edit">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <form method="POST" action="{{ url_for('admin_delete_home_content', content_id=item[0]) }}" 
+                                          style="display: inline;" 
+                                          onsubmit="return confirm('Delete this item?')">
+                                        <button type="submit" class="btn btn-delete">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                                <span class="status-badge {{ 'status-active' if item[8] else 'status-inactive' }}">
+                                    {{ 'Active' if item[8] else 'Inactive' }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-chart-bar"></i>
+                            <p>No statistics added yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Testimonials Section -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">Testimonials</div>
+                    <a href="{{ url_for('admin_add_home_content', section='testimonials') }}" class="add-btn">
+                        <i class="fas fa-plus"></i> Add Testimonial
+                    </a>
+                </div>
+                <div class="section-content">
+                    {% set testimonial_items = home_content|selectattr('1', 'equalto', 'testimonials')|list %}
+                    {% if testimonial_items %}
+                        {% for item in testimonial_items %}
+                        <div class="content-item">
+                            <div class="item-title">{{ item[2] }}</div>
+                            <div class="item-content">{{ item[3][:100] }}{% if item[3]|length > 100 %}...{% endif %}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div class="item-actions">
+                                    <a href="{{ url_for('admin_edit_home_content', content_id=item[0]) }}" class="btn btn-edit">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <form method="POST" action="{{ url_for('admin_delete_home_content', content_id=item[0]) }}" 
+                                          style="display: inline;" 
+                                          onsubmit="return confirm('Delete this item?')">
+                                        <button type="submit" class="btn btn-delete">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                                <span class="status-badge {{ 'status-active' if item[8] else 'status-inactive' }}">
+                                    {{ 'Active' if item[8] else 'Inactive' }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-quote-left"></i>
+                            <p>No testimonials added yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
