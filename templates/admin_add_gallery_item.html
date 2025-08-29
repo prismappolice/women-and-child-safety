@@ -76,20 +76,18 @@
                                         <div class="mb-3">
                                             <label for="title" class="form-label">Title *</label>
                                             <input type="text" class="form-control" id="title" name="title" required
-                                                   placeholder="Enter image title">
+                                                   placeholder="Enter image/video title">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="category" class="form-label">Category</label>
                                             <select class="form-control" id="category" name="category">
-                                                <option value="">Select Category</option>
-                                                <option value="events">Events</option>
-                                                <option value="initiatives">Initiatives</option>
-                                                <option value="workshops">Workshops</option>
-                                                <option value="awareness">Awareness Programs</option>
-                                                <option value="team">Team</option>
-                                                <option value="achievements">Achievements</option>
+                                                <option value="General">General</option>
+                                                <option value="Events">Events</option>
+                                                <option value="Training">Training</option>
+                                                <option value="Awareness">Awareness</option>
+                                                <option value="Success Stories">Success Stories</option>
                                             </select>
                                         </div>
                                     </div>
@@ -98,6 +96,63 @@
                                 <div class="mb-3">
                                     <label for="description" class="form-label">Description</label>
                                     <textarea class="form-control" id="description" name="description" rows="3"
+                                              placeholder="Enter description of the image/video"></textarea>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="event_date" class="form-label">Event Date</label>
+                                    <input type="date" class="form-control" id="event_date" name="event_date">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="file_upload" class="form-label">Upload Image/Video</label>
+                                    <input type="file" class="form-control" id="file_upload" name="file_upload" 
+                                           accept="image/*,video/*">
+                                    <small class="form-text text-muted">Supported formats: JPG, PNG, GIF, MP4, MOV (Max: 10MB)</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="image_url" class="form-label">Or Image URL</label>
+                                    <input type="url" class="form-control" id="image_url" name="image_url" 
+                                           placeholder="https://example.com/image.jpg">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="video_url" class="form-label">Video URL (YouTube, Vimeo, etc.)</label>
+                                    <input type="url" class="form-control" id="video_url" name="video_url" 
+                                           placeholder="https://youtube.com/watch?v=...">
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-3">
+                                            <input type="checkbox" class="form-check-input" id="is_featured" name="is_featured">
+                                            <label class="form-check-label" for="is_featured">
+                                                Featured Item
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-3">
+                                            <input type="checkbox" class="form-check-input" id="is_active" name="is_active" checked>
+                                            <label class="form-check-label" for="is_active">
+                                                Active
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-plus me-2"></i>Add Gallery Item
+                                    </button>
+                                    <a href="{{ url_for('admin_gallery') }}" class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                                               placeholder="Enter image description"></textarea>
                                 </div>
 

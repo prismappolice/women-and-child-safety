@@ -46,7 +46,7 @@
         
         .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
         .quick-action { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 25px; border-radius: 10px; text-align: center; text-decoration: none; transition: transform 0.3s; }
-        .quick-action:hover { transform: translateY(-5px); }
+        .quick-action:hover { transform: translateY(-5px); color: #fff; }
         .quick-action i { font-size: 2em; margin-bottom: 15px; display: block; }
         
         @media (max-width: 768px) {
@@ -97,41 +97,53 @@
         
         <div class="section">
             <h2 class="section-title">
-                <i class="fas fa-tachometer-alt"></i>
+                <i class="fas fa-cogs"></i>
                 Quick Actions
             </h2>
             <div class="quick-actions">
-                <a href="{{ url_for('admin_about') }}" class="quick-action">
-                    <i class="fas fa-info-circle"></i>
-                    Manage About Page
-                </a>
-                <a href="{{ url_for('admin_home') }}" class="quick-action">
-                    <i class="fas fa-home"></i>
-                    Manage Home Page
-                </a>
-                <a href="{{ url_for('admin_contact') }}" class="quick-action">
-                    <i class="fas fa-envelope"></i>
-                    Manage Contact Page
-                </a>
-                <a href="{{ url_for('admin_safety_tips') }}" class="quick-action">
+                <a href="/admin-safety-tips" class="quick-action">
                     <i class="fas fa-shield-alt"></i>
-                    Manage Safety Tips
+                    Safety Tips
                 </a>
-                <a href="{{ url_for('admin_pdf_resources') }}" class="quick-action">
+                <a href="/admin-pdf-resources" class="quick-action">
                     <i class="fas fa-file-pdf"></i>
-                    Manage PDF Resources
+                    PDF Resources
                 </a>
-                <a href="{{ url_for('admin_initiatives') }}" class="quick-action">
-                    <i class="fas fa-hands-helping"></i>
-                    Manage Initiatives
-                </a>
-                <a href="{{ url_for('admin_volunteers') }}" class="quick-action">
+                <a href="/admin/volunteers" class="quick-action">
                     <i class="fas fa-users"></i>
-                    View Volunteers
+                    Volunteers
                 </a>
-                <a href="{{ url_for('admin_officers') }}" class="quick-action">
+                <a href="/admin/initiatives" class="quick-action">
+                    <i class="fas fa-hands-helping"></i>
+                    Initiatives
+                </a>
+                <a href="/admin/officers" class="quick-action">
                     <i class="fas fa-user-tie"></i>
-                    Manage Officers
+                    Officers
+                </a>
+                <a href="/admin/success-stories" class="quick-action">
+                    <i class="fas fa-trophy"></i>
+                    Success Stories
+                </a>
+                <a href="/admin/home" class="quick-action">
+                    <i class="fas fa-home"></i>
+                    Home Content
+                </a>
+                <a href="/admin/about" class="quick-action">
+                    <i class="fas fa-info-circle"></i>
+                    About Content
+                </a>
+                <a href="/admin/contact" class="quick-action">
+                    <i class="fas fa-address-book"></i>
+                    Contact Info
+                </a>
+                <a href="/admin/district-contacts" class="quick-action">
+                    <i class="fas fa-map-marked-alt"></i>
+                    District Contacts
+                </a>
+                <a href="/admin/gallery" class="quick-action">
+                    <i class="fas fa-images"></i>
+                    Gallery
                 </a>
             </div>
         </div>

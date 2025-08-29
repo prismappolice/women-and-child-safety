@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage {{ district_name }} Contacts - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { width: 60px; height: 60px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #2c3e50; }
+        .header-title { font-size: 1.8em; font-weight: bold; }
+        .logout-btn { color: #fff; text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.1); border-radius: 5px; transition: background 0.3s; }
+        .logout-btn:hover { background: rgba(255,255,255,0.2); }
+        
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .breadcrumb { background: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .breadcrumb a { color: #3498db; text-decoration: none; }
+        .page-title { font-size: 2em; color: #2c3e50; text-align: center; margin-bottom: 30px; }
+        
+        .back-btn { background: #95a5a6; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+        .back-btn:hover { background: #7f8c8d; color: #fff; }
+        
+        .section { background: #fff; margin-bottom: 30px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .section-header { background: linear-gradient(135deg, #3498db, #2980b9); color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .section-title { font-size: 1.4em; margin: 0; }
+        .add-btn { background: rgba(255,255,255,0.2); color: #fff; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; transition: background 0.3s; }
+        .add-btn:hover { background: rgba(255,255,255,0.3); color: #fff; }
+        
+        .contacts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 20px; }
+        .contact-card { background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #3498db; }
+        .contact-name { font-size: 1.2em; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }
+        .contact-details { color: #555; line-height: 1.6; }
+        .contact-actions { margin-top: 15px; display: flex; gap: 10px; }
+        .edit-btn { background: #f39c12; color: #fff; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; text-decoration: none; font-size: 0.9em; }
+        .edit-btn:hover { background: #e67e22; color: #fff; }
+        .delete-btn { background: #e74c3c; color: #fff; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; font-size: 0.9em; }
+        .delete-btn:hover { background: #c0392b; }
+        
+        .empty-section { text-align: center; padding: 40px; color: #7f8c8d; }
+        .empty-section i { font-size: 3em; margin-bottom: 15px; display: block; opacity: 0.5; }
+        
+        /* Color coding for different sections */
+        .sp-section .section-header { background: linear-gradient(135deg, #8e44ad, #732d91); }
+        .sp-section .contact-card { border-left-color: #8e44ad; }
+        
+        .teams-section .section-header { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .teams-section .contact-card { border-left-color: #e74c3c; }
+        
+        .ps-section .section-header { background: linear-gradient(135deg, #27ae60, #1e8449); }
+        .ps-section .contact-card { border-left-color: #27ae60; }
+        
+        .centers-section .section-header { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .centers-section .contact-card { border-left-color: #3498db; }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 15px; text-align: center; }
+            .contacts-grid { grid-template-columns: 1fr; }
+            .contact-actions { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">AP</div>
+        <div class="header-title">{{ district_name }} District Management</div>
+        <a href="/admin-logout" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+    
+    <div class="container">
+        <div class="breadcrumb">
+            <a href="/admin-dashboard"><i class="fas fa-home"></i> Dashboard</a> 
+            <span style="margin: 0 10px; color: #ccc;">/</span>
+            <a href="/admin/district-contacts">District Contacts</a>
+            <span style="margin: 0 10px; color: #ccc;">/</span>
+            <span>{{ district_name }}</span>
+        </div>
+        
+        <a href="/admin/district-contacts" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Back to Districts
+        </a>
+        
+        <h1 class="page-title">
+            <i class="fas fa-map-marker-alt"></i> {{ district_name }} District Contacts
+        </h1>
+        
+        <!-- District SP Section -->
+        <div class="section sp-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-star"></i> District SP
+                </h3>
+                <a href="/admin/district-contacts/add-sp/{{ district_id }}" class="add-btn">
+                    <i class="fas fa-plus"></i> Add SP
+                </a>
+            </div>
+            {% if sps %}
+            <div class="contacts-grid">
+                {% for sp in sps %}
+                <div class="contact-card">
+                    <div class="contact-name">{{ sp[1] }}</div>
+                    <div class="contact-details">
+                        <p><i class="fas fa-phone"></i> {{ sp[2] }}</p>
+                        {% if sp[3] %}<p><i class="fas fa-envelope"></i> {{ sp[3] }}</p>{% endif %}
+                    </div>
+                    <div class="contact-actions">
+                        <a href="/admin/district-contacts/edit-sp/{{ sp[0] }}" class="edit-btn">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <button onclick="deleteContact('sp', {{ sp[0] }})" class="delete-btn">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-section">
+                <i class="fas fa-user-shield"></i>
+                <p>No District SP added yet</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Shakthi Teams Section -->
+        <div class="section teams-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-users"></i> Shakthi Teams
+                </h3>
+                <a href="/admin/district-contacts/add-team/{{ district_id }}" class="add-btn">
+                    <i class="fas fa-plus"></i> Add Team
+                </a>
+            </div>
+            {% if teams %}
+            <div class="contacts-grid">
+                {% for team in teams %}
+                <div class="contact-card">
+                    <div class="contact-name">{{ team[1] }}</div>
+                    <div class="contact-details">
+                        <p><i class="fas fa-user"></i> {{ team[2] }}</p>
+                        <p><i class="fas fa-phone"></i> {{ team[3] }}</p>
+                        {% if team[4] %}<p><i class="fas fa-map"></i> {{ team[4] }}</p>{% endif %}
+                    </div>
+                    <div class="contact-actions">
+                        <a href="/admin/district-contacts/edit-team/{{ team[0] }}" class="edit-btn">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <button onclick="deleteContact('team', {{ team[0] }})" class="delete-btn">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-section">
+                <i class="fas fa-users"></i>
+                <p>No Shakthi Teams added yet</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Women Police Stations Section -->
+        <div class="section ps-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-shield-alt"></i> Women Police Stations
+                </h3>
+                <a href="/admin/district-contacts/add-station/{{ district_id }}" class="add-btn">
+                    <i class="fas fa-plus"></i> Add Station
+                </a>
+            </div>
+            {% if stations %}
+            <div class="contacts-grid">
+                {% for station in stations %}
+                <div class="contact-card">
+                    <div class="contact-name">{{ station[1] }}</div>
+                    <div class="contact-details">
+                        <p><i class="fas fa-user-tie"></i> {{ station[2] }}</p>
+                        <p><i class="fas fa-phone"></i> {{ station[3] }}</p>
+                        {% if station[4] %}<p><i class="fas fa-map-marker-alt"></i> {{ station[4] }}</p>{% endif %}
+                    </div>
+                    <div class="contact-actions">
+                        <a href="/admin/district-contacts/edit-station/{{ station[0] }}" class="edit-btn">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <button onclick="deleteContact('station', {{ station[0] }})" class="delete-btn">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-section">
+                <i class="fas fa-shield-alt"></i>
+                <p>No Women Police Stations added yet</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- One Stop Centers Section -->
+        <div class="section centers-section">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-home"></i> One Stop Centers
+                </h3>
+                <a href="/admin/district-contacts/add-center/{{ district_id }}" class="add-btn">
+                    <i class="fas fa-plus"></i> Add Center
+                </a>
+            </div>
+            {% if centers %}
+            <div class="contacts-grid">
+                {% for center in centers %}
+                <div class="contact-card">
+                    <div class="contact-name">{{ center[1] }}</div>
+                    <div class="contact-details">
+                        {% if center[2] %}<p><i class="fas fa-map-marker-alt"></i> {{ center[2] }}</p>{% endif %}
+                        <p><i class="fas fa-user-circle"></i> {{ center[3] }}</p>
+                        <p><i class="fas fa-phone"></i> {{ center[4] }}</p>
+                        {% if center[5] %}<p><i class="fas fa-list"></i> {{ center[5] }}</p>{% endif %}
+                    </div>
+                    <div class="contact-actions">
+                        <a href="/admin/district-contacts/edit-center/{{ center[0] }}" class="edit-btn">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <button onclick="deleteContact('center', {{ center[0] }})" class="delete-btn">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-section">
+                <i class="fas fa-home"></i>
+                <p>No One Stop Centers added yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        function deleteContact(type, id) {
+            if (confirm('Are you sure you want to delete this contact?')) {
+                fetch('/admin/district-contacts/delete/' + type + '/' + id, {
+                    method: 'POST'
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Error deleting contact');
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

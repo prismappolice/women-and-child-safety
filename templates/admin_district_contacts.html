@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>District Contacts Management - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { width: 60px; height: 60px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #2c3e50; }
+        .header-title { font-size: 1.8em; font-weight: bold; }
+        .logout-btn { color: #fff; text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.1); border-radius: 5px; transition: background 0.3s; }
+        .logout-btn:hover { background: rgba(255,255,255,0.2); }
+        
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .breadcrumb { background: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .breadcrumb a { color: #3498db; text-decoration: none; }
+        .page-title { font-size: 2em; color: #2c3e50; text-align: center; margin-bottom: 30px; }
+        
+        .districts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; }
+        .district-card { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s; }
+        .district-card:hover { transform: translateY(-3px); }
+        .district-title { font-size: 1.4em; color: #2c3e50; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        
+        .contact-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+        .stat-item { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-number { font-size: 1.5em; font-weight: bold; color: #3498db; }
+        .stat-label { font-size: 0.9em; color: #666; margin-top: 5px; }
+        
+        .manage-btn { background: linear-gradient(135deg, #3498db, #2980b9); color: #fff; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-size: 1em; width: 100%; transition: all 0.3s; text-decoration: none; display: inline-block; text-align: center; }
+        .manage-btn:hover { background: linear-gradient(135deg, #2980b9, #1f5f99); transform: translateY(-2px); color: #fff; }
+        
+        .back-btn { background: #95a5a6; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+        .back-btn:hover { background: #7f8c8d; color: #fff; }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 15px; text-align: center; }
+            .districts-grid { grid-template-columns: 1fr; }
+            .contact-stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">AP</div>
+        <div class="header-title">District Contacts Management</div>
+        <a href="/admin-logout" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+    
+    <div class="container">
+        <div class="breadcrumb">
+            <a href="/admin-dashboard"><i class="fas fa-home"></i> Dashboard</a> 
+            <span style="margin: 0 10px; color: #ccc;">/</span>
+            <span>District Contacts</span>
+        </div>
+        
+        <a href="/admin-dashboard" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+        
+        <h1 class="page-title">
+            <i class="fas fa-map-marked-alt"></i> District Contacts Management
+        </h1>
+        
+        <div class="districts-grid">
+            {% for district in districts %}
+            <div class="district-card">
+                <h3 class="district-title">{{ district.name }} District</h3>
+                
+                <div class="contact-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">{{ district.sp_count }}</div>
+                        <div class="stat-label">District SP</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">{{ district.teams_count }}</div>
+                        <div class="stat-label">Shakthi Teams</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">{{ district.ps_count }}</div>
+                        <div class="stat-label">Women PS</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">{{ district.center_count }}</div>
+                        <div class="stat-label">One Stop Centers</div>
+                    </div>
+                </div>
+                
+                <a href="/admin/district-contacts/manage/{{ district.id }}" class="manage-btn">
+                    <i class="fas fa-edit"></i> Manage Contacts
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        
+        {% if not districts %}
+        <div style="text-align: center; padding: 50px; background: #fff; border-radius: 12px; margin-top: 20px;">
+            <i class="fas fa-map" style="font-size: 4em; color: #bdc3c7; margin-bottom: 20px;"></i>
+            <h3 style="color: #7f8c8d;">No Districts Found</h3>
+            <p style="color: #95a5a6;">Districts will be created automatically when you visit the contact page.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

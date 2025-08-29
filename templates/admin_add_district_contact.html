@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add {{ contact_type }} - {{ district_name }} District</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { width: 60px; height: 60px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #2c3e50; }
+        .header-title { font-size: 1.8em; font-weight: bold; }
+        .logout-btn { color: #fff; text-decoration: none; padding: 10px 20px; background: rgba(255,255,255,0.1); border-radius: 5px; transition: background 0.3s; }
+        .logout-btn:hover { background: rgba(255,255,255,0.2); }
+        
+        .container { max-width: 800px; margin: 20px auto; padding: 0 20px; }
+        .breadcrumb { background: #fff; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .breadcrumb a { color: #3498db; text-decoration: none; }
+        
+        .back-btn { background: #95a5a6; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+        .back-btn:hover { background: #7f8c8d; color: #fff; }
+        
+        .form-container { background: #fff; border-radius: 12px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .form-title { font-size: 2em; color: #2c3e50; text-align: center; margin-bottom: 30px; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50; }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; box-sizing: border-box; }
+        .form-group textarea { height: 100px; resize: vertical; }
+        .form-group input:focus, .form-group textarea:focus { border-color: #3498db; outline: none; box-shadow: 0 0 5px rgba(52, 152, 219, 0.3); }
+        
+        .required { color: #e74c3c; }
+        
+        .form-actions { display: flex; gap: 15px; justify-content: center; margin-top: 30px; }
+        .btn { padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; text-decoration: none; display: inline-block; text-align: center; }
+        .btn-primary { background: #3498db; color: #fff; }
+        .btn-primary:hover { background: #2980b9; color: #fff; }
+        .btn-secondary { background: #95a5a6; color: #fff; }
+        .btn-secondary:hover { background: #7f8c8d; color: #fff; }
+        
+        .flash-messages { margin-bottom: 20px; }
+        .flash-message { padding: 15px; border-radius: 5px; margin-bottom: 10px; }
+        .flash-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 15px; text-align: center; }
+            .form-actions { flex-direction: column; }
+            .container { padding: 0 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">AP</div>
+        <div class="header-title">Add {{ contact_type }} Contact</div>
+        <a href="/admin-logout" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+    
+    <div class="container">
+        <div class="breadcrumb">
+            <a href="/admin-dashboard"><i class="fas fa-home"></i> Dashboard</a> 
+            <span style="margin: 0 10px; color: #ccc;">/</span>
+            <a href="/admin/district-contacts">District Contacts</a>
+            <span style="margin: 0 10px; color: #ccc;">/</span>
+            <a href="/admin/district-contacts/manage/{{ district_id }}">{{ district_name }}</a>
+            <span style="margin: 0 10px; color: #ccc;">/</span>
+            <span>Add {{ contact_type }}</span>
+        </div>
+        
+        <a href="/admin/district-contacts/manage/{{ district_id }}" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Back to {{ district_name }}
+        </a>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <div class="form-container">
+            <h1 class="form-title">
+                <i class="fas fa-plus"></i> Add {{ contact_type }} for {{ district_name }} District
+            </h1>
+            
+            <form method="POST">
+                {% if contact_type == 'SP' %}
+                    <div class="form-group">
+                        <label for="name">SP Name <span class="required">*</span></label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact_number">Contact Number <span class="required">*</span></label>
+                        <input type="tel" id="contact_number" name="contact_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email">
+                    </div>
+                {% elif contact_type == 'Team' %}
+                    <div class="form-group">
+                        <label for="team_name">Team Name <span class="required">*</span></label>
+                        <input type="text" id="team_name" name="team_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="leader_name">Team Leader Name <span class="required">*</span></label>
+                        <input type="text" id="leader_name" name="leader_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact_number">Contact Number <span class="required">*</span></label>
+                        <input type="tel" id="contact_number" name="contact_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="area_covered">Area Covered</label>
+                        <textarea id="area_covered" name="area_covered" placeholder="Areas or localities covered by this team"></textarea>
+                    </div>
+                {% elif contact_type == 'Station' %}
+                    <div class="form-group">
+                        <label for="station_name">Station Name <span class="required">*</span></label>
+                        <input type="text" id="station_name" name="station_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="incharge_name">In-charge Name <span class="required">*</span></label>
+                        <input type="text" id="incharge_name" name="incharge_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact_number">Contact Number <span class="required">*</span></label>
+                        <input type="tel" id="contact_number" name="contact_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <textarea id="address" name="address" placeholder="Complete address of the police station"></textarea>
+                    </div>
+                {% elif contact_type == 'Center' %}
+                    <div class="form-group">
+                        <label for="center_name">Center Name <span class="required">*</span></label>
+                        <input type="text" id="center_name" name="center_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <textarea id="address" name="address" placeholder="Complete address of the center"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="incharge_name">In-charge Name <span class="required">*</span></label>
+                        <input type="text" id="incharge_name" name="incharge_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact_number">Contact Number <span class="required">*</span></label>
+                        <input type="tel" id="contact_number" name="contact_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="services_offered">Services Offered</label>
+                        <textarea id="services_offered" name="services_offered" placeholder="List of services provided by this center"></textarea>
+                    </div>
+                {% endif %}
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Add {{ contact_type }}
+                    </button>
+                    <a href="/admin/district-contacts/manage/{{ district_id }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

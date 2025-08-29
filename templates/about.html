@@ -72,14 +72,83 @@
         
         /* Success Stories Styles */
         .success-stories { margin-top: 30px; }
-        .story-item { background: #f8f9fa; padding: 30px; border-radius: 15px; margin-bottom: 25px; border-left: 5px solid #27ae60; }
-        .story-title { font-size: 1.3em; color: #2c3e50; margin-bottom: 15px; font-weight: bold; }
-        .story-date { color: #27ae60; font-weight: 600; margin-bottom: 15px; }
-        .story-description { color: #34495e; line-height: 1.6; }
-        .story-stats { display: flex; justify-content: space-around; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ecf0f1; }
-        .story-stat { text-align: center; }
-        .story-stat-number { font-size: 1.5em; color: #27ae60; font-weight: bold; }
-        .story-stat-label { color: #7f8c8d; font-size: 0.9em; }
+        .story-item { 
+            background: #fff; 
+            border-radius: 15px; 
+            margin-bottom: 30px; 
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .story-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .story-image { 
+            width: 100%;
+            height: 450px; 
+            overflow: hidden; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border-radius: 15px 15px 0 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .story-image img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: contain;
+            object-position: center;
+            transition: transform 0.3s;
+            border-radius: 15px 15px 0 0;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: auto;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: high-quality;
+            -ms-interpolation-mode: bicubic;
+            background: #f8f9fa;
+        }
+        .story-image:hover img { transform: scale(1.05); }
+        .story-image .fallback-text {
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .story-content {
+            padding: 25px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .story-title { 
+            font-size: 1.4em; 
+            color: #2c3e50; 
+            margin-bottom: 10px; 
+            font-weight: bold;
+            line-height: 1.3;
+        }
+        .story-date { 
+            color: #27ae60; 
+            font-weight: 600; 
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .story-description { 
+            color: #34495e; 
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
         
         .footer { background: #2c3e50; color: #fff; padding: 40px 60px 20px; margin-top: 60px; }
         .footer-bottom { text-align: center; color: #95a5a6; }
@@ -92,6 +161,14 @@
             .content { padding: 0 10px; }
             .footer { padding: 40px 20px 20px; }
             .mission-vision { grid-template-columns: 1fr; }
+            .story-image { height: 400px; }
+            .story-image img { 
+                object-fit: contain;
+                object-position: center;
+            }
+            .story-content { padding: 20px; }
+            .story-title { font-size: 1.2em; }
+            .leadership-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -305,6 +382,31 @@
                 </p>
                 
                 <div class="success-stories">
+                    {% for story in success_stories %}
+                    <div class="story-item">
+                        <div class="story-image">
+                            {% if story[10] and story[10] != '' and story[10] != 'None' %}
+                                <img src="{{ story[10] }}" alt="{{ story[1] }}" 
+                                     onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(135deg,#3498db,#2ecc71);color:white;font-size:1.2em;text-align:center;padding:20px;\'><i class=\'fas fa-trophy\' style=\'font-size:2em;margin-bottom:10px;display:block;\'></i>Success Story</div>';">
+                            {% else %}
+                                <div style="display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(135deg,#3498db,#2ecc71);color:white;font-size:1.2em;text-align:center;padding:20px;">
+                                    <div>
+                                        <i class="fas fa-trophy" style="font-size:2em;margin-bottom:10px;display:block;"></i>
+                                        Success Story
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="story-content">
+                            <h3 class="story-title">{{ story[1] }}</h3>
+                            {% if story[3] %}
+                                <p class="story-date">{{ story[3] }}</p>
+                            {% endif %}
+                            <p class="story-description">{{ story[2] }}</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- Fallback content if no success stories found -->
                     <div class="story-item">
                         <h3 class="story-title">SHE Teams Initiative Success</h3>
                         <p class="story-date">December 2024</p>
@@ -328,78 +430,7 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="story-item">
-                        <h3 class="story-title">Bharosa Centers Impact</h3>
-                        <p class="story-date">November 2024</p>
-                        <p class="story-description">
-                            Our Bharosa Centers provided comprehensive support to 500+ women victims of violence, 
-                            offering legal aid, counseling, medical assistance, and rehabilitation services. 
-                            95% of the cases were successfully resolved with positive outcomes for the victims.
-                        </p>
-                        <div class="story-stats">
-                            <div class="story-stat">
-                                <div class="story-stat-number">500+</div>
-                                <div class="story-stat-label">Women Helped</div>
-                            </div>
-                            <div class="story-stat">
-                                <div class="story-stat-number">95%</div>
-                                <div class="story-stat-label">Success Rate</div>
-                            </div>
-                            <div class="story-stat">
-                                <div class="story-stat-number">24/7</div>
-                                <div class="story-stat-label">Support Available</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="story-item">
-                        <h3 class="story-title">Mahila Police Volunteer Program</h3>
-                        <p class="story-date">October 2024</p>
-                        <p class="story-description">
-                            Successfully trained and deployed 1000+ Mahila Police Volunteers across rural and urban areas. 
-                            These volunteers have become crucial bridge-builders between the community and police, 
-                            helping to report crimes early and provide immediate assistance to women in distress.
-                        </p>
-                        <div class="story-stats">
-                            <div class="story-stat">
-                                <div class="story-stat-number">1000+</div>
-                                <div class="story-stat-label">Volunteers Trained</div>
-                            </div>
-                            <div class="story-stat">
-                                <div class="story-stat-number">300+</div>
-                                <div class="story-stat-label">Villages Covered</div>
-                            </div>
-                            <div class="story-stat">
-                                <div class="story-stat-number">80%</div>
-                                <div class="story-stat-label">Crime Reduction</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="story-item">
-                        <h3 class="story-title">Digital Literacy & Cyber Safety</h3>
-                        <p class="story-date">September 2024</p>
-                        <p class="story-description">
-                            Conducted comprehensive digital literacy and cyber safety workshops for 5000+ women and girls. 
-                            These sessions covered online safety, privacy protection, and how to report cyber crimes. 
-                            As a result, cyber crime reports from women increased by 60%, indicating better awareness and confidence in reporting.
-                        </p>
-                        <div class="story-stats">
-                            <div class="story-stat">
-                                <div class="story-stat-number">5000+</div>
-                                <div class="story-stat-label">Women Trained</div>
-                            </div>
-                            <div class="story-stat">
-                                <div class="story-stat-number">60%</div>
-                                <div class="story-stat-label">More Reports</div>
-                            </div>
-                            <div class="story-stat">
-                                <div class="story-stat-number">100</div>
-                                <div class="story-stat-label">Workshops Conducted</div>
-                            </div>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Edit Success Story</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; color: #fff; }
+        .logo { font-size: 1.5em; font-weight: bold; }
+        .admin-title { font-size: 1.8em; text-align: center; }
+        .logout-btn { background: rgba(255,255,255,0.2); color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; }
+        
+        .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        .page-title { font-size: 2.2em; color: #2c3e50; margin-bottom: 30px; }
+        
+        .form-container { background: #fff; padding: 40px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #ecf0f1; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #3498db; }
+        .form-group textarea { height: 120px; resize: vertical; }
+        
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .stats-section { background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0; }
+        .stats-title { color: #2c3e50; margin-bottom: 15px; font-size: 1.1em; font-weight: 600; }
+        
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-group input[type="checkbox"] { width: auto; }
+        
+        .form-actions { display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; text-decoration: none; cursor: pointer; font-size: 16px; transition: all 0.3s; }
+        .btn-primary { background: #3498db; color: #fff; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-secondary { background: #95a5a6; color: #fff; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        
+        .back-btn { margin-bottom: 20px; }
+        .back-btn a { color: #3498db; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+        .back-btn a:hover { text-decoration: underline; }
+        
+        .help-text { font-size: 0.9em; color: #7f8c8d; margin-top: 5px; }
+        
+        .current-image { margin-bottom: 15px; }
+        .current-image img { max-width: 300px; max-height: 200px; border-radius: 8px; border: 2px solid #ecf0f1; }
+        
+        #imagePreview { margin-top: 10px; display: none; }
+        #preview { max-width: 300px; max-height: 200px; border-radius: 8px; border: 2px solid #ecf0f1; }
+        
+        @media (max-width: 768px) {
+            .header { padding: 10px 20px; flex-direction: column; gap: 20px; }
+            .container { padding: 0 10px; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">SHAKTI</div>
+        <div class="admin-title">Admin Panel - Edit Success Story</div>
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+    
+    <div class="container">
+        <div class="back-btn">
+            <a href="{{ url_for('admin_success_stories') }}">
+                <i class="fas fa-arrow-left"></i> Back to Success Stories
+            </a>
+        </div>
+        
+        <h1 class="page-title">
+            <i class="fas fa-edit"></i> Edit Success Story
+        </h1>
+        
+        <div class="form-container">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="title">Story Title</label>
+                    <input type="text" id="title" name="title" value="{{ story[1] }}" required>
+                    <div class="help-text">Enter a compelling title for the success story</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Story Description</label>
+                    <textarea id="description" name="description" required>{{ story[2] }}</textarea>
+                    <div class="help-text">Detailed description of the success story and its impact</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <input type="text" id="date" name="date" value="{{ story[3] or '' }}" placeholder="e.g., December 2024">
+                    <div class="help-text">When this success was achieved (optional)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Story Image</label>
+                    
+                    {% if story[10] %}
+                        <div class="current-image">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Current Image:</label>
+                            <img src="{{ story[10] }}" alt="Current Story Image">
+                        </div>
+                    {% endif %}
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label for="image" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
+                            <i class="fas fa-upload"></i> Upload New Image (Optional)
+                        </label>
+                        <input type="file" id="image" name="image" accept="image/*" onchange="previewImage(this)" style="margin-bottom: 10px;">
+                        <div id="imagePreview">
+                            <img id="preview">
+                        </div>
+                        <div class="help-text">Upload JPG, PNG, or GIF files to replace current image</div>
+                    </div>
+                    
+                    <div style="text-align: center; margin: 15px 0; color: #7f8c8d;">
+                        <strong>— OR —</strong>
+                    </div>
+                    
+                    <div>
+                        <label for="image_url" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
+                            <i class="fas fa-link"></i> Image URL
+                        </label>
+                        <input type="url" id="image_url" name="image_url" value="{{ story[10] or '' }}" placeholder="https://example.com/image.jpg">
+                        <div class="help-text">Or paste an image URL (this will override uploaded file)</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sort_order">Display Order</label>
+                    <input type="number" id="sort_order" name="sort_order" value="{{ story[12] or 0 }}" min="0">
+                    <div class="help-text">Lower numbers appear first (0 = first, 1 = second, etc.)</div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="is_active" name="is_active" {{ 'checked' if story[11] else '' }}>
+                        <label for="is_active">Active (visible on website)</label>
+                    </div>
+                    <div class="help-text">Uncheck to hide this story from the website</div>
+                </div>
+                
+                <div class="form-actions">
+                    <a href="{{ url_for('admin_success_stories') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function previewImage(input) {
+            const preview = document.getElementById('preview');
+            const previewContainer = document.getElementById('imagePreview');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                };
+                
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                previewContainer.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

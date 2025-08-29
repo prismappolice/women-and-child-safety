@@ -107,6 +107,26 @@ def init_db():
         )
     ''')
     
+    # Create success_stories table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS success_stories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            date TEXT,
+            stat1_number TEXT,
+            stat1_label TEXT,
+            stat2_number TEXT,
+            stat2_label TEXT,
+            stat3_number TEXT,
+            stat3_label TEXT,
+            image_url TEXT,
+            is_active INTEGER DEFAULT 1,
+            sort_order INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     # Create safety_tips table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS safety_tips (
@@ -114,6 +134,22 @@ def init_db():
             title TEXT NOT NULL,
             content TEXT NOT NULL,
             category TEXT,
+            is_active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create gallery_items table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS gallery_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            image_url TEXT,
+            video_url TEXT,
+            event_date DATE,
+            category TEXT DEFAULT 'General',
+            is_featured INTEGER DEFAULT 0,
             is_active INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -148,9 +184,13 @@ def about():
     cursor.execute('SELECT id, name, designation, department, phone, email, image_url, bio, position_order, is_active FROM officers WHERE is_active = 1 ORDER BY position_order, name')
     officers = cursor.fetchall()
     
+    # Get success stories for about page
+    cursor.execute('SELECT id, title, description, date, stat1_number, stat1_label, stat2_number, stat2_label, stat3_number, stat3_label, image_url FROM success_stories WHERE is_active = 1 ORDER BY sort_order, id DESC')
+    success_stories = cursor.fetchall()
+    
     conn.close()
     
-    return render_template('about.html', about_sections=about_sections, officers=officers)
+    return render_template('about.html', about_sections=about_sections, officers=officers, success_stories=success_stories)
 
 @app.route('/initiatives')
 def initiatives():
@@ -230,9 +270,218 @@ def contact():
     cursor = conn.cursor()
     cursor.execute('SELECT id, contact_type, value, description FROM contact_info ORDER BY contact_type')
     contact_info = cursor.fetchall()
+    
+    # Get district contacts data - create tables if they don't exist
+    district_contacts = []
+    try:
+        # Check if districts table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='districts'")
+        if not cursor.fetchone():
+            # Create tables if they don't exist
+            create_district_tables(cursor)
+        
+        cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name')
+        districts = cursor.fetchall()
+        
+        for district_id, district_name in districts:
+            district_data = {'name': district_name}
+            
+            # Get District SP
+            cursor.execute('SELECT sp_name, contact_number, email FROM district_sps WHERE district_id = ? AND is_active = 1', (district_id,))
+            sp_data = cursor.fetchone()
+            if sp_data:
+                district_data['sp'] = {
+                    'name': sp_data[0],
+                    'contact': sp_data[1],
+                    'email': sp_data[2]
+                }
+            
+            # Get Shakthi Teams
+            cursor.execute('SELECT team_name, incharge_name, contact_number, area_coverage FROM shakthi_teams WHERE district_id = ? AND is_active = 1', (district_id,))
+            teams_data = cursor.fetchall()
+            if teams_data:
+                district_data['shakthi_teams'] = []
+                for team in teams_data:
+                    district_data['shakthi_teams'].append({
+                        'team_name': team[0],
+                        'incharge_name': team[1],
+                        'contact_number': team[2],
+                        'area_coverage': team[3]
+                    })
+            
+            # Get Women Police Stations
+            cursor.execute('SELECT station_name, incharge_name, contact_number, address FROM women_police_stations WHERE district_id = ? AND is_active = 1', (district_id,))
+            ps_data = cursor.fetchall()
+            if ps_data:
+                district_data['women_ps'] = []
+                for ps in ps_data:
+                    district_data['women_ps'].append({
+                        'station_name': ps[0],
+                        'incharge_name': ps[1],
+                        'contact_number': ps[2],
+                        'address': ps[3]
+                    })
+            
+            # Get One Stop Centers
+            cursor.execute('SELECT center_name, address, incharge_name, contact_number, services_offered FROM one_stop_centers WHERE district_id = ? AND is_active = 1', (district_id,))
+            center_data = cursor.fetchall()
+            if center_data:
+                district_data['one_stop_centers'] = []
+                for center in center_data:
+                    district_data['one_stop_centers'].append({
+                        'center_name': center[0],
+                        'address': center[1],
+                        'incharge_name': center[2],
+                        'contact_number': center[3],
+                        'services': center[4]
+                    })
+            
+            district_contacts.append(district_data)
+            
+    except sqlite3.OperationalError as e:
+        print(f"Database error: {e}")
+        # If there's still an error, create empty district contacts
+        district_contacts = []
+    
     conn.close()
     
-    return render_template('contact.html', contact_info=contact_info)
+    return render_template('contact.html', contact_info=contact_info, district_contacts=district_contacts)
+
+def create_district_tables(cursor):
+    """Create district contact tables"""
+    # Create Districts table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS districts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            district_name TEXT NOT NULL UNIQUE,
+            district_code TEXT,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create District SPs table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS district_sps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            district_id INTEGER,
+            sp_name TEXT NOT NULL,
+            contact_number TEXT,
+            email TEXT,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (district_id) REFERENCES districts (id)
+        )
+    ''')
+    
+    # Create Shakthi Teams table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS shakthi_teams (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            district_id INTEGER,
+            team_name TEXT NOT NULL,
+            incharge_name TEXT,
+            contact_number TEXT,
+            area_coverage TEXT,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (district_id) REFERENCES districts (id)
+        )
+    ''')
+    
+    # Create Women Police Stations table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS women_police_stations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            district_id INTEGER,
+            station_name TEXT NOT NULL,
+            incharge_name TEXT,
+            contact_number TEXT,
+            address TEXT,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (district_id) REFERENCES districts (id)
+        )
+    ''')
+    
+    # Create One Stop Centers table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS one_stop_centers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            district_id INTEGER,
+            center_name TEXT NOT NULL,
+            address TEXT,
+            incharge_name TEXT,
+            contact_number TEXT,
+            services_offered TEXT,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (district_id) REFERENCES districts (id)
+        )
+    ''')
+    
+    # Insert default districts
+    districts_data = [
+        ('Visakhapatnam', 'VSKP'),
+        ('Vijayawada', 'VJA'),
+        ('Guntur', 'GTR'),
+        ('Nellore', 'NLR'),
+        ('Tirupati', 'TPT'),
+        ('Kurnool', 'KNL'),
+        ('Kakinada', 'KKD'),
+        ('Rajamahendravaram', 'RJY'),
+        ('Eluru', 'ELR'),
+        ('Machilipatnam', 'MCP'),
+        ('Chittoor', 'CTR'),
+        ('Anantapur', 'ATP'),
+        ('Kadapa', 'KDP')
+    ]
+    
+    cursor.executemany('''
+        INSERT OR IGNORE INTO districts (district_name, district_code) 
+        VALUES (?, ?)
+    ''', districts_data)
+    
+    # Insert sample data
+    # Sample District SPs
+    cursor.execute('''
+        INSERT OR IGNORE INTO district_sps (district_id, sp_name, contact_number, email)
+        SELECT id, 'SP ' || district_name, '+91-' || CAST((8000000000 + (id * 1000000)) AS TEXT), 
+               LOWER(district_name) || '.sp@appolice.gov.in'
+        FROM districts WHERE is_active = 1
+    ''')
+    
+    # Sample Shakthi Teams
+    sample_teams = ['Team Alpha', 'Team Beta', 'Team Gamma']
+    for i, team in enumerate(sample_teams):
+        cursor.execute('''
+            INSERT OR IGNORE INTO shakthi_teams (district_id, team_name, incharge_name, contact_number, area_coverage)
+            SELECT id, ?, 'Inspector ' || ?, '+91-' || CAST((9000000000 + (id * 100000) + ?) AS TEXT), 
+                   'Zone ' || CAST(? AS TEXT)
+            FROM districts WHERE is_active = 1
+        ''', (team, team.split()[1], (i+1)*1000, i+1))
+    
+    # Sample Women Police Stations
+    cursor.execute('''
+        INSERT OR IGNORE INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
+        SELECT id, district_name || ' Women PS', 'CI ' || district_name, 
+               '+91-' || CAST((7000000000 + (id * 1000000)) AS TEXT),
+               'Women Police Station, ' || district_name
+        FROM districts WHERE is_active = 1
+    ''')
+    
+    # Sample One Stop Centers
+    cursor.execute('''
+        INSERT OR IGNORE INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
+        SELECT id, district_name || ' One Stop Center', 
+               'One Stop Center, Collectorate Complex, ' || district_name,
+               'Coordinator ' || district_name,
+               '+91-' || CAST((6000000000 + (id * 1000000)) AS TEXT),
+               'Legal Aid, Medical Support, Counseling, Shelter'
+        FROM districts WHERE is_active = 1
+    ''')
+    
+    print("District contact tables created successfully!")
 
 @app.route('/gallery')
 def gallery():
@@ -996,15 +1245,29 @@ def admin_add_gallery_item():
         title = request.form.get('title')
         description = request.form.get('description')
         image_url = request.form.get('image_url')
+        video_url = request.form.get('video_url')
+        event_date = request.form.get('event_date')
         category = request.form.get('category')
-        is_active = request.form.get('is_active') == 'on'
+        is_featured = 1 if request.form.get('is_featured') else 0
+        is_active = 1 if request.form.get('is_active') else 0
+        
+        # Handle file upload
+        uploaded_file = request.files.get('file_upload')
+        if uploaded_file and uploaded_file.filename != '':
+            if allowed_file(uploaded_file.filename):
+                filename = secure_filename(uploaded_file.filename)
+                timestamp = str(int(time.time()))
+                filename = f"gallery_{timestamp}_{filename}"
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                uploaded_file.save(file_path)
+                image_url = f'/static/uploads/{filename}'
         
         conn = sqlite3.connect('women_safety.db')
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO gallery_items (title, description, image_url, category, is_active)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (title, description, image_url, category, is_active))
+            INSERT INTO gallery_items (title, description, image_url, video_url, event_date, category, is_featured, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (title, description, image_url, video_url, event_date, category, is_featured, is_active))
         conn.commit()
         conn.close()
         
@@ -1012,6 +1275,71 @@ def admin_add_gallery_item():
         return redirect(url_for('admin_gallery'))
     
     return render_template('admin_add_gallery_item.html')
+
+@app.route('/admin/gallery/edit/<int:item_id>', methods=['GET', 'POST'])
+def admin_edit_gallery_item(item_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        image_url = request.form.get('image_url')
+        video_url = request.form.get('video_url')
+        event_date = request.form.get('event_date')
+        category = request.form.get('category')
+        is_featured = 1 if request.form.get('is_featured') else 0
+        is_active = 1 if request.form.get('is_active') else 0
+        
+        # Handle file upload
+        uploaded_file = request.files.get('file_upload')
+        if uploaded_file and uploaded_file.filename != '':
+            if allowed_file(uploaded_file.filename):
+                filename = secure_filename(uploaded_file.filename)
+                timestamp = str(int(time.time()))
+                filename = f"gallery_{timestamp}_{filename}"
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                uploaded_file.save(file_path)
+                image_url = f'/static/uploads/{filename}'
+        
+        cursor.execute('''
+            UPDATE gallery_items 
+            SET title = ?, description = ?, image_url = ?, video_url = ?, event_date = ?, category = ?, is_featured = ?, is_active = ?
+            WHERE id = ?
+        ''', (title, description, image_url, video_url, event_date, category, is_featured, is_active, item_id))
+        conn.commit()
+        conn.close()
+        
+        flash('Gallery item updated successfully!', 'success')
+        return redirect(url_for('admin_gallery'))
+    
+    # GET request - fetch gallery item
+    cursor.execute('SELECT * FROM gallery_items WHERE id = ?', (item_id,))
+    gallery_item = cursor.fetchone()
+    conn.close()
+    
+    if not gallery_item:
+        flash('Gallery item not found!', 'error')
+        return redirect(url_for('admin_gallery'))
+    
+    return render_template('admin_edit_gallery_item.html', gallery_item=gallery_item)
+
+@app.route('/admin/gallery/delete/<int:item_id>', methods=['POST'])
+def admin_delete_gallery_item(item_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM gallery_items WHERE id = ?', (item_id,))
+    conn.commit()
+    conn.close()
+    
+    flash('Gallery item deleted successfully!', 'success')
+    return redirect(url_for('admin_gallery'))
 
 @app.route('/admin/volunteers')
 def admin_volunteers():
@@ -1058,6 +1386,11 @@ def admin_delete_volunteer(volunteer_id):
 
 @app.route('/admin/logout')
 def admin_logout():
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('home'))
+
+@app.route('/admin-logout')
+def admin_logout_alt():
     session.pop('admin_logged_in', None)
     return redirect(url_for('home'))
 
@@ -1196,6 +1529,1048 @@ def admin_delete_officer(officer_id):
     conn.close()
     
     return redirect(url_for('admin_officers'))
+
+# ===================== SUCCESS STORIES ADMIN ROUTES =====================
+@app.route('/admin/success-stories')
+def admin_success_stories():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, title, description, date, is_active, sort_order FROM success_stories ORDER BY sort_order, id DESC')
+    stories = cursor.fetchall()
+    conn.close()
+    
+    return render_template('admin_success_stories.html', stories=stories)
+
+@app.route('/admin/success-stories/add', methods=['GET', 'POST'])
+def admin_add_success_story():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        date = request.form.get('date')
+        sort_order = request.form.get('sort_order', 0)
+        
+        # Handle image upload
+        image_url = request.form.get('image_url')
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                if allowed_file(file.filename):
+                    try:
+                        from image_manager import ImageManager
+                        image_manager = ImageManager()
+                        image_url = image_manager.save_image(file, 'success_story')
+                        if image_url:
+                            print(f"Success story image saved: {image_url}")
+                        else:
+                            print("Failed to save image using ImageManager")
+                            flash('Error uploading image', 'error')
+                    except Exception as e:
+                        print(f"Error saving success story image: {e}")
+                        flash(f'Error uploading image: {e}', 'error')
+        
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO success_stories (title, description, date, image_url, sort_order, is_active)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (title, description, date, image_url, sort_order, 1))
+        conn.commit()
+        conn.close()
+        
+        flash('Success story added successfully!', 'success')
+        return redirect(url_for('admin_success_stories'))
+    
+    return render_template('admin_add_success_story.html')
+
+@app.route('/admin/success-stories/edit/<int:story_id>', methods=['GET', 'POST'])
+def admin_edit_success_story(story_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        date = request.form.get('date', '').strip()
+        sort_order = request.form.get('sort_order', 0)
+        is_active = 1 if request.form.get('is_active') else 0
+        
+        # Validate required fields
+        if not title or not description:
+            flash('Title and description are required!', 'error')
+            cursor.execute('SELECT * FROM success_stories WHERE id=?', (story_id,))
+            story = cursor.fetchone()
+            conn.close()
+            return render_template('admin_edit_success_story.html', story=story)
+        
+        print(f"DEBUG: Updating story {story_id}")
+        print(f"DEBUG: New title: {title}")
+        print(f"DEBUG: New description: {description[:100]}...")
+        print(f"DEBUG: New date: {date}")
+        
+        # Get current image URL from database first
+        cursor.execute('SELECT image_url FROM success_stories WHERE id=?', (story_id,))
+        current_story = cursor.fetchone()
+        image_url = current_story[0] if current_story else None
+        
+        # Handle image upload - only update if new image is uploaded
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                if allowed_file(file.filename):
+                    try:
+                        from image_manager import ImageManager
+                        image_manager = ImageManager()
+                        new_image_url = image_manager.save_image(file, 'success_story')
+                        if new_image_url:
+                            image_url = new_image_url
+                            print(f"Success story image updated: {image_url}")
+                        else:
+                            print("Failed to update image using ImageManager")
+                            flash('Error uploading image', 'error')
+                    except Exception as e:
+                        print(f"Error saving success story image: {e}")
+                        flash(f'Error uploading image: {e}', 'error')
+        
+        cursor.execute('''
+            UPDATE success_stories 
+            SET title=?, description=?, date=?, image_url=?, sort_order=?, is_active=?
+            WHERE id=?
+        ''', (title, description, date, image_url, sort_order, is_active, story_id))
+        conn.commit()
+        
+        print(f"DEBUG: Database updated for story {story_id}")
+        
+        # Verify the update immediately
+        cursor.execute('SELECT title, description FROM success_stories WHERE id=?', (story_id,))
+        verify_story = cursor.fetchone()
+        if verify_story:
+            print(f"DEBUG: Verified title: {verify_story[0]}")
+            print(f"DEBUG: Verified description: {verify_story[1][:100]}...")
+        
+        conn.close()
+        
+        flash('Success story updated successfully!', 'success')
+        return redirect(url_for('admin_success_stories'))
+    
+    # GET request - fetch story data in correct order for template
+    cursor.execute('SELECT id, title, description, date, stat1_number, stat1_label, stat2_number, stat2_label, stat3_number, stat3_label, image_url, sort_order, is_active FROM success_stories WHERE id=?', (story_id,))
+    story = cursor.fetchone()
+    conn.close()
+    
+    if not story:
+        flash('Success story not found!', 'error')
+        return redirect(url_for('admin_success_stories'))
+    
+    return render_template('admin_edit_success_story.html', story=story)
+
+@app.route('/admin/success-stories/delete/<int:story_id>')
+def admin_delete_success_story(story_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM success_stories WHERE id=?', (story_id,))
+    conn.commit()
+    conn.close()
+    
+    flash('Success story deleted successfully!', 'success')
+    return redirect(url_for('admin_success_stories'))
+
+@app.route('/test-fix')
+def test_fix():
+    return render_template('test_fix.html')
+
+# District Contacts Admin Routes
+@app.route('/admin/district-contacts')
+def admin_district_contacts():
+    if 'admin_logged_in' not in session:
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    # Create district tables if they don't exist
+    try:
+        create_district_tables(cursor)
+        conn.commit()
+    except Exception as e:
+        print(f"Error creating tables: {e}")
+    
+    # Get all districts with their contacts
+    district_contacts = []
+    try:
+        cursor.execute('SELECT id, name FROM districts WHERE is_active = 1 ORDER BY name')
+        districts = cursor.fetchall()
+        print(f"DEBUG: Found {len(districts)} districts")  # Debug output
+    except sqlite3.OperationalError as e:
+        print(f"DEBUG: Error querying districts: {e}")  # Debug output
+        # If tables don't exist, return empty list
+        districts = []
+    
+    for district_id, district_name in districts:
+        print(f"DEBUG: Processing district {district_id}: {district_name}")  # Debug output
+        district_data = {'id': district_id, 'name': district_name}
+        
+        # Count contacts for each type
+        try:
+            cursor.execute('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1', (district_id,))
+            district_data['sp_count'] = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT COUNT(*) FROM shakthi_teams WHERE district_id = ? AND is_active = 1', (district_id,))
+            district_data['teams_count'] = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT COUNT(*) FROM women_police_stations WHERE district_id = ? AND is_active = 1', (district_id,))
+            district_data['ps_count'] = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT COUNT(*) FROM one_stop_centers WHERE district_id = ? AND is_active = 1', (district_id,))
+            district_data['center_count'] = cursor.fetchone()[0]
+        except sqlite3.OperationalError:
+            # If tables don't exist, set counts to 0
+            district_data['sp_count'] = 0
+            district_data['teams_count'] = 0
+            district_data['ps_count'] = 0
+            district_data['center_count'] = 0
+        
+        district_contacts.append(district_data)
+    
+    print(f"DEBUG: Total district_contacts: {len(district_contacts)}")  # Debug output
+    conn.close()
+    return render_template('admin_district_contacts.html', districts=district_contacts)
+
+@app.route('/admin/district-contacts/manage/<int:district_id>')
+def admin_manage_district_contacts(district_id):
+    if 'admin_logged_in' not in session:
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    # Get district info
+    cursor.execute('SELECT name FROM districts WHERE id = ?', (district_id,))
+    district = cursor.fetchone()
+    if not district:
+        flash('District not found', 'error')
+        return redirect(url_for('admin_district_contacts'))
+    
+    district_name = district[0]
+    
+    # Get all contacts for this district
+    cursor.execute('SELECT id, name, contact_number, email FROM district_sps WHERE district_id = ? AND is_active = 1', (district_id,))
+    sps = cursor.fetchall()
+    
+    cursor.execute('SELECT id, team_name, leader_name, contact_number, area_covered FROM shakthi_teams WHERE district_id = ? AND is_active = 1', (district_id,))
+    teams = cursor.fetchall()
+    
+    cursor.execute('SELECT id, station_name, incharge_name, contact_number, address FROM women_police_stations WHERE district_id = ? AND is_active = 1', (district_id,))
+    stations = cursor.fetchall()
+    
+    cursor.execute('SELECT id, center_name, address, incharge_name, contact_number, services_offered FROM one_stop_centers WHERE district_id = ? AND is_active = 1', (district_id,))
+    centers = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template('admin_manage_district_contacts.html', 
+                         district_id=district_id, 
+                         district_name=district_name,
+                         sps=sps, 
+                         teams=teams, 
+                         stations=stations, 
+                         centers=centers)
+
+# District Contact CRUD Routes
+@app.route('/admin/district-contacts/add-sp/<int:district_id>', methods=['GET', 'POST'])
+def admin_add_district_sp(district_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        contact_number = request.form.get('contact_number')
+        email = request.form.get('email')
+        
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO district_sps (district_id, name, contact_number, email)
+            VALUES (?, ?, ?, ?)
+        ''', (district_id, name, contact_number, email))
+        conn.commit()
+        conn.close()
+        
+        flash('District SP added successfully!', 'success')
+        return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
+    
+    # Get district name
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT name FROM districts WHERE id = ?', (district_id,))
+    district = cursor.fetchone()
+    conn.close()
+    
+    return render_template('admin_add_district_contact.html', 
+                         district_id=district_id, 
+                         district_name=district[0] if district else 'Unknown',
+                         contact_type='SP')
+
+@app.route('/admin/district-contacts/edit-sp/<int:sp_id>', methods=['GET', 'POST'])
+def admin_edit_district_sp(sp_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        contact_number = request.form.get('contact_number')
+        email = request.form.get('email')
+        
+        cursor.execute('''
+            UPDATE district_sps 
+            SET name = ?, contact_number = ?, email = ?
+            WHERE id = ?
+        ''', (name, contact_number, email, sp_id))
+        conn.commit()
+        
+        # Get district_id for redirect
+        cursor.execute('SELECT district_id FROM district_sps WHERE id = ?', (sp_id,))
+        district_id = cursor.fetchone()[0]
+        conn.close()
+        
+        flash('District SP updated successfully!', 'success')
+        return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
+    
+    # GET request
+    cursor.execute('''
+        SELECT ds.id, ds.name, ds.contact_number, ds.email, ds.district_id, d.name 
+        FROM district_sps ds 
+        JOIN districts d ON ds.district_id = d.id 
+        WHERE ds.id = ?
+    ''', (sp_id,))
+    sp_data = cursor.fetchone()
+    conn.close()
+    
+    if not sp_data:
+        flash('SP not found!', 'error')
+        return redirect(url_for('admin_district_contacts'))
+    
+    return render_template('admin_edit_district_contact.html', 
+                         contact=sp_data, 
+                         contact_type='SP')
+
+@app.route('/admin/district-contacts/delete/sp/<int:sp_id>', methods=['POST'])
+def admin_delete_district_sp(sp_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM district_sps WHERE id = ?', (sp_id,))
+    conn.commit()
+    conn.close()
+    
+    return '', 200
+
+# Shakthi Team Routes
+@app.route('/admin/district-contacts/add-team/<int:district_id>', methods=['GET', 'POST'])
+def admin_add_shakthi_team(district_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        team_name = request.form.get('team_name')
+        leader_name = request.form.get('leader_name')
+        contact_number = request.form.get('contact_number')
+        area_covered = request.form.get('area_covered')
+        
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (district_id, team_name, leader_name, contact_number, area_covered))
+        conn.commit()
+        conn.close()
+        
+        flash('Shakthi Team added successfully!', 'success')
+        return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
+    
+    # Get district name
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT name FROM districts WHERE id = ?', (district_id,))
+    district = cursor.fetchone()
+    conn.close()
+    
+    return render_template('admin_add_district_contact.html', 
+                         district_id=district_id, 
+                         district_name=district[0] if district else 'Unknown',
+                         contact_type='Team')
+
+@app.route('/admin/district-contacts/edit-team/<int:team_id>', methods=['GET', 'POST'])
+def admin_edit_shakthi_team(team_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        team_name = request.form.get('team_name')
+        leader_name = request.form.get('leader_name')
+        contact_number = request.form.get('contact_number')
+        area_covered = request.form.get('area_covered')
+        
+        cursor.execute('''
+            UPDATE shakthi_teams 
+            SET team_name = ?, leader_name = ?, contact_number = ?, area_covered = ?
+            WHERE id = ?
+        ''', (team_name, leader_name, contact_number, area_covered, team_id))
+        conn.commit()
+        
+        # Get district_id for redirect
+        cursor.execute('SELECT district_id FROM shakthi_teams WHERE id = ?', (team_id,))
+        district_id = cursor.fetchone()[0]
+        conn.close()
+        
+        flash('Shakthi Team updated successfully!', 'success')
+        return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
+    
+    # GET request
+    cursor.execute('''
+        SELECT st.id, st.team_name, st.leader_name, st.contact_number, st.area_covered, st.district_id, d.name 
+        FROM shakthi_teams st 
+        JOIN districts d ON st.district_id = d.id 
+        WHERE st.id = ?
+    ''', (team_id,))
+    team_data = cursor.fetchone()
+    conn.close()
+    
+    if not team_data:
+        flash('Team not found!', 'error')
+        return redirect(url_for('admin_district_contacts'))
+    
+    return render_template('admin_edit_district_contact.html', 
+                         contact=team_data, 
+                         contact_type='Team')
+
+@app.route('/admin/district-contacts/delete/team/<int:team_id>', methods=['POST'])
+def admin_delete_shakthi_team(team_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM shakthi_teams WHERE id = ?', (team_id,))
+    conn.commit()
+    conn.close()
+    
+    return '', 200
+
+# Women Police Station Routes
+@app.route('/admin/district-contacts/add-station/<int:district_id>', methods=['GET', 'POST'])
+def admin_add_women_station(district_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        station_name = request.form.get('station_name')
+        incharge_name = request.form.get('incharge_name')
+        contact_number = request.form.get('contact_number')
+        address = request.form.get('address')
+        
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (district_id, station_name, incharge_name, contact_number, address))
+        conn.commit()
+        conn.close()
+        
+        flash('Women Police Station added successfully!', 'success')
+        return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
+    
+    # Get district name
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT name FROM districts WHERE id = ?', (district_id,))
+    district = cursor.fetchone()
+    conn.close()
+    
+    return render_template('admin_add_district_contact.html', 
+                         district_id=district_id, 
+                         district_name=district[0] if district else 'Unknown',
+                         contact_type='Station')
+
+@app.route('/admin/district-contacts/edit-station/<int:station_id>', methods=['GET', 'POST'])
+def admin_edit_women_station(station_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        station_name = request.form.get('station_name')
+        incharge_name = request.form.get('incharge_name')
+        contact_number = request.form.get('contact_number')
+        address = request.form.get('address')
+        
+        cursor.execute('''
+            UPDATE women_police_stations 
+            SET station_name = ?, incharge_name = ?, contact_number = ?, address = ?
+            WHERE id = ?
+        ''', (station_name, incharge_name, contact_number, address, station_id))
+        conn.commit()
+        
+        # Get district_id for redirect
+        cursor.execute('SELECT district_id FROM women_police_stations WHERE id = ?', (station_id,))
+        district_id = cursor.fetchone()[0]
+        conn.close()
+        
+        flash('Women Police Station updated successfully!', 'success')
+        return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
+    
+    # GET request
+    cursor.execute('''
+        SELECT wps.id, wps.station_name, wps.incharge_name, wps.contact_number, wps.address, wps.district_id, d.name 
+        FROM women_police_stations wps 
+        JOIN districts d ON wps.district_id = d.id 
+        WHERE wps.id = ?
+    ''', (station_id,))
+    station_data = cursor.fetchone()
+    conn.close()
+    
+    if not station_data:
+        flash('Station not found!', 'error')
+        return redirect(url_for('admin_district_contacts'))
+    
+    return render_template('admin_edit_district_contact.html', 
+                         contact=station_data, 
+                         contact_type='Station')
+
+@app.route('/admin/district-contacts/delete/station/<int:station_id>', methods=['POST'])
+def admin_delete_women_station(station_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM women_police_stations WHERE id = ?', (station_id,))
+    conn.commit()
+    conn.close()
+    
+    return '', 200
+
+# One Stop Center Routes
+@app.route('/admin/district-contacts/add-center/<int:district_id>', methods=['GET', 'POST'])
+def admin_add_one_stop_center(district_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        center_name = request.form.get('center_name')
+        address = request.form.get('address')
+        incharge_name = request.form.get('incharge_name')
+        contact_number = request.form.get('contact_number')
+        services_offered = request.form.get('services_offered')
+        
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (district_id, center_name, address, incharge_name, contact_number, services_offered))
+        conn.commit()
+        conn.close()
+        
+        flash('One Stop Center added successfully!', 'success')
+        return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
+    
+    # Get district name
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT name FROM districts WHERE id = ?', (district_id,))
+    district = cursor.fetchone()
+    conn.close()
+    
+    return render_template('admin_add_district_contact.html', 
+                         district_id=district_id, 
+                         district_name=district[0] if district else 'Unknown',
+                         contact_type='Center')
+
+@app.route('/admin/district-contacts/edit-center/<int:center_id>', methods=['GET', 'POST'])
+def admin_edit_one_stop_center(center_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        center_name = request.form.get('center_name')
+        address = request.form.get('address')
+        incharge_name = request.form.get('incharge_name')
+        contact_number = request.form.get('contact_number')
+        services_offered = request.form.get('services_offered')
+        
+        cursor.execute('''
+            UPDATE one_stop_centers 
+            SET center_name = ?, address = ?, incharge_name = ?, contact_number = ?, services_offered = ?
+            WHERE id = ?
+        ''', (center_name, address, incharge_name, contact_number, services_offered, center_id))
+        conn.commit()
+        
+        # Get district_id for redirect
+        cursor.execute('SELECT district_id FROM one_stop_centers WHERE id = ?', (center_id,))
+        district_id = cursor.fetchone()[0]
+        conn.close()
+        
+        flash('One Stop Center updated successfully!', 'success')
+        return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
+    
+    # GET request
+    cursor.execute('''
+        SELECT osc.id, osc.center_name, osc.address, osc.incharge_name, osc.contact_number, osc.services_offered, osc.district_id, d.name 
+        FROM one_stop_centers osc 
+        JOIN districts d ON osc.district_id = d.id 
+        WHERE osc.id = ?
+    ''', (center_id,))
+    center_data = cursor.fetchone()
+    conn.close()
+    
+    if not center_data:
+        flash('Center not found!', 'error')
+        return redirect(url_for('admin_district_contacts'))
+    
+    return render_template('admin_edit_district_contact.html', 
+                         contact=center_data, 
+                         contact_type='Center')
+
+@app.route('/admin/district-contacts/delete/center/<int:center_id>', methods=['POST'])
+def admin_delete_one_stop_center(center_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM one_stop_centers WHERE id = ?', (center_id,))
+    conn.commit()
+    conn.close()
+    
+    return '', 200
+
+# Database setup route for district contacts
+@app.route('/setup-districts')
+def setup_districts():
+    try:
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        # Create Districts table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS districts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                district_code TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create District SPs table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS district_sps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                district_id INTEGER,
+                name TEXT NOT NULL,
+                contact_number TEXT,
+                email TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (district_id) REFERENCES districts (id)
+            )
+        ''')
+        
+        # Create Shakthi Teams table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS shakthi_teams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                district_id INTEGER,
+                team_name TEXT NOT NULL,
+                leader_name TEXT,
+                contact_number TEXT,
+                area_covered TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (district_id) REFERENCES districts (id)
+            )
+        ''')
+        
+        # Create Women Police Stations table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS women_police_stations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                district_id INTEGER,
+                station_name TEXT NOT NULL,
+                incharge_name TEXT,
+                contact_number TEXT,
+                address TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (district_id) REFERENCES districts (id)
+            )
+        ''')
+        
+        # Create One Stop Centers table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS one_stop_centers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                district_id INTEGER,
+                center_name TEXT NOT NULL,
+                address TEXT,
+                incharge_name TEXT,
+                contact_number TEXT,
+                services_offered TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (district_id) REFERENCES districts (id)
+            )
+        ''')
+        
+        # Insert AP districts - All 26 Districts
+        districts_data = [
+            # Existing 13 districts
+            ('Visakhapatnam', 'VSKP'),
+            ('Vijayawada', 'VJA'),
+            ('Guntur', 'GTR'),
+            ('Nellore', 'NLR'),
+            ('Tirupati', 'TPT'),
+            ('Kurnool', 'KNL'),
+            ('Kakinada', 'KKD'),
+            ('Rajahmundry', 'RJY'),
+            ('Eluru', 'ELR'),
+            ('Machilipatnam', 'MCP'),
+            ('Chittoor', 'CTR'),
+            ('Anantapur', 'ATP'),
+            ('Kadapa', 'KDP'),
+            # Additional 13 districts
+            ('Srikakulam', 'SKL'),
+            ('Vizianagaram', 'VZM'),
+            ('Prakasam', 'PKM'),
+            ('Krishna', 'KRS'),
+            ('West Godavari', 'WG'),
+            ('East Godavari', 'EG'),
+            ('Amaravati', 'AMR'),
+            ('Bapatla', 'BPT'),
+            ('Palnadu', 'PLD'),
+            ('Anakapalli', 'AKP'),
+            ('Alluri Sitharama Raju', 'ASR'),
+            ('Konaseema', 'KNS'),
+            ('Sri Potti Sriramulu Nellore', 'SPSN')
+        ]
+        
+        for district_name, district_code in districts_data:
+            cursor.execute('''
+                INSERT OR IGNORE INTO districts (name, district_code) 
+                VALUES (?, ?)
+            ''', (district_name, district_code))
+        
+        # Insert sample District SPs
+        cursor.execute('''
+            INSERT OR IGNORE INTO district_sps (district_id, name, contact_number, email)
+            SELECT id, 'SP ' || name, '+91-' || CAST((8000000000 + (id * 1000000)) AS TEXT), 
+                   LOWER(REPLACE(name, ' ', '')) || '.sp@appolice.gov.in'
+            FROM districts WHERE is_active = 1
+        ''')
+        
+        # Insert sample Shakthi Teams
+        team_names = ['Urban Protection Team', 'Rural Safety Team', 'Highway Patrol Team']
+        for i, team_name in enumerate(team_names):
+            cursor.execute('''
+                INSERT OR IGNORE INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered)
+                SELECT id, ?, 'Inspector ' || SUBSTR(name, 1, 3) || '-' || ?, 
+                       '+91-' || CAST((9000000000 + (id * 100000) + ?) AS TEXT), 
+                       CASE ? 
+                           WHEN 0 THEN 'Urban areas and city centers'
+                           WHEN 1 THEN 'Rural villages and remote areas'
+                           ELSE 'National and state highways'
+                       END
+                FROM districts WHERE is_active = 1
+            ''', (team_name, str(i+1), (i+1)*1000, i))
+        
+        # Insert sample Women Police Stations
+        cursor.execute('''
+            INSERT OR IGNORE INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
+            SELECT id, name || ' Women Police Station', 'CI ' || name, 
+                   '+91-' || CAST((7000000000 + (id * 1000000)) AS TEXT),
+                   'Women Police Station, ' || name || ' District'
+            FROM districts WHERE is_active = 1
+        ''')
+        
+        # Insert sample One Stop Centers
+        cursor.execute('''
+            INSERT OR IGNORE INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
+            SELECT id, name || ' One Stop Center', 
+                   'One Stop Center, Collectorate Complex, ' || name,
+                   'Coordinator ' || name,
+                   '+91-' || CAST((6000000000 + (id * 1000000)) AS TEXT),
+                   'Legal Aid, Medical Support, Psychological Counseling, Shelter Services, Police Assistance'
+            FROM districts WHERE is_active = 1
+        ''')
+        
+        conn.commit()
+        conn.close()
+        
+        return '<h1>✅ District Database Setup Complete!</h1><p>All tables created and sample data inserted for 13 AP districts.</p><p><a href="/admin/district-contacts">Go to District Contacts</a></p>'
+        
+    except Exception as e:
+        return f'<h1>❌ Error during setup:</h1><p>{str(e)}</p>'
+
+# Debug route to check districts
+@app.route('/debug-districts')
+def debug_districts():
+    try:
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        # Check if tables exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%district%'")
+        tables = cursor.fetchall()
+        
+        result = '<h1>Database Debug Info</h1>'
+        result += f'<h2>District-related tables:</h2><ul>'
+        for table in tables:
+            result += f'<li>{table[0]}</li>'
+        result += '</ul>'
+        
+        # Check districts table
+        try:
+            cursor.execute('SELECT COUNT(*) FROM districts')
+            count = cursor.fetchone()[0]
+            result += f'<h2>Districts table: {count} records</h2>'
+            
+            cursor.execute('SELECT id, name FROM districts LIMIT 5')
+            districts = cursor.fetchall()
+            result += '<ul>'
+            for dist in districts:
+                result += f'<li>ID: {dist[0]}, Name: {dist[1]}</li>'
+            result += '</ul>'
+        except Exception as e:
+            result += f'<h2>Error reading districts: {e}</h2>'
+        
+        conn.close()
+        return result
+        
+    except Exception as e:
+        return f'<h1>Debug Error:</h1><p>{str(e)}</p>'
+
+# Force setup route
+@app.route('/force-setup')
+def force_setup():
+    try:
+        # Connect to database
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        # Drop existing tables if they exist
+        cursor.execute('DROP TABLE IF EXISTS one_stop_centers')
+        cursor.execute('DROP TABLE IF EXISTS women_police_stations') 
+        cursor.execute('DROP TABLE IF EXISTS shakthi_teams')
+        cursor.execute('DROP TABLE IF EXISTS district_sps')
+        cursor.execute('DROP TABLE IF EXISTS districts')
+        
+        # Create Districts table
+        cursor.execute('''
+            CREATE TABLE districts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                district_code TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create District SPs table
+        cursor.execute('''
+            CREATE TABLE district_sps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                district_id INTEGER,
+                name TEXT NOT NULL,
+                contact_number TEXT,
+                email TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (district_id) REFERENCES districts (id)
+            )
+        ''')
+        
+        # Create Shakthi Teams table
+        cursor.execute('''
+            CREATE TABLE shakthi_teams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                district_id INTEGER,
+                team_name TEXT NOT NULL,
+                leader_name TEXT,
+                contact_number TEXT,
+                area_covered TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (district_id) REFERENCES districts (id)
+            )
+        ''')
+        
+        # Create Women Police Stations table
+        cursor.execute('''
+            CREATE TABLE women_police_stations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                district_id INTEGER,
+                station_name TEXT NOT NULL,
+                incharge_name TEXT,
+                contact_number TEXT,
+                address TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (district_id) REFERENCES districts (id)
+            )
+        ''')
+        
+        # Create One Stop Centers table
+        cursor.execute('''
+            CREATE TABLE one_stop_centers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                district_id INTEGER,
+                center_name TEXT NOT NULL,
+                address TEXT,
+                incharge_name TEXT,
+                contact_number TEXT,
+                services_offered TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (district_id) REFERENCES districts (id)
+            )
+        ''')
+        
+        # Insert districts - All 26 AP Districts
+        districts = [
+            # Existing 13 districts
+            ('Visakhapatnam', 'VSKP'),
+            ('Vijayawada', 'VJA'),
+            ('Guntur', 'GTR'),
+            ('Nellore', 'NLR'),
+            ('Tirupati', 'TPT'),
+            ('Kurnool', 'KNL'),
+            ('Kakinada', 'KKD'),
+            ('Rajahmundry', 'RJY'),
+            ('Eluru', 'ELR'),
+            ('Machilipatnam', 'MCP'),
+            ('Chittoor', 'CTR'),
+            ('Anantapur', 'ATP'),
+            ('Kadapa', 'KDP'),
+            # Additional 13 districts
+            ('Srikakulam', 'SKL'),
+            ('Vizianagaram', 'VZM'),
+            ('Prakasam', 'PKM'),
+            ('Krishna', 'KRS'),
+            ('West Godavari', 'WG'),
+            ('East Godavari', 'EG'),
+            ('Amaravati', 'AMR'),
+            ('Bapatla', 'BPT'),
+            ('Palnadu', 'PLD'),
+            ('Anakapalli', 'AKP'),
+            ('Alluri Sitharama Raju', 'ASR'),
+            ('Konaseema', 'KNS'),
+            ('Sri Potti Sriramulu Nellore', 'SPSN')
+        ]
+        
+        for name, code in districts:
+            cursor.execute('INSERT INTO districts (name, district_code) VALUES (?, ?)', (name, code))
+        
+        # Insert sample data for each district
+        cursor.execute('SELECT id, name FROM districts')
+        all_districts = cursor.fetchall()
+        
+        for district_id, district_name in all_districts:
+            # Insert District SP
+            cursor.execute('''
+                INSERT INTO district_sps (district_id, name, contact_number, email)
+                VALUES (?, ?, ?, ?)
+            ''', (district_id, f'SP {district_name}', f'+91-{8000000000 + (district_id * 1000000)}', f'{district_name.lower().replace(" ", "")}.sp@appolice.gov.in'))
+            
+            # Insert Shakthi Teams
+            teams = ['Urban Protection Team', 'Rural Safety Team', 'Highway Patrol Team']
+            for i, team_name in enumerate(teams):
+                cursor.execute('''
+                    INSERT INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (district_id, team_name, f'Inspector {district_name[:3]}-{i+1}', f'+91-{9000000000 + (district_id * 100000) + ((i+1)*1000)}', f'Zone {i+1} - {["Urban areas", "Rural villages", "Highways"][i]}'))
+            
+            # Insert Women Police Station
+            cursor.execute('''
+                INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (district_id, f'{district_name} Women Police Station', f'CI {district_name}', f'+91-{7000000000 + (district_id * 1000000)}', f'Women Police Station, {district_name} District'))
+            
+            # Insert One Stop Center
+            cursor.execute('''
+                INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (district_id, f'{district_name} One Stop Center', f'One Stop Center, Collectorate Complex, {district_name}', f'Coordinator {district_name}', f'+91-{6000000000 + (district_id * 1000000)}', 'Legal Aid, Medical Support, Counseling, Shelter Services'))
+        
+        conn.commit()
+        
+        # Verify the data
+        cursor.execute('SELECT COUNT(*) FROM districts')
+        district_count = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM district_sps')
+        sp_count = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM shakthi_teams')
+        team_count = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM women_police_stations')
+        station_count = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM one_stop_centers')
+        center_count = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        result = f'''
+        <h1>✅ Force Setup Completed Successfully!</h1>
+        <h2>Data Summary:</h2>
+        <ul>
+            <li>Districts: {district_count}</li>
+            <li>District SPs: {sp_count}</li>
+            <li>Shakthi Teams: {team_count}</li>
+            <li>Women Police Stations: {station_count}</li>
+            <li>One Stop Centers: {center_count}</li>
+        </ul>
+        <p><a href="/admin/district-contacts">Go to District Contacts</a></p>
+        <p><a href="/admin-dashboard">Go to Admin Dashboard</a></p>
+        '''
+        return result
+        
+    except Exception as e:
+        return f'<h1>❌ Force Setup Error:</h1><p>{str(e)}</p>'
+
+# Quick login route for testing
+@app.route('/quick-admin-login')
+def quick_admin_login():
+    session['admin_logged_in'] = True
+    return redirect(url_for('admin_district_contacts'))
 
 if __name__ == '__main__':
     # Create upload folder if it doesn't exist
