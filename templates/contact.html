@@ -116,91 +116,63 @@
         </div>
         
         <div class="contact-grid">
-            {% for contact in contact_info %}
-                {% if contact[1] == 'phone' and contact[6] %}
-                    <div class="contact-card">
-                        <div class="contact-icon"><i class="fas fa-phone"></i></div>
-                        <h3 class="contact-title">{{ contact[2] }}</h3>
-                        <div class="contact-info">{{ contact[3]|safe }}</div>
-                    </div>
-                {% elif contact[1] == 'email' and contact[6] %}
-                    <div class="contact-card">
-                        <div class="contact-icon"><i class="fas fa-envelope"></i></div>
-                        <h3 class="contact-title">{{ contact[2] }}</h3>
-                        <div class="contact-info">{{ contact[3]|safe }}</div>
-                    </div>
-                {% elif contact[1] == 'address' and contact[6] %}
-                    <div class="contact-card">
-                        <div class="contact-icon"><i class="fas fa-map-marker-alt"></i></div>
-                        <h3 class="contact-title">{{ contact[2] }}</h3>
-                        <div class="contact-info">{{ contact[3]|safe }}</div>
-                    </div>
-                {% elif contact[1] == 'hours' and contact[6] %}
-                    <div class="contact-card">
-                        <div class="contact-icon"><i class="fas fa-clock"></i></div>
-                        <h3 class="contact-title">{{ contact[2] }}</h3>
-                        <div class="contact-info">{{ contact[3]|safe }}</div>
-                    </div>
-                {% endif %}
-            {% endfor %}
+            <!-- Default contact cards -->
+            <div class="contact-card">
+                <div class="contact-icon"><i class="fas fa-phone"></i></div>
+                <h3 class="contact-title">Phone Support</h3>
+                <div class="contact-info">
+                    <p><strong>Main Office:</strong> 0864-5237348</p>
+                    <p><strong>Women's Helpline:</strong> 1091</p>
+                    <p><strong>24/7 Emergency:</strong> 112</p>
+                </div>
+            </div>
             
-            {% if not contact_info|selectattr('6', 'equalto', True)|list %}
-                <!-- Default contact cards when no dynamic content is available -->
-                <div class="contact-card">
-                    <div class="contact-icon"><i class="fas fa-phone"></i></div>
-                    <h3 class="contact-title">Phone Support</h3>
-                    <div class="contact-info">
-                        <p><strong>Main Office:</strong> 0864-5237348</p>
-                        <p><strong>Women's Helpline:</strong> 1091</p>
-                        <p><strong>24/7 Emergency:</strong> 112</p>
-                
-                    </div>
+            <div class="contact-card">
+                <div class="contact-icon"><i class="fas fa-envelope"></i></div>
+                <h3 class="contact-title">Email Support</h3>
+                <div class="contact-info">
+                    <p><strong>General Inquiries:</strong><br>
+                    <a href="mailto:info@apwomensafety.gov.in">info@apwomensafety.gov.in</a></p>
+                    <p><strong>Complaints:</strong><br>
+                    <a href="mailto:complaints@apwomensafety.gov.in">complaints@apwomensafety.gov.in</a></p>
+                    <p><strong>Media:</strong><br>
+                    <a href="mailto:media@apwomensafety.gov.in">media@apwomensafety.gov.in</a></p>
                 </div>
-                
-                <div class="contact-card">
-                    <div class="contact-icon"><i class="fas fa-envelope"></i></div>
-                    <h3 class="contact-title">Email Support</h3>
-                    <div class="contact-info">
-                        <p><strong>General Inquiries:</strong><br>
-                        <a href="mailto:info@apwomensafety.gov.in">info@apwomensafety.gov.in</a></p>
-                        <p><strong>Complaints:</strong><br>
-                        <a href="mailto:complaints@apwomensafety.gov.in">complaints@apwomensafety.gov.in</a></p>
-                        <p><strong>Media:</strong><br>
-                        <a href="mailto:media@apwomensafety.gov.in">media@apwomensafety.gov.in</a></p>
-                    </div>
+            </div>
+            
+            <div class="contact-card">
+                <div class="contact-icon"><i class="fas fa-map-marker-alt"></i></div>
+                <h3 class="contact-title">Head Office</h3>
+                <div class="contact-info">
+                    <p><strong>Address:</strong><br>
+                    AP Police Women & Child Safety Wing<br>
+                    Police Headquarters,<br>
+                    Mangalagiri- 522 503<br>
+                    Andhra Pradesh, India</p>
                 </div>
-                
-                <div class="contact-card">
-                    <div class="contact-icon"><i class="fas fa-map-marker-alt"></i></div>
-                    <h3 class="contact-title">Head Office</h3>
-                    <div class="contact-info">
-                        <p><strong>Address:</strong><br>
-                        AP Police Women & Child Safety Wing<br>
-                        Police Headquarters,<br>
-                        Mangalagiri- 522 503<br>
-                        Andhra Pradesh, India</p>
-                    </div>
+            </div>
+            
+            <div class="contact-card">
+                <div class="contact-icon"><i class="fas fa-clock"></i></div>
+                <h3 class="contact-title">Office Hours</h3>
+                <div class="contact-info">
+                    <p><strong>Monday - Friday:</strong><br>9:00 AM - 6:00 PM</p>
+                    <p><strong>Saturday:</strong><br>9:00 AM - 2:00 PM</p>
+                    <p><strong>Emergency Services:</strong><br>24/7 Available</p>
+                    <p><strong>Sunday:</strong><br>Emergency Only</p>
                 </div>
-                
-                <div class="contact-card">
-                    <div class="contact-icon"><i class="fas fa-clock"></i></div>
-                    <h3 class="contact-title">Office Hours</h3>
-                    <div class="contact-info">
-                        <p><strong>Monday - Friday:</strong><br>9:00 AM - 6:00 PM</p>
-                        <p><strong>Saturday:</strong><br>9:00 AM - 2:00 PM</p>
-                        <p><strong>Emergency Services:</strong><br>24/7 Available</p>
-                        <p><strong>Sunday:</strong><br>Emergency Only</p>
-                    </div>
-                </div>
-            {% endif %}
+            </div>
         </div>
         
         <div class="office-locations">
             <h2 class="section-title">District Contacts</h2>
+            <p style="text-align: center; color: #666;">Total Districts: {{ district_contacts|length }}</p>
+            
+            {% if district_contacts %}
             <div class="locations-grid">
                 {% for district in district_contacts %}
-                <div class="location-card">
-                    <h3 class="location-title">{{ district.name }} District</h3>
+                <div class="location-card" style="background: #fff; border: 2px solid #3498db; margin: 10px 0;">
+                    <h3 class="location-title" style="color: #2c3e50; font-size: 1.5em;">{{ district.name }} District</h3>
                     <div class="location-details">
                         <!-- District SP -->
                         {% if district.sp %}
@@ -214,7 +186,7 @@
                         {% if district.shakthi_teams %}
                         <h4 style="color: #e74c3c; margin: 15px 0 10px 0;"><i class="fas fa-users"></i> Shakthi Teams</h4>
                         {% for team in district.shakthi_teams %}
-                        <div style="margin-left: 15px; margin-bottom: 10px;">
+                        <div style="margin-left: 15px; margin-bottom: 10px; background: #f8f9fa; padding: 5px; border-radius: 5px;">
                             <p><strong>{{ team.team_name }}</strong></p>
                             <p style="margin: 2px 0;"><i class="fas fa-user"></i> {{ team.incharge_name }}</p>
                             <p style="margin: 2px 0;"><i class="fas fa-phone"></i> {{ team.contact_number }}</p>
@@ -227,7 +199,7 @@
                         {% if district.women_ps %}
                         <h4 style="color: #27ae60; margin: 15px 0 10px 0;"><i class="fas fa-shield-alt"></i> Women Police Stations</h4>
                         {% for ps in district.women_ps %}
-                        <div style="margin-left: 15px; margin-bottom: 10px;">
+                        <div style="margin-left: 15px; margin-bottom: 10px; background: #f8f9fa; padding: 5px; border-radius: 5px;">
                             <p><strong>{{ ps.station_name }}</strong></p>
                             <p style="margin: 2px 0;"><i class="fas fa-user-tie"></i> {{ ps.incharge_name }}</p>
                             <p style="margin: 2px 0;"><i class="fas fa-phone"></i> {{ ps.contact_number }}</p>
@@ -240,7 +212,7 @@
                         {% if district.one_stop_centers %}
                         <h4 style="color: #3498db; margin: 15px 0 10px 0;"><i class="fas fa-home"></i> One Stop Centers</h4>
                         {% for center in district.one_stop_centers %}
-                        <div style="margin-left: 15px; margin-bottom: 10px;">
+                        <div style="margin-left: 15px; margin-bottom: 10px; background: #f8f9fa; padding: 5px; border-radius: 5px;">
                             <p><strong>{{ center.center_name }}</strong></p>
                             {% if center.address %}<p style="margin: 2px 0;"><i class="fas fa-map-marker-alt"></i> {{ center.address }}</p>{% endif %}
                             <p style="margin: 2px 0;"><i class="fas fa-user-circle"></i> {{ center.incharge_name }}</p>
@@ -253,6 +225,9 @@
                 </div>
                 {% endfor %}
             </div>
+            {% else %}
+            <p style="text-align: center; color: red; font-size: 1.2em;">No districts found in database!</p>
+            {% endif %}
         </div>
     </div>
     

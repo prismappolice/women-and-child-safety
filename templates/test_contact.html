@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Contact Template</title>
+</head>
+<body>
+    <h1>Test Contact Template</h1>
+    
+    <h2>District Contacts: {{ district_contacts|length }}</h2>
+    
+    {% for district in district_contacts %}
+    <div style="border: 1px solid #ccc; margin: 10px; padding: 10px;">
+        <h3>{{ district.name }} District</h3>
+        
+        {% if district.sp %}
+        <h4>District SP</h4>
+        <p><strong>{{ district.sp.name }}</strong></p>
+        <p>Phone: {{ district.sp.contact }}</p>
+        <p>Email: {{ district.sp.email }}</p>
+        {% endif %}
+        
+        {% if district.shakthi_teams %}
+        <h4>Shakthi Teams</h4>
+        {% for team in district.shakthi_teams %}
+        <div style="margin-left: 20px;">
+            <p><strong>{{ team.team_name }}</strong></p>
+            <p>{{ team.incharge_name }} - {{ team.contact_number }}</p>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+    {% endfor %}
+    
+</body>
+</html>
