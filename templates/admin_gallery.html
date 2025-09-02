@@ -117,20 +117,15 @@
         </div>
         
         <div class="filter-tabs">
-            <a href="{{ url_for('admin_gallery') }}" class="filter-tab {{ 'active' if not request.args.get('category') else '' }}">
-                <i class="fas fa-th"></i> All Items
+            <a href="{{ url_for('admin_gallery', category='Images') }}" class="filter-tab {{ 'active' if request.args.get('category') == 'Images' or not request.args.get('category') else '' }}">
+                <i class="fas fa-images"></i> Images
             </a>
-            <a href="{{ url_for('admin_gallery', category='photos') }}" class="filter-tab {{ 'active' if request.args.get('category') == 'photos' else '' }}">
-                <i class="fas fa-camera"></i> Photos
-            </a>
-            <a href="{{ url_for('admin_gallery', category='videos') }}" class="filter-tab {{ 'active' if request.args.get('category') == 'videos' else '' }}">
+            <a href="{{ url_for('admin_gallery', category='Videos') }}" class="filter-tab {{ 'active' if request.args.get('category') == 'Videos' else '' }}">
                 <i class="fas fa-video"></i> Videos
             </a>
-            <a href="{{ url_for('admin_gallery', category='events') }}" class="filter-tab {{ 'active' if request.args.get('category') == 'events' else '' }}">
-                <i class="fas fa-calendar"></i> Events
+            <a href="{{ url_for('admin_gallery', category='Upcoming Events') }}" class="filter-tab {{ 'active' if request.args.get('category') == 'Upcoming Events' else '' }}">
+                <i class="fas fa-calendar-alt"></i> Upcoming Events
             </a>
-            <a href="{{ url_for('admin_gallery', category='achievements') }}" class="filter-tab {{ 'active' if request.args.get('category') == 'achievements' else '' }}">
-                <i class="fas fa-trophy"></i> Achievements
             </a>
         </div>
         
@@ -139,7 +134,7 @@
             {% for item in gallery_items %}
             <div class="gallery-item">
                 {% if item[3] %}
-                    {% if item[2] == 'videos' %}
+                    {% if item[5] == 'Videos' %}
                         <div class="gallery-placeholder">
                             <i class="fas fa-play-circle"></i>
                         </div>
@@ -158,13 +153,13 @@
                 <div class="gallery-content">
                     <div class="gallery-title">{{ item[1] }}</div>
                     <div class="gallery-description">
-                        {{ item[4][:100] if item[4] else 'No description' }}
-                        {% if item[4] and item[4]|length > 100 %}...{% endif %}
+                        {{ item[2][:100] if item[2] else 'No description' }}
+                        {% if item[2] and item[2]|length > 100 %}...{% endif %}
                     </div>
                     
                     <div class="gallery-meta">
-                        <span class="category-badge">{{ item[2].title() }}</span>
-                        <span>Order: {{ item[5] }}</span>
+                        <span class="category-badge">{{ item[5].title() }}</span>
+                        <span>Date: {{ item[4] if item[4] else 'Recent' }}</span>
                     </div>
                     
                     <div class="gallery-actions">

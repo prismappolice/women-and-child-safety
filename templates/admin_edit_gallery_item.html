@@ -94,12 +94,10 @@
                                             <div class="col-md-6">
                                                 <div class="mb-3">
                                                     <label for="category" class="form-label">Category</label>
-                                                    <select class="form-control" id="category" name="category">
-                                                        <option value="General" {{ 'selected' if gallery_item and gallery_item[6] == 'General' else '' }}>General</option>
-                                                        <option value="Events" {{ 'selected' if gallery_item and gallery_item[6] == 'Events' else '' }}>Events</option>
-                                                        <option value="Training" {{ 'selected' if gallery_item and gallery_item[6] == 'Training' else '' }}>Training</option>
-                                                        <option value="Awareness" {{ 'selected' if gallery_item and gallery_item[6] == 'Awareness' else '' }}>Awareness</option>
-                                                        <option value="Success Stories" {{ 'selected' if gallery_item and gallery_item[6] == 'Success Stories' else '' }}>Success Stories</option>
+                                                    <select class="form-control" id="category" name="category" required>
+                                                        <option value="Images" {{ 'selected' if gallery_item and gallery_item[6] == 'Images' else '' }}>Images</option>
+                                                        <option value="Videos" {{ 'selected' if gallery_item and gallery_item[6] == 'Videos' else '' }}>Videos</option>
+                                                        <option value="Upcoming Events" {{ 'selected' if gallery_item and gallery_item[6] == 'Upcoming Events' else '' }}>Upcoming Events</option>
                                                     </select>
                                                 </div>
                                             </div>

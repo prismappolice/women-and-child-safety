@@ -1246,14 +1246,31 @@ def create_district_tables(cursor):
 
 @app.route('/gallery')
 def gallery():
-    # Get dynamic gallery items
+    # Get dynamic gallery items for 3 sections
     conn = sqlite3.connect('women_safety.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT title, description, image_url, event_date, category, is_featured FROM gallery_items WHERE is_active = 1 ORDER BY is_featured DESC, event_date DESC')
+    cursor.execute('''SELECT id, title, description, image_url, video_url, 
+                     category, event_date, is_featured, is_active 
+                     FROM gallery_items WHERE is_active = 1 
+                     ORDER BY category, is_featured DESC, event_date DESC''')
     gallery_items = cursor.fetchall()
     conn.close()
     
     return render_template('gallery.html', gallery_items=gallery_items)
+
+@app.route('/gallery-debug')
+def gallery_debug():
+    # Debug route to check gallery data
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    cursor.execute('''SELECT id, title, description, image_url, video_url, 
+                     category, event_date, is_featured, is_active 
+                     FROM gallery_items 
+                     ORDER BY id DESC''')
+    gallery_items = cursor.fetchall()
+    conn.close()
+    
+    return render_template('gallery_debug.html', gallery_items=gallery_items)
 
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
@@ -1275,40 +1292,37 @@ def admin_dashboard():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    # Get statistics for dashboard
+    # Get gallery statistics for dashboard
     conn = sqlite3.connect('women_safety.db')
     cursor = conn.cursor()
     
-    # Count volunteers
-    cursor.execute('SELECT COUNT(*) FROM volunteers')
-    volunteer_count = cursor.fetchone()[0]
+    # Count gallery items by category
+    cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE category = "Images" AND is_active = 1')
+    images_count = cursor.fetchone()[0]
     
-    # Count active safety tips
-    cursor.execute('SELECT COUNT(*) FROM safety_tips WHERE is_active = 1')
-    tips_count = cursor.fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE category = "Videos" AND is_active = 1')
+    videos_count = cursor.fetchone()[0]
     
-    # Count active PDF resources
-    cursor.execute('SELECT COUNT(*) FROM pdf_resources WHERE is_active = 1')
-    pdf_count = cursor.fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE category = "Upcoming Events" AND is_active = 1')
+    events_count = cursor.fetchone()[0]
     
-    # Count active initiatives
-    cursor.execute('SELECT COUNT(*) FROM initiatives WHERE is_active = 1')
-    initiatives_count = cursor.fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE is_active = 1')
+    total_gallery_count = cursor.fetchone()[0]
     
-    # Get recent volunteers
-    cursor.execute('SELECT full_name, email, phone, registration_date FROM volunteers ORDER BY registration_date DESC LIMIT 5')
-    recent_volunteers = cursor.fetchall()
+    # Get recent gallery items
+    cursor.execute('SELECT id, title, category, event_date, is_active FROM gallery_items ORDER BY id DESC LIMIT 5')
+    recent_gallery_items = cursor.fetchall()
     
     conn.close()
     
     stats = {
-        'volunteers': volunteer_count,
-        'tips': tips_count,
-        'pdfs': pdf_count,
-        'initiatives': initiatives_count
+        'images': images_count,
+        'videos': videos_count,
+        'events': events_count,
+        'total_gallery': total_gallery_count
     }
     
-    return render_template('admin_dashboard.html', stats=stats, recent_volunteers=recent_volunteers)
+    return render_template('admin_dashboard.html', stats=stats, recent_gallery_items=recent_gallery_items)
 
 # Admin Safety Tips Management
 @app.route('/admin-safety-tips')
@@ -1989,9 +2003,17 @@ def admin_gallery():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
+    category_filter = request.args.get('category', 'Images')  # Default to Images
+    
     conn = sqlite3.connect('women_safety.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, title, description, image_url, event_date, category, is_featured, is_active FROM gallery_items ORDER BY event_date DESC')
+    
+    if category_filter in ['Images', 'Videos', 'Upcoming Events']:
+        cursor.execute('SELECT id, title, description, image_url, event_date, category, is_featured, is_active FROM gallery_items WHERE category = ? ORDER BY event_date DESC', (category_filter,))
+    else:
+        # Fallback to Images if invalid category
+        cursor.execute('SELECT id, title, description, image_url, event_date, category, is_featured, is_active FROM gallery_items WHERE category = "Images" ORDER BY event_date DESC')
+    
     gallery_items = cursor.fetchall()
     conn.close()
     

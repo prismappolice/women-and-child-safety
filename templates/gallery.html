@@ -85,106 +85,306 @@
         
         <div class="intro-section">
             <p class="intro-text">
-                Explore our photo gallery showcasing various events, awareness programs, and community outreach activities 
-                conducted by the AP Women Safety Wing. These events demonstrate our commitment to women's safety and empowerment.
+                Explore our media gallery featuring images, videos, and upcoming events related to women's safety initiatives. 
+                Browse through our curated content showcasing the work of AP Women Safety Wing.
             </p>
         </div>
         
-        <div class="gallery-grid">
-            <div class="gallery-item">
-                <div class="gallery-image"><i class="fas fa-users"></i></div>
-                <div class="gallery-content">
-                    <h3 class="gallery-title">Self Defense Training Workshop</h3>
-                    <p class="gallery-date">December 15, 2024</p>
-                    <p class="gallery-description">Women from various communities participated in a comprehensive self-defense training program conducted by certified trainers.</p>
-                    <a href="#" class="view-btn">
-                        <i class="fas fa-eye"></i> View Photos
-                    </a>
+        <!-- 3 Dynamic Sections Gallery -->
+        
+        <!-- Section 1: Images -->
+        <div class="gallery-section">
+            <h2 class="section-title">
+                <i class="fas fa-images"></i> Images
+            </h2>
+            {% set image_items = gallery_items | selectattr('5', 'equalto', 'Images') | list %}
+            {% if image_items %}
+            <div class="gallery-grid">
+                {% for item in image_items[:3] %}
+                <div class="gallery-item">
+                    {% if item[3] %}
+                        <img src="{{ item[3] }}" alt="{{ item[1] }}" class="gallery-image" style="width: 100%; height: 250px; object-fit: cover;">
+                    {% else %}
+                        <div class="gallery-image">
+                            <i class="fas fa-image"></i>
+                        </div>
+                    {% endif %}
+                    <div class="gallery-content">
+                        <h3 class="gallery-title">{{ item[1] }}</h3>
+                        <p class="gallery-date">{{ item[6] if item[6] else 'Recent' }}</p>
+                        <p class="gallery-description">{{ item[2][:100] }}{% if item[2]|length > 100 %}...{% endif %}</p>
+                        <a href="{{ item[3] }}" target="_blank" class="view-btn">
+                            <i class="fas fa-eye"></i> View Image
+                        </a>
+                    </div>
                 </div>
+                {% endfor %}
+                
+                <!-- Hidden items for View More -->
+                {% for item in image_items[3:] %}
+                <div class="gallery-item hidden-item" style="display: none;">
+                    {% if item[3] %}
+                        <img src="{{ item[3] }}" alt="{{ item[1] }}" class="gallery-image" style="width: 100%; height: 250px; object-fit: cover;">
+                    {% else %}
+                        <div class="gallery-image">
+                            <i class="fas fa-image"></i>
+                        </div>
+                    {% endif %}
+                    <div class="gallery-content">
+                        <h3 class="gallery-title">{{ item[1] }}</h3>
+                        <p class="gallery-date">{{ item[6] if item[6] else 'Recent' }}</p>
+                        <p class="gallery-description">{{ item[2][:100] }}{% if item[2]|length > 100 %}...{% endif %}</p>
+                        <a href="{{ item[3] }}" target="_blank" class="view-btn">
+                            <i class="fas fa-eye"></i> View Image
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
             
-            <div class="gallery-item">
-                <div class="gallery-image"><i class="fas fa-graduation-cap"></i></div>
-                <div class="gallery-content">
-                    <h3 class="gallery-title">Legal Awareness Campaign</h3>
-                    <p class="gallery-date">December 10, 2024</p>
-                    <p class="gallery-description">A successful legal awareness program educating women about their rights and available legal protections.</p>
-                    <a href="#" class="view-btn">
-                        <i class="fas fa-eye"></i> View Photos
-                    </a>
+            {% if image_items|length > 3 %}
+            <div class="view-more-container" style="text-align: center; margin: 20px 0;">
+                <button class="view-more-btn" onclick="toggleViewMore(this, 'Images')"
+                        style="background: #27ae60; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em;">
+                    <i class="fas fa-plus"></i> View More ({{ image_items|length - 3 }} more images)
+                </button>
+            </div>
+            {% endif %}
+            {% else %}
+            <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+                <i class="fas fa-image" style="font-size: 3em; margin-bottom: 20px; opacity: 0.3;"></i>
+                <p>No images available. <a href="/admin-login" style="color: #3498db;">Login to admin</a> to add images.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Section 2: Videos -->
+        <div class="gallery-section" style="margin-top: 50px;">
+            <h2 class="section-title">
+                <i class="fas fa-video"></i> Videos
+            </h2>
+            {% set video_items = gallery_items | selectattr('5', 'equalto', 'Videos') | list %}
+            {% if video_items %}
+            <div class="gallery-grid">
+                {% for item in video_items[:3] %}
+                <div class="gallery-item">
+                    {% if item[3] %}
+                        <div class="gallery-image video-placeholder">
+                            <i class="fas fa-play-circle"></i>
+                            <span>Video</span>
+                        </div>
+                    {% else %}
+                        <div class="gallery-image">
+                            <i class="fas fa-video"></i>
+                        </div>
+                    {% endif %}
+                    <div class="gallery-content">
+                        <h3 class="gallery-title">{{ item[1] }}</h3>
+                        <p class="gallery-date">{{ item[6] if item[6] else 'Recent' }}</p>
+                        <p class="gallery-description">{{ item[2][:100] }}{% if item[2]|length > 100 %}...{% endif %}</p>
+                        {% if item[4] %}
+                            <a href="{{ item[4] }}" target="_blank" class="view-btn">
+                                <i class="fas fa-play"></i> Watch Video
+                            </a>
+                        {% else %}
+                            <a href="{{ item[3] }}" target="_blank" class="view-btn">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
+                {% endfor %}
+                
+                {% for item in video_items[3:] %}
+                <div class="gallery-item hidden-item" style="display: none;">
+                    {% if item[3] %}
+                        <div class="gallery-image video-placeholder">
+                            <i class="fas fa-play-circle"></i>
+                            <span>Video</span>
+                        </div>
+                    {% else %}
+                        <div class="gallery-image">
+                            <i class="fas fa-video"></i>
+                        </div>
+                    {% endif %}
+                    <div class="gallery-content">
+                        <h3 class="gallery-title">{{ item[1] }}</h3>
+                        <p class="gallery-date">{{ item[6] if item[6] else 'Recent' }}</p>
+                        <p class="gallery-description">{{ item[2][:100] }}{% if item[2]|length > 100 %}...{% endif %}</p>
+                        {% if item[4] %}
+                            <a href="{{ item[4] }}" target="_blank" class="view-btn">
+                                <i class="fas fa-play"></i> Watch Video
+                            </a>
+                        {% else %}
+                            <a href="{{ item[3] }}" target="_blank" class="view-btn">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
             </div>
             
-            <div class="gallery-item">
-                <div class="gallery-image"><i class="fas fa-laptop"></i></div>
-                <div class="gallery-content">
-                    <h3 class="gallery-title">Cyber Safety Seminar</h3>
-                    <p class="gallery-date">December 5, 2024</p>
-                    <p class="gallery-description">Educational seminar on cyber safety, online harassment prevention, and digital literacy for women and children.</p>
-                    <a href="#" class="view-btn">
-                        <i class="fas fa-eye"></i> View Photos
-                    </a>
+            {% if video_items|length > 3 %}
+            <div class="view-more-container" style="text-align: center; margin: 20px 0;">
+                <button class="view-more-btn" onclick="toggleViewMore(this, 'Videos')"
+                        style="background: #e74c3c; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em;">
+                    <i class="fas fa-plus"></i> View More ({{ video_items|length - 3 }} more videos)
+                </button>
+            </div>
+            {% endif %}
+            {% else %}
+            <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+                <i class="fas fa-video" style="font-size: 3em; margin-bottom: 20px; opacity: 0.3;"></i>
+                <p>No videos available. <a href="/admin-login" style="color: #3498db;">Login to admin</a> to add videos.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Section 3: Upcoming Events -->
+        <div class="gallery-section" style="margin-top: 50px;">
+            <h2 class="section-title">
+                <i class="fas fa-calendar-alt"></i> Upcoming Events
+            </h2>
+            {% set event_items = gallery_items | selectattr('5', 'equalto', 'Upcoming Events') | list %}
+            {% if event_items %}
+            <div class="gallery-grid">
+                {% for item in event_items[:3] %}
+                <div class="gallery-item">
+                    {% if item[3] %}
+                        {% if item[4] %}
+                            <div class="gallery-image video-placeholder">
+                                <i class="fas fa-play-circle"></i>
+                                <span>Event Video</span>
+                            </div>
+                        {% else %}
+                            <img src="{{ item[3] }}" alt="{{ item[1] }}" class="gallery-image" style="width: 100%; height: 250px; object-fit: cover;">
+                        {% endif %}
+                    {% else %}
+                        <div class="gallery-image">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                    {% endif %}
+                    <div class="gallery-content">
+                        <h3 class="gallery-title">{{ item[1] }}</h3>
+                        <p class="gallery-date">{{ item[6] if item[6] else 'Upcoming' }}</p>
+                        <p class="gallery-description">{{ item[2][:100] }}{% if item[2]|length > 100 %}...{% endif %}</p>
+                        {% if item[4] %}
+                            <a href="{{ item[4] }}" target="_blank" class="view-btn">
+                                <i class="fas fa-play"></i> Watch Video
+                            </a>
+                        {% else %}
+                            <a href="{{ item[3] }}" target="_blank" class="view-btn">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
+                {% endfor %}
+                
+                {% for item in event_items[3:] %}
+                <div class="gallery-item hidden-item" style="display: none;">
+                    {% if item[3] %}
+                        {% if item[4] %}
+                            <div class="gallery-image video-placeholder">
+                                <i class="fas fa-play-circle"></i>
+                                <span>Event Video</span>
+                            </div>
+                        {% else %}
+                            <img src="{{ item[3] }}" alt="{{ item[1] }}" class="gallery-image" style="width: 100%; height: 250px; object-fit: cover;">
+                        {% endif %}
+                    {% else %}
+                        <div class="gallery-image">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                    {% endif %}
+                    <div class="gallery-content">
+                        <h3 class="gallery-title">{{ item[1] }}</h3>
+                        <p class="gallery-date">{{ item[6] if item[6] else 'Upcoming' }}</p>
+                        <p class="gallery-description">{{ item[2][:100] }}{% if item[2]|length > 100 %}...{% endif %}</p>
+                        {% if item[4] %}
+                            <a href="{{ item[4] }}" target="_blank" class="view-btn">
+                                <i class="fas fa-play"></i> Watch Video
+                            </a>
+                        {% else %}
+                            <a href="{{ item[3] }}" target="_blank" class="view-btn">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
             </div>
             
-            <div class="gallery-item">
-                <div class="gallery-image"><i class="fas fa-heart"></i></div>
-                <div class="gallery-content">
-                    <h3 class="gallery-title">Community Outreach Program</h3>
-                    <p class="gallery-date">November 28, 2024</p>
-                    <p class="gallery-description">Reaching out to rural communities to spread awareness about women's safety initiatives and available support services.</p>
-                    <a href="#" class="view-btn">
-                        <i class="fas fa-eye"></i> View Photos
-                    </a>
-                </div>
+            {% if event_items|length > 3 %}
+            <div class="view-more-container" style="text-align: center; margin: 20px 0;">
+                <button class="view-more-btn" onclick="toggleViewMore(this, 'Upcoming Events')"
+                        style="background: #3498db; color: white; padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em;">
+                    <i class="fas fa-plus"></i> View More ({{ event_items|length - 3 }} more events)
+                </button>
             </div>
-            
-            <div class="gallery-item">
-                <div class="gallery-image"><i class="fas fa-shield-alt"></i></div>
-                <div class="gallery-content">
-                    <h3 class="gallery-title">Safety Equipment Distribution</h3>
-                    <p class="gallery-date">November 20, 2024</p>
-                    <p class="gallery-description">Distribution of safety equipment including pepper sprays, emergency whistles, and safety apps to women in vulnerable areas.</p>
-                    <a href="#" class="view-btn">
-                        <i class="fas fa-eye"></i> View Photos
-                    </a>
-                </div>
+            {% endif %}
+            {% else %}
+            <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+                <i class="fas fa-calendar-alt" style="font-size: 3em; margin-bottom: 20px; opacity: 0.3;"></i>
+                <p>No upcoming events available. <a href="/admin-login" style="color: #3498db;">Login to admin</a> to add events.</p>
             </div>
-            
-            <div class="gallery-item">
-                <div class="gallery-image"><i class="fas fa-hands-helping"></i></div>
-                <div class="gallery-content">
-                    <h3 class="gallery-title">Volunteer Training Program</h3>
-                    <p class="gallery-date">November 15, 2024</p>
-                    <p class="gallery-description">Training session for new volunteers joining our mission to create safer communities for women across Andhra Pradesh.</p>
-                    <a href="#" class="view-btn">
-                        <i class="fas fa-eye"></i> View Photos
-                    </a>
-                </div>
-            </div>
+            {% endif %}
         </div>
         
-        <div class="events-section">
-            <h2 class="section-title">Upcoming Events</h2>
+        <!-- JavaScript for View More functionality -->
+        <script>
+        function toggleViewMore(button, category) {
+            const section = button.closest('.gallery-section');
+            const hiddenItems = section.querySelectorAll('.hidden-item');
+            const isExpanded = button.textContent.includes('View Less');
             
-            <div class="event-item">
-                <h3 class="event-title">International Women's Day Celebration</h3>
-                <p class="event-date">March 8, 2025</p>
-                <p class="event-description">Join us for a special celebration honoring women's achievements and promoting gender equality. The event will feature inspiring speakers, cultural programs, and recognition of outstanding women leaders.</p>
-            </div>
-            
-            <div class="event-item">
-                <h3 class="event-title">Monthly Safety Workshop</h3>
-                <p class="event-date">January 15, 2025</p>
-                <p class="event-description">Monthly safety workshop covering personal safety, emergency response, and self-defense techniques. Open to all women aged 16 and above.</p>
-            </div>
-            
-            <div class="event-item">
-                <h3 class="event-title">Cyber Security Awareness Week</h3>
-                <p class="event-date">February 10-17, 2025</p>
-                <p class="event-description">A week-long program focusing on digital safety, online privacy, and protection against cyber crimes. Special sessions for students and working professionals.</p>
-            </div>
-        </div>
+            if (isExpanded) {
+                // Hide items
+                hiddenItems.forEach(item => {
+                    item.style.display = 'none';
+                });
+                const itemType = category === 'Images' ? 'images' : category === 'Videos' ? 'videos' : 'events';
+                button.innerHTML = `<i class="fas fa-plus"></i> View More (${hiddenItems.length} more ${itemType})`;
+            } else {
+                // Show items
+                hiddenItems.forEach(item => {
+                    item.style.display = 'block';
+                });
+                button.innerHTML = `<i class="fas fa-minus"></i> View Less`;
+            }
+        }
+        </script>
+
+        <!-- Additional CSS for video placeholder -->
+        <style>
+        .video-placeholder {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 2em;
+            height: 250px;
+        }
+        .video-placeholder span {
+            font-size: 0.6em;
+            margin-top: 10px;
+        }
+        .gallery-section {
+            margin-bottom: 50px;
+        }
+        .section-title {
+            font-size: 2em;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        </style>
+        
     </div>
     
     <div class="footer">

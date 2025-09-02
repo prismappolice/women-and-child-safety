@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gallery Debug</title>
+</head>
+<body>
+    <h1>Gallery Items Debug</h1>
+    
+    <h2>Total Items: {{ gallery_items|length }}</h2>
+    
+    <h3>All Gallery Items:</h3>
+    <ol>
+    {% for item in gallery_items %}
+        <li>
+            <strong>ID:</strong> {{ item[0] }}<br>
+            <strong>Title:</strong> {{ item[1] }}<br>
+            <strong>Description:</strong> {{ item[2] }}<br>
+            <strong>Image URL:</strong> {{ item[3] }}<br>
+            <strong>Video URL:</strong> {{ item[4] }}<br>
+            <strong>Category:</strong> {{ item[5] }}<br>
+            <strong>Event Date:</strong> {{ item[6] }}<br>
+            <strong>Is Featured:</strong> {{ item[7] }}<br>
+            <strong>Is Active:</strong> {{ item[8] }}<br>
+            <hr>
+        </li>
+    {% endfor %}
+    </ol>
+    
+    <h3>Images Category Filter:</h3>
+    {% set image_items = gallery_items | selectattr('5', 'equalto', 'Images') | list %}
+    <p>Found {{ image_items|length }} images</p>
+    
+    <h3>Videos Category Filter:</h3>
+    {% set video_items = gallery_items | selectattr('5', 'equalto', 'Videos') | list %}
+    <p>Found {{ video_items|length }} videos</p>
+    
+    <h3>Events Category Filter:</h3>
+    {% set event_items = gallery_items | selectattr('5', 'equalto', 'Upcoming Events') | list %}
+    <p>Found {{ event_items|length }} events</p>
+    
+</body>
+</html>

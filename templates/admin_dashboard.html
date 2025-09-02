@@ -49,6 +49,29 @@
         .quick-action:hover { transform: translateY(-5px); color: #fff; }
         .quick-action i { font-size: 2em; margin-bottom: 15px; display: block; }
         
+        .category-badge { 
+            background: #3498db; 
+            color: #fff; 
+            padding: 4px 8px; 
+            border-radius: 12px; 
+            font-size: 0.8em; 
+            font-weight: bold; 
+        }
+        .status-badge { 
+            padding: 4px 8px; 
+            border-radius: 12px; 
+            font-size: 0.8em; 
+            font-weight: bold; 
+        }
+        .status-active { 
+            background: #d4edda; 
+            color: #155724; 
+        }
+        .status-inactive { 
+            background: #f8d7da; 
+            color: #721c24; 
+        }
+        
         @media (max-width: 768px) {
             .header { padding: 10px 20px; flex-direction: column; gap: 20px; }
             .container { padding: 0 10px; }
@@ -67,159 +90,135 @@
     </div>
     
     <div class="container">
-        <h1 class="dashboard-title">Women Safety Wing Dashboard</h1>
+        <h1 class="dashboard-title">Admin Dashboard - Gallery Management</h1>
         
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-icon volunteers"><i class="fas fa-users"></i></div>
-                <div class="stat-number">{{ stats.volunteers }}</div>
-                <div class="stat-label">Registered Volunteers</div>
+                <div class="stat-icon volunteers"><i class="fas fa-images"></i></div>
+                <div class="stat-number">{{ stats.images or 0 }}</div>
+                <div class="stat-label">Images</div>
             </div>
             
             <div class="stat-card">
-                <div class="stat-icon events"><i class="fas fa-shield-alt"></i></div>
-                <div class="stat-number">{{ stats.tips }}</div>
-                <div class="stat-label">Safety Tips</div>
+                <div class="stat-icon events"><i class="fas fa-video"></i></div>
+                <div class="stat-number">{{ stats.videos or 0 }}</div>
+                <div class="stat-label">Videos</div>
             </div>
             
             <div class="stat-card">
-                <div class="stat-icon resources"><i class="fas fa-file-pdf"></i></div>
-                <div class="stat-number">{{ stats.pdfs }}</div>
-                <div class="stat-label">PDF Resources</div>
+                <div class="stat-icon resources"><i class="fas fa-calendar-alt"></i></div>
+                <div class="stat-number">{{ stats.events or 0 }}</div>
+                <div class="stat-label">Upcoming Events</div>
             </div>
             
             <div class="stat-card">
-                <div class="stat-icon contacts"><i class="fas fa-hands-helping"></i></div>
-                <div class="stat-number">{{ stats.initiatives }}</div>
-                <div class="stat-label">Active Initiatives</div>
+                <div class="stat-icon contacts"><i class="fas fa-th"></i></div>
+                <div class="stat-number">{{ stats.total_gallery or 0 }}</div>
+                <div class="stat-label">Total Gallery Items</div>
             </div>
         </div>
         
         <div class="section">
             <h2 class="section-title">
                 <i class="fas fa-cogs"></i>
-                Quick Actions
+                Gallery Management - Quick Actions
             </h2>
             <div class="quick-actions">
-                <a href="/admin-safety-tips" class="quick-action">
-                    <i class="fas fa-shield-alt"></i>
-                    Safety Tips
-                </a>
-                <a href="/admin-pdf-resources" class="quick-action">
-                    <i class="fas fa-file-pdf"></i>
-                    PDF Resources
-                </a>
-                <a href="/admin/volunteers" class="quick-action">
-                    <i class="fas fa-users"></i>
-                    Volunteers
-                </a>
-                <a href="/admin/initiatives" class="quick-action">
-                    <i class="fas fa-hands-helping"></i>
-                    Initiatives
-                </a>
-                <a href="/admin/officers" class="quick-action">
-                    <i class="fas fa-user-tie"></i>
-                    Officers
-                </a>
-                <a href="/admin/success-stories" class="quick-action">
-                    <i class="fas fa-trophy"></i>
-                    Success Stories
-                </a>
-                <a href="/admin/home" class="quick-action">
-                    <i class="fas fa-home"></i>
-                    Home Content
-                </a>
-                <a href="/admin/about" class="quick-action">
-                    <i class="fas fa-info-circle"></i>
-                    About Content
-                </a>
-                <a href="/admin/contact" class="quick-action">
-                    <i class="fas fa-address-book"></i>
-                    Contact Info
-                </a>
-                <a href="/admin/district-contacts" class="quick-action">
-                    <i class="fas fa-map-marked-alt"></i>
-                    District Contacts
-                </a>
-                <a href="/admin/gallery" class="quick-action">
+                <a href="/admin/gallery?category=Images" class="quick-action">
                     <i class="fas fa-images"></i>
-                    Gallery
+                    Manage Gallery
+                    <small style="display: block; font-size: 0.8em; margin-top: 5px;">Images, Videos & Events</small>
+                </a>
+                <a href="/admin/gallery?category=Images" class="quick-action">
+                    <i class="fas fa-image"></i>
+                    Images
+                </a>
+                <a href="/admin/gallery?category=Videos" class="quick-action">
+                    <i class="fas fa-video"></i>
+                    Videos
+                </a>
+                <a href="/admin/gallery?category=Upcoming Events" class="quick-action">
+                    <i class="fas fa-calendar-alt"></i>
+                    Upcoming Events
+                </a>
+            </div>
+        </div>
+        
+        <!-- Other Admin Functions (Preserved but secondary) -->
+        <div class="section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; box-shadow: 0 10px 30px rgba(102,126,234,0.3);">
+            <h2 class="section-title" style="color: white; border-bottom: 2px solid rgba(255,255,255,0.3); padding-bottom: 15px;">
+                <i class="fas fa-tools"></i>
+                Other Admin Functions (All Data Preserved)
+            </h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; padding: 10px 0;">
+                <a href="/admin-safety-tips" style="color: white; text-decoration: none; padding: 20px 15px; background: linear-gradient(45deg, #ff6b6b, #ee5a52); border-radius: 12px; text-align: center; font-size: 0.9em; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(255,107,107,0.3); border: 2px solid transparent;" onmouseover="this.style.transform='translateY(-8px) scale(1.05)'; this.style.boxShadow='0 12px 30px rgba(255,107,107,0.5)'; this.style.border='2px solid rgba(255,255,255,0.3)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 20px rgba(255,107,107,0.3)'; this.style.border='2px solid transparent'">
+                    <i class="fas fa-shield-alt" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>Safety Tips
+                </a>
+                <a href="/admin-pdf-resources" style="color: white; text-decoration: none; padding: 20px 15px; background: linear-gradient(45deg, #4ecdc4, #44a08d); border-radius: 12px; text-align: center; font-size: 0.9em; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(78,205,196,0.3); border: 2px solid transparent;" onmouseover="this.style.transform='translateY(-8px) scale(1.05)'; this.style.boxShadow='0 12px 30px rgba(78,205,196,0.5)'; this.style.border='2px solid rgba(255,255,255,0.3)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 20px rgba(78,205,196,0.3)'; this.style.border='2px solid transparent'">
+                    <i class="fas fa-file-pdf" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>PDF Resources
+                </a>
+                <a href="/admin/volunteers" style="color: white; text-decoration: none; padding: 20px 15px; background: linear-gradient(45deg, #45b7d1, #96c93d); border-radius: 12px; text-align: center; font-size: 0.9em; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(69,183,209,0.3); border: 2px solid transparent;" onmouseover="this.style.transform='translateY(-8px) scale(1.05)'; this.style.boxShadow='0 12px 30px rgba(69,183,209,0.5)'; this.style.border='2px solid rgba(255,255,255,0.3)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 20px rgba(69,183,209,0.3)'; this.style.border='2px solid transparent'">
+                    <i class="fas fa-users" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>Volunteers
+                </a>
+                <a href="/admin/initiatives" style="color: white; text-decoration: none; padding: 20px 15px; background: linear-gradient(45deg, #f093fb, #f5576c); border-radius: 12px; text-align: center; font-size: 0.9em; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(240,147,251,0.3); border: 2px solid transparent;" onmouseover="this.style.transform='translateY(-8px) scale(1.05)'; this.style.boxShadow='0 12px 30px rgba(240,147,251,0.5)'; this.style.border='2px solid rgba(255,255,255,0.3)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 20px rgba(240,147,251,0.3)'; this.style.border='2px solid transparent'">
+                    <i class="fas fa-hands-helping" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>Initiatives
+                </a>
+                <a href="/admin/officers" style="color: white; text-decoration: none; padding: 20px 15px; background: linear-gradient(45deg, #ffecd2, #fcb69f); border-radius: 12px; text-align: center; font-size: 0.9em; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(255,236,210,0.3); border: 2px solid transparent;" onmouseover="this.style.transform='translateY(-8px) scale(1.05)'; this.style.boxShadow='0 12px 30px rgba(255,236,210,0.5)'; this.style.border='2px solid rgba(255,255,255,0.3)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 20px rgba(255,236,210,0.3)'; this.style.border='2px solid transparent'">
+                    <i class="fas fa-user-tie" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>Officers
+                </a>
+                <a href="/admin/success-stories" style="color: white; text-decoration: none; padding: 20px 15px; background: linear-gradient(45deg, #a8edea, #fed6e3); border-radius: 12px; text-align: center; font-size: 0.9em; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(168,237,234,0.3); border: 2px solid transparent;" onmouseover="this.style.transform='translateY(-8px) scale(1.05)'; this.style.boxShadow='0 12px 30px rgba(168,237,234,0.5)'; this.style.border='2px solid rgba(255,255,255,0.3)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 20px rgba(168,237,234,0.3)'; this.style.border='2px solid transparent'">
+                    <i class="fas fa-trophy" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>Success Stories
+                </a>
+                <a href="/admin/home" style="color: white; text-decoration: none; padding: 20px 15px; background: linear-gradient(45deg, #667eea, #764ba2); border-radius: 12px; text-align: center; font-size: 0.9em; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(102,126,234,0.3); border: 2px solid transparent;" onmouseover="this.style.transform='translateY(-8px) scale(1.05)'; this.style.boxShadow='0 12px 30px rgba(102,126,234,0.5)'; this.style.border='2px solid rgba(255,255,255,0.3)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 20px rgba(102,126,234,0.3)'; this.style.border='2px solid transparent'">
+                    <i class="fas fa-home" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>Home Content
+                </a>
+                <a href="/admin/about" style="color: white; text-decoration: none; padding: 20px 15px; background: linear-gradient(45deg, #ff9a9e, #fecfef); border-radius: 12px; text-align: center; font-size: 0.9em; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(255,154,158,0.3); border: 2px solid transparent;" onmouseover="this.style.transform='translateY(-8px) scale(1.05)'; this.style.boxShadow='0 12px 30px rgba(255,154,158,0.5)'; this.style.border='2px solid rgba(255,255,255,0.3)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 20px rgba(255,154,158,0.3)'; this.style.border='2px solid transparent'">
+                    <i class="fas fa-info-circle" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>About Content
+                </a>
+                <a href="/admin/contact" style="color: white; text-decoration: none; padding: 20px 15px; background: linear-gradient(45deg, #84fab0, #8fd3f4); border-radius: 12px; text-align: center; font-size: 0.9em; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(132,250,176,0.3); border: 2px solid transparent;" onmouseover="this.style.transform='translateY(-8px) scale(1.05)'; this.style.boxShadow='0 12px 30px rgba(132,250,176,0.5)'; this.style.border='2px solid rgba(255,255,255,0.3)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 20px rgba(132,250,176,0.3)'; this.style.border='2px solid transparent'">
+                    <i class="fas fa-address-book" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>Contact Info
                 </a>
             </div>
         </div>
         
         <div class="section">
             <h2 class="section-title">
-                <i class="fas fa-users"></i>
-                Recent Volunteer Registrations
+                <i class="fas fa-images"></i>
+                Recent Gallery Items
             </h2>
             <div style="overflow-x: auto;">
                 <table class="volunteers-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Registration Date</th>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Date Added</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>Priya Sharma</td>
-                            <td>priya.sharma@email.com</td>
-                            <td>+91 9876543210</td>
-                            <td>Dec 20, 2024</td>
-                            <td class="action-btns">
-                                <a href="#" class="btn btn-view">View</a>
-                                <a href="#" class="btn btn-edit">Edit</a>
-                                <a href="#" class="btn btn-delete">Delete</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Lakshmi Reddy</td>
-                            <td>lakshmi.reddy@email.com</td>
-                            <td>+91 9876543211</td>
-                            <td>Dec 19, 2024</td>
-                            <td class="action-btns">
-                                <a href="#" class="btn btn-view">View</a>
-                                <a href="#" class="btn btn-edit">Edit</a>
-                                <a href="#" class="btn btn-delete">Delete</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Anjali Krishna</td>
-                            <td>anjali.krishna@email.com</td>
-                            <td>+91 9876543212</td>
-                            <td>Dec 18, 2024</td>
-                            <td class="action-btns">
-                                <a href="#" class="btn btn-view">View</a>
-                                <a href="#" class="btn btn-edit">Edit</a>
-                                <a href="#" class="btn btn-delete">Delete</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Meera Patel</td>
-                            <td>meera.patel@email.com</td>
-                            <td>+91 9876543213</td>
-                            <td>Dec 17, 2024</td>
-                            <td class="action-btns">
-                                <a href="#" class="btn btn-view">View</a>
-                                <a href="#" class="btn btn-edit">Edit</a>
-                                <a href="#" class="btn btn-delete">Delete</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Divya Nair</td>
-                            <td>divya.nair@email.com</td>
-                            <td>+91 9876543214</td>
-                            <td>Dec 16, 2024</td>
-                            <td class="action-btns">
-                                <a href="#" class="btn btn-view">View</a>
-                                <a href="#" class="btn btn-edit">Edit</a>
-                                <a href="#" class="btn btn-delete">Delete</a>
-                            </td>
-                        </tr>
+                        {% if recent_gallery_items %}
+                            {% for item in recent_gallery_items %}
+                            <tr>
+                                <td>{{ item[1] }}</td>
+                                <td><span class="category-badge">{{ item[2] }}</span></td>
+                                <td>{{ item[3] if item[3] else 'Recent' }}</td>
+                                <td><span class="status-badge {{ 'status-active' if item[4] else 'status-inactive' }}">{{ 'Active' if item[4] else 'Inactive' }}</span></td>
+                                <td class="action-btns">
+                                    <a href="{{ url_for('admin_edit_gallery_item', item_id=item[0]) }}" class="btn btn-edit">Edit</a>
+                                    <form style="display: inline;" method="POST" action="{{ url_for('admin_delete_gallery_item', item_id=item[0]) }}"
+                                          onsubmit="return confirm('Are you sure?')">
+                                        <button type="submit" class="btn btn-delete">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #7f8c8d;">No gallery items found. <a href="{{ url_for('admin_add_gallery_item') }}">Add your first item</a></td>
+                            </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
@@ -228,14 +227,14 @@
         <div class="section">
             <h2 class="section-title">
                 <i class="fas fa-chart-line"></i>
-                Recent Activity
+                Gallery Activity
             </h2>
             <div style="color: #7f8c8d; line-height: 2;">
-                <p><i class="fas fa-user-plus" style="color: #3498db;"></i> 5 new volunteers registered today</p>
-                <p><i class="fas fa-calendar" style="color: #e74c3c;"></i> Self Defense Workshop scheduled for tomorrow</p>
-                <p><i class="fas fa-file-pdf" style="color: #27ae60;"></i> New safety guidelines PDF uploaded</p>
-                <p><i class="fas fa-phone" style="color: #f39c12;"></i> 23 helpline calls received today</p>
-                <p><i class="fas fa-envelope" style="color: #9b59b6;"></i> Newsletter sent to 1,247 subscribers</p>
+                <p><i class="fas fa-plus" style="color: #3498db;"></i> Ready to add new images, videos, or upcoming events</p>
+                <p><i class="fas fa-images" style="color: #27ae60;"></i> Manage your media gallery with easy upload</p>
+                <p><i class="fas fa-video" style="color: #e74c3c;"></i> Upload and organize video content</p>
+                <p><i class="fas fa-calendar-alt" style="color: #f39c12;"></i> Schedule and manage upcoming events</p>
+                <p><i class="fas fa-edit" style="color: #9b59b6;"></i> Edit gallery items anytime with simple interface</p>
             </div>
         </div>
     </div>
