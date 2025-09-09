@@ -10,13 +10,14 @@ import re
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
 
-# Email Configuration
+# Email Configuration - Using personal email for testing (change to department email later)
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'womensafety@appolice.gov.in'  # To be configured with real credentials
-app.config['MAIL_PASSWORD'] = 'your-email-password'  # To be configured
-app.config['MAIL_DEFAULT_SENDER'] = 'womensafety@appolice.gov.in'
+app.config['MAIL_USERNAME'] = 'your.personal@gmail.com'  # Replace with your personal Gmail
+app.config['MAIL_PASSWORD'] = 'your-app-password'        # Replace with your Gmail app password
+app.config['MAIL_DEFAULT_SENDER'] = 'your.personal@gmail.com'  # Same as MAIL_USERNAME
+ADMIN_EMAIL = 'your.personal@gmail.com'  # Admin email to receive notifications
 
 mail = Mail(app)
 
@@ -181,16 +182,11 @@ def init_db():
         )
     ''')
     
-    # Create volunteer_scores table for automatic scoring
+    # Create volunteer status table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS volunteer_scores (
+        CREATE TABLE IF NOT EXISTS volunteer_status (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             volunteer_id INTEGER UNIQUE,
-            age_score INTEGER DEFAULT 0,
-            education_score INTEGER DEFAULT 0,
-            motivation_score INTEGER DEFAULT 0,
-            skills_score INTEGER DEFAULT 0,
-            total_score INTEGER DEFAULT 0,
             status TEXT DEFAULT 'pending',
             admin_notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -215,207 +211,23 @@ def init_db():
 # Initialize database when app starts
 init_db()
 
-# Email and Scoring Functions
-def calculate_age_score(age_str):
-    """Calculate score based on age (0-25 points)"""
+# Email Functions
+def log_email_notification(volunteer_id, subject, body):
+    """Log email notifications in database"""
     try:
-        age = int(age_str)
-        if 18 <= age <= 25:
-            return 25
-        elif 26 <= age <= 35:
-            return 20
-        elif 36 <= age <= 45:
-            return 15
-        elif 46 <= age <= 55:
-            return 10
-        else:
-            return 5
-    except:
-        return 0
-
-def calculate_education_score(education):
-    """Calculate score based on education level (0-25 points)"""
-    education = education.lower()
-    if any(word in education for word in ['phd', 'doctorate', 'post graduate', 'masters', 'mba']):
-        return 25
-    elif any(word in education for word in ['graduate', 'bachelor', 'degree', 'b.tech', 'b.sc', 'b.com']):
-        return 20
-    elif any(word in education for word in ['diploma', 'intermediate', '12th', 'plus two']):
-        return 15
-    elif any(word in education for word in ['10th', 'ssc', 'high school']):
-        return 10
-    else:
-        return 5
-
-def calculate_motivation_score(motivation):
-    """Calculate score based on motivation quality (0-25 points)"""
-    if not motivation:
-        return 0
-    
-    motivation = motivation.lower()
-    positive_keywords = ['help', 'support', 'community', 'safety', 'women', 'service', 'contribute', 
-                        'volunteer', 'society', 'make difference', 'social', 'empower', 'protect']
-    
-    word_count = len(motivation.split())
-    keyword_matches = sum(1 for keyword in positive_keywords if keyword in motivation)
-    
-    score = 0
-    # Length bonus (up to 10 points)
-    if word_count >= 50:
-        score += 10
-    elif word_count >= 30:
-        score += 8
-    elif word_count >= 20:
-        score += 6
-    elif word_count >= 10:
-        score += 4
-    
-    # Keyword matches (up to 15 points)
-    score += min(keyword_matches * 2, 15)
-    
-    return min(score, 25)
-
-def calculate_skills_score(skills):
-    """Calculate score based on relevant skills (0-25 points)"""
-    if not skills:
-        return 0
-    
-    skills = skills.lower()
-    relevant_skills = ['communication', 'counseling', 'first aid', 'computer', 'teaching', 
-                      'social work', 'psychology', 'law', 'legal', 'management', 'leadership',
-                      'public speaking', 'training', 'organizing', 'coordination']
-    
-    matches = sum(1 for skill in relevant_skills if skill in skills)
-    return min(matches * 3, 25)
-
-def send_volunteer_email(volunteer_data, email_type='confirmation'):
-    """Send email to volunteer with automatic scoring"""
-    try:
-        # Calculate scores
-        age_score = calculate_age_score(volunteer_data.get('age', '0'))
-        education_score = calculate_education_score(volunteer_data.get('education', ''))
-        motivation_score = calculate_motivation_score(volunteer_data.get('motivation', ''))
-        skills_score = calculate_skills_score(volunteer_data.get('skills', ''))
-        total_score = age_score + education_score + motivation_score + skills_score
-        
-        # Store scores in database
         conn = sqlite3.connect('women_safety.db')
         cursor = conn.cursor()
         
         cursor.execute('''
-            INSERT OR REPLACE INTO volunteer_scores 
-            (volunteer_id, age_score, education_score, motivation_score, skills_score, total_score, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (volunteer_data['id'], age_score, education_score, motivation_score, skills_score, total_score, 'scored'))
-        
-        # Prepare email content based on score
-        if total_score >= 75:
-            status = 'high_priority'
-            subject = "Thank You for Your Interest - High Priority Application"
-            body = f"""Dear {volunteer_data['name']},
-
-Thank you for your interest in volunteering with AP Police Women and Child Safety Wing.
-
-We are pleased to inform you that your application has been received and scored highly based on your qualifications and motivation. Our team will prioritize reviewing your application.
-
-Your Application Score: {total_score}/100
-- Age Suitability: {age_score}/25
-- Educational Background: {education_score}/25
-- Motivation Quality: {motivation_score}/25
-- Relevant Skills: {skills_score}/25
-
-We will contact you within 2-3 business days to discuss next steps.
-
-Best regards,
-AP Police Women and Child Safety Wing
-Email: womensafety@appolice.gov.in"""
-            
-        elif total_score >= 50:
-            status = 'medium_priority'
-            subject = "Thank You for Your Interest - Application Under Review"
-            body = f"""Dear {volunteer_data['name']},
-
-Thank you for your interest in volunteering with AP Police Women and Child Safety Wing.
-
-Your application has been received and is currently under review by our team.
-
-Your Application Score: {total_score}/100
-- Age Suitability: {age_score}/25
-- Educational Background: {education_score}/25
-- Motivation Quality: {motivation_score}/25
-- Relevant Skills: {skills_score}/25
-
-We will contact you within 5-7 business days regarding your application status.
-
-Best regards,
-AP Police Women and Child Safety Wing
-Email: womensafety@appolice.gov.in"""
-            
-        else:
-            status = 'needs_review'
-            subject = "Thank You for Your Interest - Additional Information Required"
-            body = f"""Dear {volunteer_data['name']},
-
-Thank you for your interest in volunteering with AP Police Women and Child Safety Wing.
-
-We have received your application. To better assess your suitability, we may need additional information from you.
-
-Your Application Score: {total_score}/100
-
-Our team will review your application and contact you if we need more details.
-
-Best regards,
-AP Police Women and Child Safety Wing
-Email: womensafety@appolice.gov.in"""
-        
-        # Send email to volunteer
-        msg = Message(subject=subject,
-                     recipients=[volunteer_data['email']],
-                     body=body)
-        mail.send(msg)
-        
-        # Send notification to admin
-        admin_subject = f"New Volunteer Application - Score: {total_score}/100"
-        admin_body = f"""New volunteer application received:
-
-Name: {volunteer_data['name']}
-Email: {volunteer_data['email']}
-Phone: {volunteer_data['phone']}
-Total Score: {total_score}/100
-Priority: {status.replace('_', ' ').title()}
-
-Score Breakdown:
-- Age Score: {age_score}/25
-- Education Score: {education_score}/25
-- Motivation Score: {motivation_score}/25
-- Skills Score: {skills_score}/25
-
-Please review the application in the admin dashboard.
-"""
-        
-        admin_msg = Message(subject=admin_subject,
-                           recipients=['womensafety@appolice.gov.in'],
-                           body=admin_body)
-        mail.send(admin_msg)
-        
-        # Log email notifications
-        cursor.execute('''
             INSERT INTO email_notifications (volunteer_id, email_type, subject, body, status)
             VALUES (?, ?, ?, ?, ?)
-        ''', (volunteer_data['id'], email_type, subject, body, 'sent'))
-        
-        cursor.execute('''
-            INSERT INTO email_notifications (volunteer_id, email_type, subject, body, status)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (volunteer_data['id'], 'admin_notification', admin_subject, admin_body, 'sent'))
+        ''', (volunteer_id, 'admin_notification', subject, body, 'sent'))
         
         conn.commit()
         conn.close()
-        
         return True
-        
     except Exception as e:
-        print(f"Email sending failed: {str(e)}")
+        print(f"Failed to log email notification: {str(e)}")
         return False
 
 @app.route('/')
@@ -604,41 +416,50 @@ def volunteer_registration():
             conn.commit()
             
             # Send notification email to admin
-            admin_subject = "New Volunteer Registration"
-            admin_body = f"""New volunteer registration received:
+            admin_subject = "New Volunteer Application Received"
+            admin_body = f"""A new volunteer application has been received:
 
+Applicant Details:
+-----------------
 Name: {name}
-Email: {email}
-Phone: {phone}
 Age: {age}
+Phone: {phone}
+Email: {email}
+Address: {address}
+
+Professional Background:
+---------------------
 Occupation: {occupation}
 Education: {education}
+Experience: {experience}
+
+Skills & Availability:
+-------------------
+Skills: {skills}
+Availability: {availability}
+
+Motivation:
+----------
+{motivation}
 
 Please review this application in the admin dashboard."""
 
             try:
                 msg = Message(subject=admin_subject,
-                            recipients=['womensafety@appolice.gov.in'],
+                            recipients=[ADMIN_EMAIL],
                             body=admin_body)
                 mail.send(msg)
-            except:
-                # Don't let email failures stop the registration process
-                print("Warning: Failed to send admin notification email")
-
-            # Insert initial status into volunteer_scores
-            cursor.execute('''
-                INSERT INTO volunteer_scores (volunteer_id, status, admin_notes)
-                VALUES (?, 'pending', 'New registration awaiting review')
-            ''', (volunteer_id,))
+            except Exception as e:
+                # Log email failure but continue with registration
+                print(f"Warning: Failed to send admin notification email: {str(e)}")
             
-            conn.commit()
             conn.close()
             
-            # Clear any existing messages before showing success
+            # Show success message to user
             session.pop('_flashes', None)
-            flash('Thank you for registering! Your application has been submitted and is awaiting review. We will contact you soon.', 'success')
+            flash('Thank you for registering! Your application has been submitted successfully.', 'success')
             
-            # Redirect to a success page instead of the registration form
+            # Redirect to success page
             return render_template('volunteer_success.html')
             
         except Exception as e:
@@ -2571,7 +2392,7 @@ def admin_volunteers():
         # Try new structure first
         cursor.execute('''
             SELECT v.id, v.name, v.email, v.phone, v.age, v.address, v.education, v.occupation, 
-                   v.motivation, v.skills, v.created_at,
+                   v.motivation, v.skills, datetime(v.created_at, 'localtime') as created_at,
                    vs.age_score, vs.education_score, vs.motivation_score, vs.skills_score, 
                    vs.total_score, vs.status, vs.admin_notes
             FROM volunteers v
