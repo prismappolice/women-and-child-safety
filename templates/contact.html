@@ -140,16 +140,69 @@
                 </div>
             </div>
             
-            <div class="contact-card">
+            <div class="contact-card" style="grid-column: span 2; max-width: none;">
                 <div class="contact-icon"><i class="fas fa-map-marker-alt"></i></div>
                 <h3 class="contact-title">Head Office</h3>
-                <div class="contact-info">
-                    <p><strong>Address:</strong><br>
-                    AP Police Women & Child Safety Wing<br>
-                    Police Headquarters,<br>
-                    Mangalagiri- 522 503<br>
-                    Andhra Pradesh, India</p>
+                
+                <!-- Two Column Layout -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
+                    
+                    <!-- Left Column - Address & Info -->
+                    <div class="contact-info">
+                        <p><strong>Address:</strong><br>
+                        AP Police Women & Child Safety Wing<br>
+                        Police Headquarters,<br>
+                        Mangalagiri- 522 503<br>
+                        Andhra Pradesh, India</p>
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #3498db;">
+                            <p><strong><i class="fas fa-info-circle"></i> Quick Info:</strong></p>
+                            <p style="margin: 5px 0;"><i class="fas fa-crosshairs"></i> <strong>GPS:</strong> 16.4339, 80.5466</p>
+                            <p style="margin: 5px 0;"><i class="fas fa-road"></i> <strong>From Vijayawada:</strong> ~25 km</p>
+                            <p style="margin: 5px 0;"><i class="fas fa-clock"></i> <strong>Travel Time:</strong> ~35 minutes</p>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div style="margin-top: 20px;">
+                            <p><strong><i class="fas fa-map-marked-alt"></i> Navigation:</strong></p>
+                            <button onclick="openLiveLocation()" style="background: #27ae60; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; margin: 5px 5px 5px 0; font-size: 0.9em; display: inline-flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-location-arrow"></i> View on Maps
+                            </button>
+                            <button onclick="getDirections()" style="background: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; margin: 5px; font-size: 0.9em; display: inline-flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-route"></i> Get Directions
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column - Live Map -->
+                    <div>
+                        <p><strong><i class="fas fa-map"></i> Live Location:</strong></p>
+                        <div style="border: 2px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                            <iframe 
+                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3825.6447890089945!2d80.54656731744384!3d16.43392368416805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35f0a2a073637d%3A0x9beb2ddd7ef6bdfe!2sMangalagiri%2C%20Andhra%20Pradesh%20522503!5e0!3m2!1sen!2sin!4v1635789012345!5m2!1sen!2sin"
+                                width="100%" 
+                                height="250" 
+                                style="border:0;" 
+                                allowfullscreen="" 
+                                loading="lazy" 
+                                referrerpolicy="no-referrer-when-downgrade">
+                            </iframe>
+                        </div>
+                        <p style="margin-top: 8px; font-size: 0.85em; color: #666; text-align: center;">
+                            <i class="fas fa-mouse-pointer"></i> Click map to open full view
+                        </p>
+                    </div>
                 </div>
+                
+                <!-- Mobile Responsive: Stack vertically on small screens -->
+                <style>
+                    @media (max-width: 768px) {
+                        .contact-card[style*="grid-column"] > div[style*="grid-template-columns"] {
+                            grid-template-columns: 1fr !important;
+                            gap: 20px !important;
+                        }
+                    }
+                </style>
             </div>
             
             <div class="contact-card">
@@ -233,11 +286,57 @@
     
     <div class="footer">
         <div class="footer-bottom">
-            <p>&copy; 2024 AP Women Safety Wing. All rights reserved.</p>
-            <p>Emergency Helpline: 181 | Women's Helpline: 1091</p>
+            <p>&copy; 2025 AP Police Women and Child Safety Wing. All rights reserved.</p>
+            <p>Email: womensafety@appolice.gov.in | Emergency Helpline: 181 | Women's Helpline: 1091</p>
         </div>
     </div>
     
     <script src="/static/chatbot.js"></script>
+    
+    <!-- Live Location JavaScript Functions -->
+    <script>
+        function openLiveLocation() {
+            // Mangalagiri Police Headquarters coordinates
+            const latitude = 16.4339;
+            const longitude = 80.5466;
+            const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}&zoom=15`;
+            window.open(googleMapsUrl, '_blank');
+        }
+        
+        function getDirections() {
+            // Get user's current location and provide directions to Head Office
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    const destLat = 16.4339;
+                    const destLng = 80.5466;
+                    
+                    const directionsUrl = `https://www.google.com/maps/dir/${userLat},${userLng}/${destLat},${destLng}`;
+                    window.open(directionsUrl, '_blank');
+                }, function() {
+                    // If location access denied, open directions without current location
+                    const directionsUrl = `https://www.google.com/maps/dir//16.4339,80.5466`;
+                    window.open(directionsUrl, '_blank');
+                });
+            } else {
+                // Browser doesn't support geolocation
+                alert('Your browser does not support location services. Opening Google Maps...');
+                const directionsUrl = `https://www.google.com/maps/dir//16.4339,80.5466`;
+                window.open(directionsUrl, '_blank');
+            }
+        }
+        
+        // Optional: Add click event to embedded map for full screen view
+        document.addEventListener('DOMContentLoaded', function() {
+            const mapIframe = document.querySelector('iframe[src*="google.com/maps"]');
+            if (mapIframe) {
+                mapIframe.style.cursor = 'pointer';
+                mapIframe.addEventListener('click', function() {
+                    openLiveLocation();
+                });
+            }
+        });
+    </script>
 </body>
 </html>

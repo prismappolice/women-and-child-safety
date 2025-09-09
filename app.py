@@ -1,16 +1,28 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask_mail import Mail, Message
 import sqlite3
 import os
 import time
 from werkzeug.utils import secure_filename
 from datetime import datetime
+import re
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
 
+# Email Configuration
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'womensafety@appolice.gov.in'  # To be configured with real credentials
+app.config['MAIL_PASSWORD'] = 'your-email-password'  # To be configured
+app.config['MAIL_DEFAULT_SENDER'] = 'womensafety@appolice.gov.in'
+
+mail = Mail(app)
+
 # Configuration
 UPLOAD_FOLDER = 'static/uploads'
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx'}
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def allowed_file(filename):
@@ -155,11 +167,256 @@ def init_db():
         )
     ''')
     
+    # Create email_notifications table for managing email communications
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS email_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            volunteer_id INTEGER,
+            email_type TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            body TEXT NOT NULL,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'sent',
+            FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
+        )
+    ''')
+    
+    # Create volunteer_scores table for automatic scoring
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS volunteer_scores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            volunteer_id INTEGER UNIQUE,
+            age_score INTEGER DEFAULT 0,
+            education_score INTEGER DEFAULT 0,
+            motivation_score INTEGER DEFAULT 0,
+            skills_score INTEGER DEFAULT 0,
+            total_score INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'pending',
+            admin_notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
+        )
+    ''')
+    
+    # Create admin_settings table for email configuration
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS admin_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            setting_name TEXT UNIQUE NOT NULL,
+            setting_value TEXT,
+            description TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
 # Initialize database when app starts
 init_db()
+
+# Email and Scoring Functions
+def calculate_age_score(age_str):
+    """Calculate score based on age (0-25 points)"""
+    try:
+        age = int(age_str)
+        if 18 <= age <= 25:
+            return 25
+        elif 26 <= age <= 35:
+            return 20
+        elif 36 <= age <= 45:
+            return 15
+        elif 46 <= age <= 55:
+            return 10
+        else:
+            return 5
+    except:
+        return 0
+
+def calculate_education_score(education):
+    """Calculate score based on education level (0-25 points)"""
+    education = education.lower()
+    if any(word in education for word in ['phd', 'doctorate', 'post graduate', 'masters', 'mba']):
+        return 25
+    elif any(word in education for word in ['graduate', 'bachelor', 'degree', 'b.tech', 'b.sc', 'b.com']):
+        return 20
+    elif any(word in education for word in ['diploma', 'intermediate', '12th', 'plus two']):
+        return 15
+    elif any(word in education for word in ['10th', 'ssc', 'high school']):
+        return 10
+    else:
+        return 5
+
+def calculate_motivation_score(motivation):
+    """Calculate score based on motivation quality (0-25 points)"""
+    if not motivation:
+        return 0
+    
+    motivation = motivation.lower()
+    positive_keywords = ['help', 'support', 'community', 'safety', 'women', 'service', 'contribute', 
+                        'volunteer', 'society', 'make difference', 'social', 'empower', 'protect']
+    
+    word_count = len(motivation.split())
+    keyword_matches = sum(1 for keyword in positive_keywords if keyword in motivation)
+    
+    score = 0
+    # Length bonus (up to 10 points)
+    if word_count >= 50:
+        score += 10
+    elif word_count >= 30:
+        score += 8
+    elif word_count >= 20:
+        score += 6
+    elif word_count >= 10:
+        score += 4
+    
+    # Keyword matches (up to 15 points)
+    score += min(keyword_matches * 2, 15)
+    
+    return min(score, 25)
+
+def calculate_skills_score(skills):
+    """Calculate score based on relevant skills (0-25 points)"""
+    if not skills:
+        return 0
+    
+    skills = skills.lower()
+    relevant_skills = ['communication', 'counseling', 'first aid', 'computer', 'teaching', 
+                      'social work', 'psychology', 'law', 'legal', 'management', 'leadership',
+                      'public speaking', 'training', 'organizing', 'coordination']
+    
+    matches = sum(1 for skill in relevant_skills if skill in skills)
+    return min(matches * 3, 25)
+
+def send_volunteer_email(volunteer_data, email_type='confirmation'):
+    """Send email to volunteer with automatic scoring"""
+    try:
+        # Calculate scores
+        age_score = calculate_age_score(volunteer_data.get('age', '0'))
+        education_score = calculate_education_score(volunteer_data.get('education', ''))
+        motivation_score = calculate_motivation_score(volunteer_data.get('motivation', ''))
+        skills_score = calculate_skills_score(volunteer_data.get('skills', ''))
+        total_score = age_score + education_score + motivation_score + skills_score
+        
+        # Store scores in database
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO volunteer_scores 
+            (volunteer_id, age_score, education_score, motivation_score, skills_score, total_score, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (volunteer_data['id'], age_score, education_score, motivation_score, skills_score, total_score, 'scored'))
+        
+        # Prepare email content based on score
+        if total_score >= 75:
+            status = 'high_priority'
+            subject = "Thank You for Your Interest - High Priority Application"
+            body = f"""Dear {volunteer_data['name']},
+
+Thank you for your interest in volunteering with AP Police Women and Child Safety Wing.
+
+We are pleased to inform you that your application has been received and scored highly based on your qualifications and motivation. Our team will prioritize reviewing your application.
+
+Your Application Score: {total_score}/100
+- Age Suitability: {age_score}/25
+- Educational Background: {education_score}/25
+- Motivation Quality: {motivation_score}/25
+- Relevant Skills: {skills_score}/25
+
+We will contact you within 2-3 business days to discuss next steps.
+
+Best regards,
+AP Police Women and Child Safety Wing
+Email: womensafety@appolice.gov.in"""
+            
+        elif total_score >= 50:
+            status = 'medium_priority'
+            subject = "Thank You for Your Interest - Application Under Review"
+            body = f"""Dear {volunteer_data['name']},
+
+Thank you for your interest in volunteering with AP Police Women and Child Safety Wing.
+
+Your application has been received and is currently under review by our team.
+
+Your Application Score: {total_score}/100
+- Age Suitability: {age_score}/25
+- Educational Background: {education_score}/25
+- Motivation Quality: {motivation_score}/25
+- Relevant Skills: {skills_score}/25
+
+We will contact you within 5-7 business days regarding your application status.
+
+Best regards,
+AP Police Women and Child Safety Wing
+Email: womensafety@appolice.gov.in"""
+            
+        else:
+            status = 'needs_review'
+            subject = "Thank You for Your Interest - Additional Information Required"
+            body = f"""Dear {volunteer_data['name']},
+
+Thank you for your interest in volunteering with AP Police Women and Child Safety Wing.
+
+We have received your application. To better assess your suitability, we may need additional information from you.
+
+Your Application Score: {total_score}/100
+
+Our team will review your application and contact you if we need more details.
+
+Best regards,
+AP Police Women and Child Safety Wing
+Email: womensafety@appolice.gov.in"""
+        
+        # Send email to volunteer
+        msg = Message(subject=subject,
+                     recipients=[volunteer_data['email']],
+                     body=body)
+        mail.send(msg)
+        
+        # Send notification to admin
+        admin_subject = f"New Volunteer Application - Score: {total_score}/100"
+        admin_body = f"""New volunteer application received:
+
+Name: {volunteer_data['name']}
+Email: {volunteer_data['email']}
+Phone: {volunteer_data['phone']}
+Total Score: {total_score}/100
+Priority: {status.replace('_', ' ').title()}
+
+Score Breakdown:
+- Age Score: {age_score}/25
+- Education Score: {education_score}/25
+- Motivation Score: {motivation_score}/25
+- Skills Score: {skills_score}/25
+
+Please review the application in the admin dashboard.
+"""
+        
+        admin_msg = Message(subject=admin_subject,
+                           recipients=['womensafety@appolice.gov.in'],
+                           body=admin_body)
+        mail.send(admin_msg)
+        
+        # Log email notifications
+        cursor.execute('''
+            INSERT INTO email_notifications (volunteer_id, email_type, subject, body, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (volunteer_data['id'], email_type, subject, body, 'sent'))
+        
+        cursor.execute('''
+            INSERT INTO email_notifications (volunteer_id, email_type, subject, body, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (volunteer_data['id'], 'admin_notification', admin_subject, admin_body, 'sent'))
+        
+        conn.commit()
+        conn.close()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Email sending failed: {str(e)}")
+        return False
 
 @app.route('/')
 def home():
@@ -206,30 +463,187 @@ def initiatives():
 @app.route('/volunteer-registration', methods=['GET', 'POST'])
 def volunteer_registration():
     if request.method == 'POST':
-        # Handle form submission
-        full_name = request.form.get('name')
+        # Clear any existing flashed messages
+        session.pop('_flashes', None)
+        
+        # Handle form submission - Get all form data
+        name = request.form.get('name')
         email = request.form.get('email')
         phone = request.form.get('phone')
-        district = request.form.get('district', 'Not Specified')
+        age = request.form.get('age')
+        address = request.form.get('address')
         occupation = request.form.get('occupation')
         education = request.form.get('education')
-        interests = request.form.get('interests')
+        experience = request.form.get('experience')
+        motivation = request.form.get('motivation')
+        availability = request.form.get('availability')
+        skills = request.form.get('skills')
+
+        # Validate form data
+        errors = []
         
-        # Store in database
+        # Name validation    
+        if not name:
+            errors.append('Name is required')
+        elif len(name.strip()) < 3:
+            errors.append('Name must be at least 3 characters')
+        elif not all(x.isalpha() or x.isspace() for x in name):
+            errors.append('Name should only contain letters and spaces')
+            
+        # Email validation
+        if not email:
+            errors.append('Email is required')
+        elif '@' not in email or '.' not in email:
+            errors.append('Please enter a valid email address')
+            
+        # Phone validation
+        if not phone:
+            errors.append('Phone number is required')
+        elif len(phone) != 10 or not phone.isdigit():
+            errors.append('Phone number must be exactly 10 digits')
+        elif phone.startswith('0'):
+            errors.append('Phone number cannot start with 0')
+        elif all(d == phone[0] for d in phone):
+            errors.append('Invalid phone number - cannot be all same digits')
+            
+        # Age validation
+        if not age:
+            errors.append('Age is required')
+        else:
+            try:
+                age_num = int(age)
+                if age_num < 18:
+                    errors.append('You must be at least 18 years old to volunteer')
+                elif age_num > 65:
+                    errors.append('Age must be 65 or below')
+            except:
+                errors.append('Please enter a valid age number')
+            
+        # Address validation
+        if not address:
+            errors.append('Address is required')
+        elif len(address.strip()) < 10:
+            errors.append('Please enter your complete address (minimum 10 characters)')
+            
+        # Occupation validation
+        if not occupation:
+            errors.append('Occupation is required')
+        elif len(occupation.strip()) < 3:
+            errors.append('Please enter a valid occupation')
+            
+        # Education validation
+        if not education:
+            errors.append('Education details are required')
+        elif len(education.strip()) < 5:
+            errors.append('Please provide complete education details')
+            
+        # Experience validation (optional but if provided should be valid)
+        if experience and len(experience.strip()) < 5:
+            errors.append('If providing experience, please give more details')
+            
+        # Motivation validation
+        if not motivation:
+            errors.append('Please tell us why you want to volunteer')
+        elif len(motivation.strip()) < 30:
+            errors.append('Please provide more details about your motivation (minimum 30 characters)')
+            
+        # Availability validation
+        if not availability:
+            errors.append('Please specify your availability')
+        elif len(availability.strip()) < 5:
+            errors.append('Please provide more details about your availability')
+            
+        # Skills validation
+        if not skills:
+            errors.append('Please list your relevant skills')
+        elif len(skills.strip()) < 5:
+            errors.append('Please provide more details about your skills')
+
+        # If there are any validation errors
+        if errors:
+            # Clear any previous messages
+            session.pop('_flashes', None)
+            # Show only the error messages
+            for error in errors:
+                flash(error, 'error')
+            # Return the form with the current input values
+            return render_template('volunteer_registration.html', 
+                form_data={
+                    'name': name,
+                    'email': email,
+                    'phone': phone,
+                    'age': age,
+                    'address': address,
+                    'occupation': occupation,
+                    'education': education,
+                    'experience': experience,
+                    'motivation': motivation,
+                    'availability': availability,
+                    'skills': skills
+                }
+            )
         try:
             conn = sqlite3.connect('women_safety.db')
             cursor = conn.cursor()
+            
+            # First check if phone number already exists
+            cursor.execute('SELECT id FROM volunteers WHERE phone = ?', (phone,))
+            existing_phone = cursor.fetchone()
+            
+            if existing_phone:
+                flash('This phone number is already registered', 'error')
+                return redirect(url_for('volunteer_registration'))
+                
             cursor.execute('''
-                INSERT INTO volunteers (full_name, email, phone, district, occupation, education, interests, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-            ''', (full_name, email, phone, district, occupation, education, interests))
+                INSERT INTO volunteers (name, email, phone, age, address, occupation, education, experience, motivation, availability, skills)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (name, email, phone, age, address, occupation, education, experience, motivation, availability, skills))
+            
+            # Get the volunteer ID
+            volunteer_id = cursor.lastrowid
+            conn.commit()
+            
+            # Send notification email to admin
+            admin_subject = "New Volunteer Registration"
+            admin_body = f"""New volunteer registration received:
+
+Name: {name}
+Email: {email}
+Phone: {phone}
+Age: {age}
+Occupation: {occupation}
+Education: {education}
+
+Please review this application in the admin dashboard."""
+
+            try:
+                msg = Message(subject=admin_subject,
+                            recipients=['womensafety@appolice.gov.in'],
+                            body=admin_body)
+                mail.send(msg)
+            except:
+                # Don't let email failures stop the registration process
+                print("Warning: Failed to send admin notification email")
+
+            # Insert initial status into volunteer_scores
+            cursor.execute('''
+                INSERT INTO volunteer_scores (volunteer_id, status, admin_notes)
+                VALUES (?, 'pending', 'New registration awaiting review')
+            ''', (volunteer_id,))
+            
             conn.commit()
             conn.close()
             
-            flash('Thank you for registering as a volunteer! We will contact you soon.', 'success')
-            return redirect(url_for('volunteer_registration'))
+            # Clear any existing messages before showing success
+            session.pop('_flashes', None)
+            flash('Thank you for registering! Your application has been submitted and is awaiting review. We will contact you soon.', 'success')
+            
+            # Redirect to a success page instead of the registration form
+            return render_template('volunteer_success.html')
+            
         except Exception as e:
-            flash('An error occurred. Please try again.', 'error')
+            print(f"Volunteer registration error: {str(e)}")
+            flash('An error occurred while processing your application. Please try again.', 'error')
             return redirect(url_for('volunteer_registration'))
     
     return render_template('volunteer_registration.html')
@@ -2043,7 +2457,18 @@ def admin_add_gallery_item():
                 filename = f"gallery_{timestamp}_{filename}"
                 file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 uploaded_file.save(file_path)
-                image_url = f'/static/uploads/{filename}'
+                
+                # Check if it's a video file
+                file_extension = filename.rsplit('.', 1)[1].lower()
+                if file_extension in ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv']:
+                    # It's a video file, set video_url
+                    video_url = f'/static/uploads/{filename}'
+                    # Use a default image if no image is provided
+                    if not image_url:
+                        image_url = '/static/images/slide2.jpg'  # Default video thumbnail
+                else:
+                    # It's an image file
+                    image_url = f'/static/uploads/{filename}'
         
         conn = sqlite3.connect('women_safety.db')
         cursor = conn.cursor()
@@ -2086,7 +2511,16 @@ def admin_edit_gallery_item(item_id):
                 filename = f"gallery_{timestamp}_{filename}"
                 file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 uploaded_file.save(file_path)
-                image_url = f'/static/uploads/{filename}'
+                
+                # Check if it's a video file
+                file_extension = filename.rsplit('.', 1)[1].lower()
+                if file_extension in ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv']:
+                    # It's a video file, set video_url
+                    video_url = f'/static/uploads/{filename}'
+                    # Keep existing image_url if no new image is provided
+                else:
+                    # It's an image file
+                    image_url = f'/static/uploads/{filename}'
         
         cursor.execute('''
             UPDATE gallery_items 
@@ -2131,11 +2565,286 @@ def admin_volunteers():
     
     conn = sqlite3.connect('women_safety.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, full_name, email, phone, district, education, occupation, interests, status, registration_date FROM volunteers ORDER BY registration_date DESC')
-    volunteers = cursor.fetchall()
+    
+    # Check table structure and get volunteers with their scores
+    try:
+        # Try new structure first
+        cursor.execute('''
+            SELECT v.id, v.name, v.email, v.phone, v.age, v.address, v.education, v.occupation, 
+                   v.motivation, v.skills, v.created_at,
+                   vs.age_score, vs.education_score, vs.motivation_score, vs.skills_score, 
+                   vs.total_score, vs.status, vs.admin_notes
+            FROM volunteers v
+            LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id
+            ORDER BY vs.total_score DESC, v.created_at DESC
+        ''')
+        volunteers = cursor.fetchall()
+    except sqlite3.OperationalError:
+        # Fall back to old structure if new structure doesn't exist
+        try:
+            cursor.execute('''
+                SELECT v.id, COALESCE(v.full_name, v.name, '') as name, v.email, v.phone, 
+                       COALESCE(v.age, '') as age, COALESCE(v.district, v.address, '') as address, 
+                       COALESCE(v.education, '') as education, COALESCE(v.occupation, '') as occupation, 
+                       COALESCE(v.interests, v.motivation, '') as motivation, 
+                       COALESCE(v.interests, v.skills, '') as skills, 
+                       COALESCE(v.registration_date, v.created_at, '') as created_at,
+                       vs.age_score, vs.education_score, vs.motivation_score, vs.skills_score, 
+                       vs.total_score, vs.status, vs.admin_notes
+                FROM volunteers v
+                LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id
+                ORDER BY vs.total_score DESC, v.id DESC
+            ''')
+            volunteers = cursor.fetchall()
+        except sqlite3.OperationalError:
+            # If all else fails, get basic volunteer info without scores
+            cursor.execute('SELECT * FROM volunteers ORDER BY id DESC')
+            volunteers_raw = cursor.fetchall()
+            # Convert to expected format with empty score fields
+            volunteers = []
+            for v in volunteers_raw:
+                volunteers.append(v + (None,) * 7)  # Add 7 empty fields for scores
+    
+    # Get email notifications count for each volunteer
+    volunteer_emails = {}
+    for volunteer in volunteers:
+        volunteer_id = volunteer[0]
+        cursor.execute('SELECT COUNT(*) FROM email_notifications WHERE volunteer_id = ?', (volunteer_id,))
+        email_count = cursor.fetchone()[0]
+        volunteer_emails[volunteer_id] = email_count
+    
     conn.close()
     
-    return render_template('admin_volunteers.html', volunteers=volunteers)
+    return render_template('admin_volunteers.html', volunteers=volunteers, volunteer_emails=volunteer_emails)
+
+@app.route('/admin/volunteers/detail/<int:volunteer_id>')
+def admin_volunteer_detail(volunteer_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    # Get volunteer details with scores (robust query)
+    try:
+        cursor.execute('''
+            SELECT v.*, vs.age_score, vs.education_score, vs.motivation_score, vs.skills_score, 
+                   vs.total_score, vs.status, vs.admin_notes
+            FROM volunteers v
+            LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id
+            WHERE v.id = ?
+        ''', (volunteer_id,))
+        volunteer = cursor.fetchone()
+    except sqlite3.OperationalError:
+        # Fall back to basic volunteer info if table structure is different
+        cursor.execute('SELECT * FROM volunteers WHERE id = ?', (volunteer_id,))
+        volunteer_basic = cursor.fetchone()
+        if volunteer_basic:
+            # Add empty score fields
+            volunteer = volunteer_basic + (None,) * 7
+        else:
+            volunteer = None
+    
+    if not volunteer:
+        flash('Volunteer not found!', 'error')
+        return redirect(url_for('admin_volunteers'))
+    
+    # Get email history
+    cursor.execute('''
+        SELECT email_type, subject, body, sent_at, status
+        FROM email_notifications
+        WHERE volunteer_id = ?
+        ORDER BY sent_at DESC
+    ''', (volunteer_id,))
+    email_history = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template('admin_volunteer_detail.html', volunteer=volunteer, email_history=email_history)
+
+@app.route('/admin/volunteers/send-email/<int:volunteer_id>', methods=['POST'])
+def admin_send_volunteer_email(volunteer_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    subject = request.form.get('subject')
+    message = request.form.get('message')
+    
+    if not subject or not message:
+        flash('Subject and message are required!', 'error')
+        return redirect(url_for('admin_volunteer_detail', volunteer_id=volunteer_id))
+    
+    try:
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        # Get volunteer email
+        cursor.execute('SELECT name, email FROM volunteers WHERE id = ?', (volunteer_id,))
+        volunteer = cursor.fetchone()
+        
+        if not volunteer:
+            flash('Volunteer not found!', 'error')
+            return redirect(url_for('admin_volunteers'))
+        
+        # Send email
+        msg = Message(subject=subject,
+                     recipients=[volunteer[1]],
+                     body=f"Dear {volunteer[0]},\n\n{message}\n\nBest regards,\nAP Police Women and Child Safety Wing\nEmail: womensafety@appolice.gov.in")
+        mail.send(msg)
+        
+        # Log email
+        cursor.execute('''
+            INSERT INTO email_notifications (volunteer_id, email_type, subject, body, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (volunteer_id, 'admin_reply', subject, message, 'sent'))
+        
+        conn.commit()
+        conn.close()
+        
+        flash('Email sent successfully!', 'success')
+        
+    except Exception as e:
+        print(f"Email sending failed: {str(e)}")
+        flash('Failed to send email. Please try again.', 'error')
+    
+    return redirect(url_for('admin_volunteer_detail', volunteer_id=volunteer_id))
+
+@app.route('/admin/volunteers/update-notes/<int:volunteer_id>', methods=['POST'])
+def admin_update_volunteer_notes(volunteer_id):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    admin_notes = request.form.get('admin_notes')
+    status = request.form.get('status')
+    
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    # Update volunteer scores table
+    cursor.execute('''
+        UPDATE volunteer_scores 
+        SET admin_notes = ?, status = ?
+        WHERE volunteer_id = ?
+    ''', (admin_notes, status, volunteer_id))
+    
+    conn.commit()
+    conn.close()
+    
+    flash('Volunteer notes updated successfully!', 'success')
+    return redirect(url_for('admin_volunteer_detail', volunteer_id=volunteer_id))
+
+@app.route('/admin/volunteers/approve/<int:volunteer_id>', methods=['POST'])
+def admin_approve_volunteer(volunteer_id):
+    """Approve volunteer and send confirmation email"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    try:
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        # Get volunteer details
+        cursor.execute('SELECT * FROM volunteers WHERE id = ?', (volunteer_id,))
+        volunteer = cursor.fetchone()
+        
+        if not volunteer:
+            flash('Volunteer not found!', 'error')
+            return redirect(url_for('admin_volunteers'))
+        
+        # Get volunteer scores
+        cursor.execute('SELECT total_score FROM volunteer_scores WHERE volunteer_id = ?', (volunteer_id,))
+        score_result = cursor.fetchone()
+        total_score = score_result[0] if score_result else 0
+        
+        # Prepare volunteer data for email
+        volunteer_data = {
+            'id': volunteer[0],
+            'name': volunteer[1],
+            'email': volunteer[2]
+        }
+        conn.close()
+        
+    except Exception as e:
+        print(f"Approval error: {str(e)}")
+        flash('An error occurred while approving volunteer. Please try again.', 'error')
+    
+    return redirect(url_for('admin_volunteer_detail', volunteer_id=volunteer_id))
+
+@app.route('/admin/volunteers/reject/<int:volunteer_id>', methods=['POST'])
+def admin_reject_volunteer(volunteer_id):
+    """Reject volunteer and optionally send rejection email"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    rejection_reason = request.form.get('rejection_reason', '')
+    send_email = request.form.get('send_email') == 'on'
+    
+    try:
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        # Get volunteer details
+        cursor.execute('SELECT name, email FROM volunteers WHERE id = ?', (volunteer_id,))
+        volunteer = cursor.fetchone()
+        
+        if not volunteer:
+            flash('Volunteer not found!', 'error')
+            return redirect(url_for('admin_volunteers'))
+        
+        # Update status
+        cursor.execute('''
+            UPDATE volunteer_scores 
+            SET status = 'rejected', admin_notes = COALESCE(admin_notes, '') || ' [REJECTED by admin on ' || datetime('now') || ': ' || ?]'
+            WHERE volunteer_id = ?
+        ''', (rejection_reason, volunteer_id))
+        
+        # Send rejection email if requested
+        if send_email:
+            try:
+                subject = "Update on Your Volunteer Application"
+                body = f"""Dear {volunteer[0]},
+
+Thank you for your interest in volunteering with AP Police Women and Child Safety Wing.
+
+After careful review of your application, we regret to inform you that we cannot proceed with your application at this time.
+
+{f"Reason: {rejection_reason}" if rejection_reason else ""}
+
+We encourage you to apply again in the future as opportunities become available. Your interest in women's safety and empowerment is greatly appreciated.
+
+Thank you for your understanding.
+
+Best regards,
+AP Police Women and Child Safety Wing
+Email: womensafety@appolice.gov.in"""
+
+                msg = Message(subject=subject,
+                             recipients=[volunteer[1]],
+                             body=body)
+                mail.send(msg)
+                
+                # Log email notification
+                cursor.execute('''
+                    INSERT INTO email_notifications (volunteer_id, email_type, subject, body, status)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (volunteer_id, 'admin_rejection', subject, body, 'sent'))
+                
+                flash(f'Volunteer rejected and notification email sent to {volunteer[1]}.', 'success')
+                
+            except Exception as e:
+                print(f"Rejection email failed: {str(e)}")
+                flash('Volunteer rejected successfully! (Note: Email sending failed)', 'warning')
+        else:
+            flash('Volunteer rejected successfully!', 'success')
+        
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        print(f"Rejection error: {str(e)}")
+        flash('An error occurred while rejecting volunteer. Please try again.', 'error')
+    
+    return redirect(url_for('admin_volunteer_detail', volunteer_id=volunteer_id))
 
 @app.route('/admin/volunteers/update/<int:volunteer_id>', methods=['POST'])
 def admin_update_volunteer_status(volunteer_id):
@@ -2485,6 +3194,74 @@ def admin_district_contacts():
     # Create district tables if they don't exist
     try:
         create_district_tables(cursor)
+        conn.commit()
+    except Exception as e:
+        print(f"Error creating tables: {e}")
+    
+    # Ensure districts are populated
+    cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active = 1')
+    district_count = cursor.fetchone()[0]
+    
+    if district_count == 0:
+        # Auto-populate districts if empty
+        districts_list = [
+            "Alluri Sitarama Raju", "Anakapalli", "Ananthapuramu", "Annamayya", "Bapatla",
+            "Chittoor", "East Godavari", "Eluru", "Guntur", "Kakinada", "Konaseema",
+            "Krishna", "Kurnool", "Nandyal", "NTR", "Palnadu", "Parvathipuram Manyam",
+            "Prakasam", "Sri Potti Sriramulu Nellore", "Sri Sathya Sai", "Srikakulam",
+            "Tirupati", "Visakhapatnam", "Vizianagaram", "West Godavari", "YSR (Kadapa)"
+        ]
+        
+        for i, district in enumerate(districts_list, 1):
+            cursor.execute('''
+                INSERT OR REPLACE INTO districts 
+                (id, district_name, district_code, is_active, created_at) 
+                VALUES (?, ?, ?, 1, datetime('now'))
+            ''', (i, district, district.upper().replace(' ', '_').replace('(', '').replace(')', '')))
+        conn.commit()
+    
+    # Get all districts with their contacts
+    district_contacts = []
+    try:
+        cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name')
+        districts = cursor.fetchall()
+        print(f"DEBUG: Found {len(districts)} districts")  # Debug output
+    except sqlite3.OperationalError as e:
+        print(f"DEBUG: Error querying districts: {e}")  # Debug output
+        # If tables don't exist, return empty list
+        districts = []
+    
+    for district_id, district_name in districts:
+        print(f"DEBUG: Processing district {district_id}: {district_name}")  # Debug output
+        district_data = {'id': district_id, 'name': district_name}
+        
+        # Count contacts for each type
+        try:
+            cursor.execute('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1', (district_id,))
+            district_data['sp_count'] = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT COUNT(*) FROM shakthi_teams WHERE district_id = ? AND is_active = 1', (district_id,))
+            district_data['teams_count'] = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT COUNT(*) FROM women_police_stations WHERE district_id = ? AND is_active = 1', (district_id,))
+            district_data['ps_count'] = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT COUNT(*) FROM one_stop_centers WHERE district_id = ? AND is_active = 1', (district_id,))
+            district_data['center_count'] = cursor.fetchone()[0]
+        except sqlite3.OperationalError:
+            # If tables don't exist, set counts to 0
+            district_data['sp_count'] = 0
+            district_data['teams_count'] = 0
+            district_data['ps_count'] = 0
+            district_data['center_count'] = 0
+        
+        district_contacts.append(district_data)
+    
+    print(f"DEBUG: Total district_contacts: {len(district_contacts)}")  # Debug output
+    conn.close()
+    return render_template('admin_district_contacts.html', districts=district_contacts)
+
+    try:
         conn.commit()
     except Exception as e:
         print(f"Error creating tables: {e}")

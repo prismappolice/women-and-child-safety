@@ -49,6 +49,15 @@
         
         .footer { background: #2c3e50; color: #fff; text-align: center; padding: 20px; margin-top: 50px; }
         
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
         @media (max-width: 768px) {
             .form-row { grid-template-columns: 1fr; }
             .content { padding: 0 10px; }
@@ -98,6 +107,8 @@
             <h3><i class="fas fa-info-circle"></i> Volunteer Requirements</h3>
             <ul>
                 <li>Must be 18 years or older</li>
+                <li>Phone number must not start with 0</li>
+                <li>Phone number must be exactly 10 digits</li>
                 <li>Commitment to women's safety and empowerment</li>
                 <li>Basic communication skills in local languages</li>
                 <li>Willingness to undergo background verification</li>
@@ -117,14 +128,18 @@
                         <label class="form-label" for="name">
                             <i class="fas fa-user"></i> Full Name *
                         </label>
-                        <input type="text" id="name" name="name" class="form-input" required>
+                        <input type="text" id="name" name="name" class="form-input" required
+                               pattern="[A-Za-z\s]{3,}"
+                               title="Name should only contain letters and spaces"
+                               value="{{ form_data.name if form_data else '' }}">
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label" for="email">
                             <i class="fas fa-envelope"></i> Email Address *
                         </label>
-                        <input type="email" id="email" name="email" class="form-input" required>
+                        <input type="email" id="email" name="email" class="form-input" required
+                               value="{{ form_data.email if form_data else '' }}">
                     </div>
                 </div>
                 
@@ -133,14 +148,22 @@
                         <label class="form-label" for="phone">
                             <i class="fas fa-phone"></i> Phone Number *
                         </label>
-                        <input type="tel" id="phone" name="phone" class="form-input" required>
+                        <input type="tel" id="phone" name="phone" class="form-input" required
+                               pattern="[1-9][0-9]{9}"
+                               maxlength="10"
+                               title="Phone number must be 10 digits and cannot start with 0"
+                               value="{{ form_data.phone if form_data else '' }}"
+                               title="Phone number must be exactly 10 digits and cannot start with 0">
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label" for="age">
                             <i class="fas fa-calendar"></i> Age *
                         </label>
-                        <input type="number" id="age" name="age" class="form-input" min="18" max="80" required>
+                        <input type="number" id="age" name="age" class="form-input" required
+                               min="18" max="65"
+                               value="{{ form_data.age if form_data else '' }}"
+                               title="Age must be between 18 and 65">
                     </div>
                 </div>
                 
@@ -148,29 +171,28 @@
                     <label class="form-label" for="address">
                         <i class="fas fa-map-marker-alt"></i> Address *
                     </label>
-                    <textarea id="address" name="address" class="form-textarea" required placeholder="Enter your complete address including district"></textarea>
+                    <textarea id="address" name="address" class="form-textarea" required 
+                              placeholder="Enter your complete address including district"
+                              minlength="10">{{ form_data.address if form_data else '' }}</textarea>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label" for="occupation">
-                            <i class="fas fa-briefcase"></i> Occupation
+                            <i class="fas fa-briefcase"></i> Occupation *
                         </label>
-                        <input type="text" id="occupation" name="occupation" class="form-input" placeholder="Your current profession">
+                        <input type="text" id="occupation" name="occupation" class="form-input" required
+                               value="{{ form_data.occupation if form_data else '' }}"
+                               placeholder="Your current profession">
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label" for="education">
-                            <i class="fas fa-graduation-cap"></i> Education
+                            <i class="fas fa-graduation-cap"></i> Education *
                         </label>
-                        <select id="education" name="education" class="form-select">
-                            <option value="">Select your education level</option>
-                            <option value="10th">10th Standard</option>
-                            <option value="12th">12th Standard</option>
-                            <option value="graduate">Graduate</option>
-                            <option value="postgraduate">Post Graduate</option>
-                            <option value="professional">Professional Degree</option>
-                        </select>
+                        <input type="text" id="education" name="education" class="form-input" required
+                               value="{{ form_data.education if form_data else '' }}"
+                               placeholder="Your highest education qualification">
                     </div>
                 </div>
                 
@@ -178,14 +200,17 @@
                     <label class="form-label" for="experience">
                         <i class="fas fa-star"></i> Previous Volunteer Experience
                     </label>
-                    <textarea id="experience" name="experience" class="form-textarea" placeholder="Describe any previous volunteer work or social service experience"></textarea>
+                    <textarea id="experience" name="experience" class="form-textarea" 
+                              placeholder="Describe any previous volunteer work or social service experience">{{ form_data.experience if form_data else '' }}</textarea>
                 </div>
-                
+
                 <div class="form-group">
                     <label class="form-label" for="motivation">
                         <i class="fas fa-heart"></i> Why do you want to volunteer with us? *
                     </label>
-                    <textarea id="motivation" name="motivation" class="form-textarea" required placeholder="Tell us what motivates you to work for women's safety"></textarea>
+                    <textarea id="motivation" name="motivation" class="form-textarea" required
+                              minlength="30"
+                              placeholder="Tell us what motivates you to work for women's safety (minimum 30 characters)">{{ form_data.motivation if form_data else '' }}</textarea>
                 </div>
                 
                 <div class="form-row">
@@ -218,10 +243,182 @@
     </div>
     
     <div class="footer">
-        <p>&copy; 2024 AP Women Safety Wing. All rights reserved.</p>
-        <p>Emergency Helpline: 181 | Email: info@apwomensafety.gov.in</p>
+        <p>&copy; 2025 AP Police Women and Child Safety Wing. All rights reserved.</p>
+        <p>Emergency Helpline: 181 | Email: womensafety@appolice.gov.in</p>
     </div>
     
     <script src="/static/chatbot.js"></script>
-</body>
+    <script>
+        function showError(input, message) {
+            // Remove any existing error
+            removeError(input);
+            
+            // Create and show new error
+            const error = document.createElement('div');
+            error.id = input.id + '-error';
+            error.className = 'error-message';
+            error.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+            input.parentNode.appendChild(error);
+            input.style.borderColor = '#dc3545';
+        }
+
+        function removeError(input) {
+            const errorDiv = document.getElementById(input.id + '-error');
+            if (errorDiv) {
+                errorDiv.remove();
+            }
+            input.style.borderColor = '#e0e0e0';
+        }
+
+        function validateName(input) {
+            removeError(input);
+            const name = input.value.trim();
+            
+            if (name.length < 3) {
+                showError(input, 'Name must be at least 3 characters');
+                return false;
+            }
+            if (!/^[a-zA-Z\s]+$/.test(name)) {
+                showError(input, 'Name should only contain letters and spaces');
+                return false;
+            }
+            return true;
+        }
+
+        function validateEmail(input) {
+            removeError(input);
+            const email = input.value.trim();
+            
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showError(input, 'Please enter a valid email address');
+                return false;
+            }
+            return true;
+        }
+
+        function validatePhone(input) {
+            removeError(input);
+            const phone = input.value.trim();
+            
+            if (phone.startsWith('0')) {
+                showError(input, 'Phone number cannot start with 0');
+                return false;
+            }
+            if (!/^\d{10}$/.test(phone)) {
+                showError(input, 'Phone number must be exactly 10 digits');
+                return false;
+            }
+            if (new Set(phone.split('')).size === 1) {
+                showError(input, 'Phone number cannot be all same digits');
+                return false;
+            }
+            return true;
+        }
+
+        function validateAge(input) {
+            removeError(input);
+            const age = parseInt(input.value);
+            
+            if (isNaN(age) || age < 18) {
+                showError(input, 'You must be at least 18 years old');
+                return false;
+            }
+            if (age > 65) {
+                showError(input, 'Age must be 65 or below');
+                return false;
+            }
+            return true;
+        }
+
+        function validateAddress(input) {
+            removeError(input);
+            const address = input.value.trim();
+            
+            if (address.length < 10) {
+                showError(input, 'Please enter your complete address (minimum 10 characters)');
+                return false;
+            }
+            return true;
+        }
+
+        function validateEducation(input) {
+            removeError(input);
+            const education = input.value.trim();
+            
+            if (education.length < 5) {
+                showError(input, 'Please provide complete education details');
+                return false;
+            }
+            return true;
+        }
+
+        function validateMotivation(input) {
+            removeError(input);
+            const motivation = input.value.trim();
+            
+            if (motivation.length < 30) {
+                showError(input, 'Please provide more details about your motivation (minimum 30 characters)');
+                return false;
+            }
+            return true;
+        }
+
+        function validateAvailability(input) {
+            removeError(input);
+            const availability = input.value.trim();
+            
+            if (availability.length < 5) {
+                showError(input, 'Please provide more details about your availability');
+                return false;
+            }
+            return true;
+        }
+
+        function validateSkills(input) {
+            removeError(input);
+            const skills = input.value.trim();
+            
+            if (skills.length < 5) {
+                showError(input, 'Please provide more details about your skills');
+                return false;
+            }
+            return true;
+        }
+
+        function validateForm(event) {
+            let isValid = true;
+            
+            isValid = validateName(document.getElementById('name')) && isValid;
+            isValid = validateEmail(document.getElementById('email')) && isValid;
+            isValid = validatePhone(document.getElementById('phone')) && isValid;
+            isValid = validateAge(document.getElementById('age')) && isValid;
+            isValid = validateAddress(document.getElementById('address')) && isValid;
+            isValid = validateEducation(document.getElementById('education')) && isValid;
+            isValid = validateMotivation(document.getElementById('motivation')) && isValid;
+            isValid = validateAvailability(document.getElementById('availability')) && isValid;
+            isValid = validateSkills(document.getElementById('skills')) && isValid;
+            
+            if (!isValid) {
+                event.preventDefault();
+            }
+            return isValid;
+        }
+
+        // Add input event listeners for real-time validation
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('name').addEventListener('input', function() { validateName(this); });
+            document.getElementById('email').addEventListener('input', function() { validateEmail(this); });
+            document.getElementById('phone').addEventListener('input', function() { validatePhone(this); });
+            document.getElementById('age').addEventListener('input', function() { validateAge(this); });
+            document.getElementById('address').addEventListener('input', function() { validateAddress(this); });
+            document.getElementById('education').addEventListener('input', function() { validateEducation(this); });
+            document.getElementById('motivation').addEventListener('input', function() { validateMotivation(this); });
+            document.getElementById('availability').addEventListener('input', function() { validateAvailability(this); });
+            document.getElementById('skills').addEventListener('input', function() { validateSkills(this); });
+            
+            // Add form submit validation
+            document.querySelector('form').addEventListener('submit', validateForm);
+        });
+    </script>
+    </body>
 </html>

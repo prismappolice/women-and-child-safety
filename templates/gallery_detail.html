@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ gallery_item[1] }} - AP Police Women & Child Safety Wing</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/chatbot.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; }
+        .logo { width: 120px; height: 120px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-weight: bold; font-size: 1.2em; color: #2c3e50; overflow: hidden; position: relative; }
+        .logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .main-title { color: #fff; font-size: 2.5em; font-weight: bold; text-align: center; flex: 1; }
+        .navbar { background: rgba(255,255,255,0.95); padding: 15px 60px; display: flex; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .nav-menu { display: flex; gap: 30px; }
+        .nav-menu a { color: #2c3e50; text-decoration: none; font-weight: 500; padding: 12px 20px; border-radius: 8px; transition: all 0.3s; position: relative; }
+        .nav-menu a:hover { background: #3498db; color: #fff; transform: translateY(-2px); }
+        
+        .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        .breadcrumb { margin-bottom: 30px; }
+        .breadcrumb a { color: #3498db; text-decoration: none; }
+        .breadcrumb span { color: #7f8c8d; margin: 0 10px; }
+        
+        .detail-header { background: #fff; padding: 40px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 40px; }
+        .detail-title { font-size: 2.5em; color: #2c3e50; margin-bottom: 15px; }
+        .detail-meta { display: flex; gap: 30px; margin-bottom: 20px; }
+        .meta-item { display: flex; align-items: center; gap: 8px; color: #7f8c8d; }
+        .detail-description { font-size: 1.1em; line-height: 1.8; color: #555; }
+        
+        .media-section { margin-bottom: 40px; }
+        .section-title { font-size: 1.8em; color: #2c3e50; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
+        
+        .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .media-item { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s; }
+        .media-item:hover { transform: translateY(-5px); }
+        
+        .media-image { width: 100%; height: 200px; object-fit: cover; cursor: pointer; }
+        .media-video { width: 100%; height: 200px; object-fit: cover; }
+        .media-content { padding: 15px; }
+        .media-title { font-weight: 600; color: #2c3e50; margin-bottom: 8px; }
+        .media-description { color: #7f8c8d; font-size: 0.9em; }
+        
+        .back-btn { display: inline-flex; align-items: center; gap: 10px; background: #3498db; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; transition: all 0.3s; margin-bottom: 30px; }
+        .back-btn:hover { background: #2980b9; transform: translateY(-2px); }
+        
+        /* Lightbox styles */
+        .lightbox { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); }
+        .lightbox-content { display: block; margin: auto; max-width: 90%; max-height: 90%; margin-top: 50px; }
+        .close { position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: #ccc; }
+        
+        .no-media { text-align: center; padding: 60px; color: #7f8c8d; }
+        .no-media i { font-size: 4em; margin-bottom: 20px; opacity: 0.3; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <img src="/static/images/ap_police_logo.png" alt="AP Police Logo" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color: #2c3e50; font-weight: bold; font-size: 1em; text-align: center;\'>AP<br>POLICE</div>';">
+        </div>
+        <h1 class="main-title">AP POLICE WOMEN & CHILD SAFETY WING</h1>
+        <div class="logo">
+            <img src="/static/images/shakthi_logo.png" alt="Shakthi Logo" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color: #2c3e50; font-weight: bold; font-size: 1em; text-align: center;\'>SHAKTHI</div>';">
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-menu">
+            <a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
+            <a href="{{ url_for('about') }}"><i class="fas fa-info-circle"></i> About</a>
+            <a href="{{ url_for('safety_tips') }}"><i class="fas fa-shield-alt"></i> Safety Tips</a>
+            <a href="{{ url_for('initiatives') }}"><i class="fas fa-lightbulb"></i> Initiatives</a>
+            <a href="{{ url_for('gallery') }}" class="active"><i class="fas fa-images"></i> Gallery</a>
+            <a href="{{ url_for('contact') }}"><i class="fas fa-phone"></i> Contact</a>
+            <a href="{{ url_for('volunteer_registration') }}"><i class="fas fa-users"></i> Volunteer</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Breadcrumb -->
+        <div class="breadcrumb">
+            <a href="{{ url_for('index') }}">Home</a>
+            <span>/</span>
+            <a href="{{ url_for('gallery') }}">Gallery</a>
+            <span>/</span>
+            <span>{{ category.replace('_', ' ').title() }}</span>
+            <span>/</span>
+            <span>{{ gallery_item[1] }}</span>
+        </div>
+
+        <!-- Back Button -->
+        <a href="{{ url_for('gallery') }}" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Back to Gallery
+        </a>
+
+        <!-- Detail Header -->
+        <div class="detail-header">
+            <h1 class="detail-title">{{ gallery_item[1] }}</h1>
+            <div class="detail-meta">
+                <div class="meta-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>{{ gallery_item[4] if gallery_item[4] else 'Ongoing' }}</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-tag"></i>
+                    <span>{{ category.replace('_', ' ').title() }}</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-images"></i>
+                    <span>{{ media_files|length }} Media Files</span>
+                </div>
+            </div>
+            <p class="detail-description">{{ gallery_item[2] }}</p>
+        </div>
+
+        {% if media_files %}
+            <!-- Images Section -->
+            {% set images = media_files | selectattr('0', 'equalto', 'image') | list %}
+            {% if images %}
+            <div class="media-section">
+                <h2 class="section-title">
+                    <i class="fas fa-camera" style="color: #e74c3c;"></i>
+                    Photo Gallery ({{ images|length }} images)
+                </h2>
+                <div class="media-grid">
+                    {% for image in images %}
+                    <div class="media-item">
+                        <img src="{{ image[1] }}" alt="{{ image[2] }}" class="media-image" onclick="openLightbox('{{ image[1] }}')">
+                        {% if image[2] or image[3] %}
+                        <div class="media-content">
+                            {% if image[2] %}<h4 class="media-title">{{ image[2] }}</h4>{% endif %}
+                            {% if image[3] %}<p class="media-description">{{ image[3] }}</p>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Videos Section -->
+            {% set videos = media_files | selectattr('0', 'equalto', 'video') | list %}
+            {% if videos %}
+            <div class="media-section">
+                <h2 class="section-title">
+                    <i class="fas fa-video" style="color: #3498db;"></i>
+                    Video Gallery ({{ videos|length }} videos)
+                </h2>
+                <div class="media-grid">
+                    {% for video in videos %}
+                    <div class="media-item">
+                        <video controls class="media-video">
+                            <source src="{{ video[1] }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        {% if video[2] or video[3] %}
+                        <div class="media-content">
+                            {% if video[2] %}<h4 class="media-title">{{ video[2] }}</h4>{% endif %}
+                            {% if video[3] %}<p class="media-description">{{ video[3] }}</p>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="no-media">
+                <i class="fas fa-images"></i>
+                <h3>No Media Available</h3>
+                <p>No images or videos have been added to this gallery item yet.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox">
+        <span class="close" onclick="closeLightbox()">&times;</span>
+        <img class="lightbox-content" id="lightbox-img">
+    </div>
+
+    <script>
+        function openLightbox(src) {
+            document.getElementById('lightbox').style.display = 'block';
+            document.getElementById('lightbox-img').src = src;
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').style.display = 'none';
+        }
+
+        // Close lightbox when clicking outside the image
+        document.getElementById('lightbox').onclick = function(event) {
+            if (event.target === this) {
+                closeLightbox();
+            }
+        }
+
+        // Close lightbox with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeLightbox();
+            }
+        });
+    </script>
+</body>
+</html>

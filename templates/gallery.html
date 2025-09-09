@@ -183,9 +183,15 @@
                         <p class="gallery-date">{{ item[6] if item[6] else 'Recent' }}</p>
                         <p class="gallery-description">{{ item[2][:100] }}{% if item[2]|length > 100 %}...{% endif %}</p>
                         {% if item[4] %}
-                            <a href="{{ item[4] }}" target="_blank" class="view-btn">
-                                <i class="fas fa-play"></i> Watch Video
-                            </a>
+                            {% if item[4].startswith('http') %}
+                                <a href="{{ item[4] }}" target="_blank" class="view-btn">
+                                    <i class="fas fa-play"></i> Watch Video
+                                </a>
+                            {% else %}
+                                <button onclick="playLocalVideo('{{ item[4] }}', '{{ item[1] }}')" class="view-btn" style="border: none; cursor: pointer;">
+                                    <i class="fas fa-play"></i> Play Video
+                                </button>
+                            {% endif %}
                         {% else %}
                             <a href="{{ item[3] }}" target="_blank" class="view-btn">
                                 <i class="fas fa-eye"></i> View
@@ -212,9 +218,15 @@
                         <p class="gallery-date">{{ item[6] if item[6] else 'Recent' }}</p>
                         <p class="gallery-description">{{ item[2][:100] }}{% if item[2]|length > 100 %}...{% endif %}</p>
                         {% if item[4] %}
-                            <a href="{{ item[4] }}" target="_blank" class="view-btn">
-                                <i class="fas fa-play"></i> Watch Video
-                            </a>
+                            {% if item[4].startswith('http') %}
+                                <a href="{{ item[4] }}" target="_blank" class="view-btn">
+                                    <i class="fas fa-play"></i> Watch Video
+                                </a>
+                            {% else %}
+                                <button onclick="playLocalVideo('{{ item[4] }}', '{{ item[1] }}')" class="view-btn" style="border: none; cursor: pointer;">
+                                    <i class="fas fa-play"></i> Play Video
+                                </button>
+                            {% endif %}
                         {% else %}
                             <a href="{{ item[3] }}" target="_blank" class="view-btn">
                                 <i class="fas fa-eye"></i> View
@@ -270,9 +282,15 @@
                         <p class="gallery-date">{{ item[6] if item[6] else 'Upcoming' }}</p>
                         <p class="gallery-description">{{ item[2][:100] }}{% if item[2]|length > 100 %}...{% endif %}</p>
                         {% if item[4] %}
-                            <a href="{{ item[4] }}" target="_blank" class="view-btn">
-                                <i class="fas fa-play"></i> Watch Video
-                            </a>
+                            {% if item[4].startswith('http') %}
+                                <a href="{{ item[4] }}" target="_blank" class="view-btn">
+                                    <i class="fas fa-play"></i> Watch Video
+                                </a>
+                            {% else %}
+                                <button onclick="playLocalVideo('{{ item[4] }}', '{{ item[1] }}')" class="view-btn" style="border: none; cursor: pointer;">
+                                    <i class="fas fa-play"></i> Play Video
+                                </button>
+                            {% endif %}
                         {% else %}
                             <a href="{{ item[3] }}" target="_blank" class="view-btn">
                                 <i class="fas fa-eye"></i> View Details
@@ -303,9 +321,15 @@
                         <p class="gallery-date">{{ item[6] if item[6] else 'Upcoming' }}</p>
                         <p class="gallery-description">{{ item[2][:100] }}{% if item[2]|length > 100 %}...{% endif %}</p>
                         {% if item[4] %}
-                            <a href="{{ item[4] }}" target="_blank" class="view-btn">
-                                <i class="fas fa-play"></i> Watch Video
-                            </a>
+                            {% if item[4].startswith('http') %}
+                                <a href="{{ item[4] }}" target="_blank" class="view-btn">
+                                    <i class="fas fa-play"></i> Watch Video
+                                </a>
+                            {% else %}
+                                <button onclick="playLocalVideo('{{ item[4] }}', '{{ item[1] }}')" class="view-btn" style="border: none; cursor: pointer;">
+                                    <i class="fas fa-play"></i> Play Video
+                                </button>
+                            {% endif %}
                         {% else %}
                             <a href="{{ item[3] }}" target="_blank" class="view-btn">
                                 <i class="fas fa-eye"></i> View Details
@@ -389,11 +413,45 @@
     
     <div class="footer">
         <div class="footer-bottom">
-            <p>&copy; 2024 AP Women Safety Wing. All rights reserved.</p>
-            <p>Emergency Helpline: 181 | Women's Helpline: 1091</p>
+            <p>&copy; 2025 AP Police Women and Child Safety Wing. All rights reserved.</p>
+            <p>Email: womensafety@appolice.gov.in | Emergency Helpline: 181 | Women's Helpline: 1091</p>
         </div>
     </div>
     
     <script src="/static/chatbot.js"></script>
+    
+    <!-- Video Player Modal -->
+    <div id="videoModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 20px; border-radius: 10px; max-width: 90%; max-height: 90%; position: relative;">
+            <button onclick="closeVideoModal()" style="position: absolute; top: 10px; right: 15px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 18px;">&times;</button>
+            <h3 id="videoTitle" style="margin-bottom: 20px; color: #2c3e50;"></h3>
+            <video id="localVideo" controls style="width: 100%; max-width: 800px; height: auto;">
+                <source id="videoSource" src="" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
+    
+    <script>
+    function playLocalVideo(videoUrl, title) {
+        document.getElementById('videoTitle').textContent = title;
+        document.getElementById('videoSource').src = videoUrl;
+        document.getElementById('localVideo').load();
+        document.getElementById('videoModal').style.display = 'flex';
+    }
+    
+    function closeVideoModal() {
+        document.getElementById('videoModal').style.display = 'none';
+        document.getElementById('localVideo').pause();
+        document.getElementById('videoSource').src = '';
+    }
+    
+    // Close modal when clicking outside video
+    document.getElementById('videoModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeVideoModal();
+        }
+    });
+    </script>
 </body>
 </html>

@@ -95,9 +95,9 @@
                                                 <div class="mb-3">
                                                     <label for="category" class="form-label">Category</label>
                                                     <select class="form-control" id="category" name="category" required>
-                                                        <option value="Images" {{ 'selected' if gallery_item and gallery_item[6] == 'Images' else '' }}>Images</option>
-                                                        <option value="Videos" {{ 'selected' if gallery_item and gallery_item[6] == 'Videos' else '' }}>Videos</option>
-                                                        <option value="Upcoming Events" {{ 'selected' if gallery_item and gallery_item[6] == 'Upcoming Events' else '' }}>Upcoming Events</option>
+                                                        <option value="Images" {{ 'selected' if gallery_item and gallery_item[5] == 'Images' else '' }}>Images</option>
+                                                        <option value="Videos" {{ 'selected' if gallery_item and gallery_item[5] == 'Videos' else '' }}>Videos</option>
+                                                        <option value="Upcoming Events" {{ 'selected' if gallery_item and gallery_item[5] == 'Upcoming Events' else '' }}>Upcoming Events</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -105,7 +105,7 @@
                                                 <div class="mb-3">
                                                     <label for="event_date" class="form-label">Event Date</label>
                                                     <input type="date" class="form-control" id="event_date" name="event_date" 
-                                                           value="{{ gallery_item[5] if gallery_item else '' }}">
+                                                           value="{{ gallery_item[4] if gallery_item else '' }}">
                                                 </div>
                                             </div>
                                         </div>
@@ -127,7 +127,7 @@
                                         <div class="mb-3">
                                             <label for="video_url" class="form-label">Video URL (YouTube, Vimeo, etc.)</label>
                                             <input type="url" class="form-control" id="video_url" name="video_url" 
-                                                   value="{{ gallery_item[4] if gallery_item else '' }}"
+                                                   value="{{ gallery_item[10] if gallery_item else '' }}"
                                                    placeholder="https://youtube.com/watch?v=...">
                                         </div>
 
@@ -135,7 +135,7 @@
                                             <div class="col-md-6">
                                                 <div class="form-check mb-3">
                                                     <input type="checkbox" class="form-check-input" id="is_featured" name="is_featured" 
-                                                           {{ 'checked' if gallery_item and gallery_item[7] else '' }}>
+                                                           {{ 'checked' if gallery_item and gallery_item[6] else '' }}>
                                                     <label class="form-check-label" for="is_featured">
                                                         Featured Item
                                                     </label>
@@ -144,7 +144,7 @@
                                             <div class="col-md-6">
                                                 <div class="form-check mb-3">
                                                     <input type="checkbox" class="form-check-input" id="is_active" name="is_active" 
-                                                           {{ 'checked' if gallery_item and gallery_item[8] else '' }}>
+                                                           {{ 'checked' if gallery_item and gallery_item[7] else '' }}>
                                                     <label class="form-check-label" for="is_active">
                                                         Active
                                                     </label>

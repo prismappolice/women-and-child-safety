@@ -9,7 +9,16 @@
     <style>
         body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
         .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; color: #fff; }
-        .logo { width: 80px; height: 80px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); color: #2c3e50; font-weight: bold; }
+        .logo { 
+            width: 100px; 
+            height: 100px; 
+            background: #fff;
+            border-radius: 50%;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
         .header-title { font-size: 2em; font-weight: bold; }
         .logout-btn { background: #e74c3c; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; }
         .logout-btn:hover { background: #c0392b; }
@@ -82,7 +91,11 @@
 </head>
 <body>
     <div class="header">
-        <div class="logo">AP</div>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='images/ap_police_logo.png') }}" 
+                 alt="AP Police Logo" 
+                 style="height: 65px; width: 65px; object-fit: contain; padding: 5px;">
+        </div>
         <div class="header-title">Admin Dashboard</div>
         <a href="/admin-logout" class="logout-btn">
             <i class="fas fa-sign-out-alt"></i> Logout

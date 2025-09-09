@@ -58,6 +58,17 @@
         
         .search-bar { margin-bottom: 20px; }
         .search-input { width: 100%; max-width: 400px; padding: 12px; border: 2px solid #ecf0f1; border-radius: 8px; font-size: 16px; }
+        
+        .score-badge, .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; text-align: center; display: inline-block; min-width: 60px; }
+        .score-high { background: #28a745; color: white; }
+        .score-medium { background: #ffc107; color: #212529; }
+        .score-low { background: #dc3545; color: white; }
+        .score-pending { background: #6c757d; color: white; }
+        .status-pending { background: #ffc107; color: #212529; }
+        .status-approved { background: #28a745; color: white; }
+        .status-rejected { background: #dc3545; color: white; }
+        .status-high_priority { background: #ff6b35; color: white; }
+        .status-contacted { background: #17a2b8; color: white; }
     </style>
 </head>
 <body>
@@ -91,8 +102,16 @@
                 <div class="stat-label">Total Volunteers</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">{{ volunteers|selectattr(12)|list|length }}</div>
-                <div class="stat-label">Recent Registrations</div>
+                <div class="stat-number">{{ volunteers|selectattr(16)|selectattr(16, 'ge', 75)|list|length }}</div>
+                <div class="stat-label">High Priority (75+)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ volunteers|selectattr(17, 'equalto', 'approved')|list|length }}</div>
+                <div class="stat-label">Approved</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ volunteers|selectattr(17, 'equalto', 'pending')|list|length }}</div>
+                <div class="stat-label">Pending Review</div>
             </div>
         </div>
         
@@ -108,8 +127,9 @@
                         <th>Name</th>
                         <th>Email</th>
                         <th>Phone</th>
-                        <th>Age</th>
-                        <th>Occupation</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                        <th>Emails</th>
                         <th>Registration Date</th>
                         <th>Actions</th>
                     </tr>
@@ -121,18 +141,30 @@
                         <td>{{ volunteer[1] }}</td>
                         <td class="text-truncate">{{ volunteer[2] }}</td>
                         <td>{{ volunteer[3] }}</td>
-                        <td>{{ volunteer[4] or 'N/A' }}</td>
-                        <td class="text-truncate">{{ volunteer[6] or 'N/A' }}</td>
-                        <td>{{ volunteer[12].split()[0] if volunteer[12] else 'N/A' }}</td>
+                        <td>
+                            {% if volunteer[16] %}
+                                <span class="score-badge score-{{ 'high' if volunteer[16] >= 75 else 'medium' if volunteer[16] >= 50 else 'low' }}">
+                                    {{ volunteer[16] }}/100
+                                </span>
+                            {% else %}
+                                <span class="score-badge score-pending">Not Scored</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if volunteer[17] %}
+                                <span class="status-badge status-{{ volunteer[17] }}">{{ volunteer[17].replace('_', ' ').title() }}</span>
+                            {% else %}
+                                <span class="status-badge status-pending">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ volunteer_emails[volunteer[0]] or 0 }}</td>
+                        <td>{{ volunteer[10].split()[0] if volunteer[10] else 'N/A' }}</td>
                         <td class="action-btns">
-                            <button class="btn btn-view" onclick="viewVolunteer({ loopindex0 })">
-                                <i class="fas fa-eye"></i> View
-                            </button>
+                            <a href="{{ url_for('admin_volunteer_detail', volunteer_id=volunteer[0]) }}" class="btn btn-view">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
                             <a href="mailto:{{ volunteer[2] }}" class="btn btn-contact">
                                 <i class="fas fa-envelope"></i> Email
-                            </a>
-                            <a href="tel:{{ volunteer[3] }}" class="btn btn-contact">
-                                <i class="fas fa-phone"></i> Call
                             </a>
                         </td>
                     </tr>
