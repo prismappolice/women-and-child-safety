@@ -10,6 +10,348 @@ import re
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
 
+# Initialize volunteer tables on app startup
+def init_volunteer_tables():
+    try:
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        # Check current table structure
+        cursor.execute("PRAGMA table_info(volunteers)")
+        existing_columns = cursor.fetchall()
+        print(f"Existing volunteers table columns: {existing_columns}")
+        
+        # Drop and recreate volunteers table to ensure proper structure
+        cursor.execute('DROP TABLE IF EXISTS volunteers')
+        cursor.execute('DROP TABLE IF EXISTS volunteer_status')
+        
+        # Create volunteers table with correct structure
+        cursor.execute('''
+            CREATE TABLE volunteers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                registration_id TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                phone TEXT NOT NULL UNIQUE,
+                age INTEGER,
+                address TEXT NOT NULL,
+                occupation TEXT,
+                education TEXT,
+                experience TEXT,
+                motivation TEXT,
+                availability TEXT,
+                skills TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Create volunteer_status table
+        cursor.execute('''
+            CREATE TABLE volunteer_status (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                volunteer_id INTEGER UNIQUE,
+                status TEXT DEFAULT 'pending',
+                admin_notes TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
+            )
+        ''')
+        
+        conn.commit()
+        print("Volunteer tables created successfully with proper structure")
+    except Exception as e:
+        print(f"Error initializing volunteer tables: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        if conn:
+            conn.close()
+
+# Initialize tables
+init_volunteer_tables()
+
+# Admin Routes
+@app.route('/admin/volunteers')
+def manage_volunteers():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+        
+    try:
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        # Get all columns with proper aliases
+        cursor.execute('''
+            SELECT 
+                v.id,
+                v.registration_id,
+                v.name,
+                v.email,
+                v.phone,
+                v.age,
+                v.address,
+                v.occupation,
+                v.education,
+                v.experience,
+                v.motivation,
+                v.availability,
+                v.skills,
+                v.created_at,
+                vs.status,
+                vs.updated_at
+            FROM volunteers v 
+            LEFT JOIN volunteer_status vs ON v.id = vs.volunteer_id 
+            ORDER BY v.created_at DESC
+        ''')
+        
+        columns = ['id', 'registration_id', 'name', 'email', 'phone', 'age', 'address', 
+                  'occupation', 'education', 'experience', 'motivation', 'availability', 
+                  'skills', 'created_at', 'status', 'updated_at']
+        volunteers = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        
+        print(f"Found {len(volunteers)} volunteers")  # Debug print
+        for v in volunteers:
+            print(f"Volunteer: {v['name']} - {v['registration_id']}")  # Debug print
+            
+        return render_template('manage_volunteers.html', volunteers=volunteers)
+    except Exception as e:
+        print(f"Error: {e}")
+        flash('Error loading volunteer data', 'error')
+        return redirect(url_for('admin_dashboard'))
+    finally:
+        conn.close()
+
+@app.route('/admin/update-volunteer-status', methods=['POST'])
+def update_volunteer_status():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+        
+    volunteer_id = request.form.get('volunteer_id')
+    action = request.form.get('action')
+    
+    if not volunteer_id or action not in ['hold', 'accept', 'reject']:
+        flash('Invalid request', 'error')
+        return redirect(url_for('manage_volunteers'))
+    
+    try:
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        # Map action to status
+        status_map = {'hold': 'hold', 'accept': 'accepted', 'reject': 'rejected'}
+        status = status_map[action]
+        
+        cursor.execute('''
+            UPDATE volunteer_status 
+            SET status = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE volunteer_id = ?
+        ''', (status, volunteer_id))
+        
+        conn.commit()
+        flash(f'Volunteer application {status} successfully', 'success')
+    except Exception as e:
+        print(f"Error: {e}")
+        flash('Error updating status', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('manage_volunteers'))
+
+# Volunteer Routes
+@app.route('/volunteer-registration', methods=['GET', 'POST'])
+def volunteer_registration():
+    if request.method == 'POST':
+        # Get form data
+        name = request.form.get('name')
+        email = request.form.get('email')
+        phone = request.form.get('phone')
+        age = request.form.get('age')
+        address = request.form.get('address')
+        occupation = request.form.get('occupation')
+        education = request.form.get('education')
+        experience = request.form.get('experience', '')  # Make optional
+        motivation = request.form.get('motivation')
+        availability = request.form.get('availability')
+        skills = request.form.get('skills')
+
+        # Basic validation
+        if not all([name, email, phone, age, address, occupation, education, motivation, availability, skills]):
+            flash('Please fill in all required fields', 'error')
+            return redirect(url_for('volunteer_registration'))
+
+        try:
+            conn = sqlite3.connect('women_safety.db')
+            cursor = conn.cursor()
+            
+            # Check if phone number already exists
+            cursor.execute('SELECT id, registration_id FROM volunteers WHERE phone = ?', (phone,))
+            existing = cursor.fetchone()
+            if existing:
+                flash(f'This phone number is already registered with ID: {existing[1]}', 'error')
+                return redirect(url_for('volunteer_registration'))
+
+            # Generate registration ID
+            year = datetime.now().year
+            cursor.execute('SELECT registration_id FROM volunteers WHERE registration_id LIKE ? ORDER BY id DESC LIMIT 1', (f'VOL-{year}-%',))
+            last_reg = cursor.fetchone()
+            
+            if last_reg:
+                last_num = int(last_reg[0].split('-')[-1])
+                registration_id = f'VOL-{year}-{last_num + 1:04d}'
+            else:
+                registration_id = f'VOL-{year}-0001'
+
+            # Insert volunteer data
+            cursor.execute('''
+                INSERT INTO volunteers (
+                    registration_id, name, email, phone, age, address,
+                    occupation, education, experience, motivation,
+                    availability, skills
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (registration_id, name, email, phone, age, address,
+                  occupation, education, experience, motivation,
+                  availability, skills))
+
+            volunteer_id = cursor.lastrowid
+            
+            # Insert status record
+            cursor.execute('''
+                INSERT INTO volunteer_status (volunteer_id, status)
+                VALUES (?, 'pending')
+            ''', (volunteer_id,))
+
+            conn.commit()
+            flash(f'Registration successful! Your Registration ID is {registration_id}. Please save this for future reference.', 'success')
+            return redirect(url_for('volunteer_registration'))
+
+        except Exception as e:
+            print(f"Registration Error: {e}")
+            import traceback
+            traceback.print_exc()
+            flash(f'An error occurred during registration: {str(e)}', 'error')
+            return redirect(url_for('volunteer_registration'))
+        finally:
+            if conn:
+                conn.close()
+
+    return render_template('volunteer_registration.html')
+
+@app.route('/check-volunteer-status', methods=['GET', 'POST'])
+def check_volunteer_status():
+    if request.method == 'GET':
+        return render_template('check_volunteer_status.html')
+    
+    identifier = request.form.get('identifier')
+    if not identifier:
+        flash('Please enter a Registration ID or Phone number', 'error')
+        return render_template('check_volunteer_status.html')
+    
+    conn = None
+    try:
+        conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        query = 'v.registration_id = ?' if identifier.startswith('VOL-') else 'v.phone = ?'
+        cursor.execute("""
+            SELECT 
+                v.id, v.registration_id, v.name, v.email, v.phone, 
+                v.age, v.address, v.occupation, v.education, 
+                v.experience, v.motivation, v.availability, v.skills,
+                v.created_at, COALESCE(vs.status, 'pending') as status,
+                COALESCE(vs.updated_at, v.created_at) as updated_at
+            FROM volunteers v 
+            LEFT JOIN volunteer_status vs ON v.id = vs.volunteer_id 
+            WHERE """ + query, (identifier,))
+        
+        result = cursor.fetchone()
+        if result:
+            app = {
+                'id': result[0], 'registration_id': result[1],
+                'name': result[2], 'email': result[3],
+                'phone': result[4], 'age': result[5],
+                'address': result[6], 'occupation': result[7],
+                'education': result[8], 'experience': result[9],
+                'motivation': result[10], 'availability': result[11],
+                'skills': result[12], 'created_at': result[13],
+                'status': result[14], 'updated_at': result[15]
+            }
+            return render_template('check_volunteer_status.html', application=app)
+        
+        flash('No application found with the provided details', 'error')
+        return render_template('check_volunteer_status.html')
+    except Exception as e:
+        print(f"Error checking status: {e}")
+        flash('An error occurred while checking status', 'error')
+        return render_template('check_volunteer_status.html')
+    finally:
+        if conn:
+            conn.close()
+
+def generate_registration_id():
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    # Get the current year
+    year = datetime.now().year
+    
+    # Get the last registration number for this year
+    cursor.execute('SELECT registration_id FROM volunteers WHERE registration_id LIKE ? ORDER BY id DESC LIMIT 1', (f'VOL-{year}-%',))
+    last_reg = cursor.fetchone()
+    
+    if last_reg:
+        # Extract the number from the last registration ID and increment
+        last_num = int(last_reg[0].split('-')[2])
+        new_num = last_num + 1
+    else:
+        new_num = 1
+    
+    # Generate new registration ID (format: VOL-2025-001)
+    registration_id = f'VOL-{year}-{new_num:03d}'
+    
+    conn.close()
+    return registration_id
+
+# Initialize database
+def init_volunteer_db():
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    # Create volunteers table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS volunteers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            registration_id TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone TEXT NOT NULL UNIQUE,
+            age INTEGER,
+            address TEXT NOT NULL,
+            occupation TEXT,
+            education TEXT,
+            experience TEXT,
+            motivation TEXT,
+            availability TEXT,
+            skills TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create volunteer_status table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS volunteer_status (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            volunteer_id INTEGER UNIQUE,
+            status TEXT DEFAULT 'pending',
+            admin_notes TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+app.secret_key = 'your-secret-key-change-this'
+
 # Email Configuration - Using personal email for testing (change to department email later)
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
@@ -34,14 +376,15 @@ def init_db():
     conn = sqlite3.connect('women_safety.db')
     cursor = conn.cursor()
     
-    # Create volunteers table
+    # Create volunteers table with registration ID
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS volunteers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            registration_id TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
             email TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            age TEXT,
+            phone TEXT NOT NULL UNIQUE,
+            age INTEGER,
             address TEXT NOT NULL,
             occupation TEXT,
             education TEXT,
@@ -241,6 +584,71 @@ def home():
     
     return render_template('index.html', home_content=home_content)
 
+# Initialize volunteer database tables
+def init_volunteer_db():
+    conn = sqlite3.connect('volunteer_system.db')
+    cursor = conn.cursor()
+    
+    # Create volunteers table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS volunteers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            registration_id TEXT UNIQUE,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT UNIQUE,
+            age INTEGER,
+            address TEXT,
+            occupation TEXT,
+            education TEXT,
+            experience TEXT,
+            motivation TEXT,
+            availability TEXT,
+            skills TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create volunteer status table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS volunteer_status (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            volunteer_id INTEGER,
+            status TEXT DEFAULT 'pending',
+            notes TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (volunteer_id) REFERENCES volunteers(id)
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+# Initialize volunteer database
+init_volunteer_db()
+
+def generate_volunteer_id():
+    conn = sqlite3.connect('volunteer_system.db')
+    cursor = conn.cursor()
+    
+    # Get the current year
+    year = datetime.now().year
+    
+    # Get the last registration number for this year
+    cursor.execute('SELECT registration_id FROM volunteers WHERE registration_id LIKE ? ORDER BY id DESC LIMIT 1', (f'VOL-{year}-%',))
+    last_reg = cursor.fetchone()
+    
+    if last_reg:
+        # Extract the number from the last registration ID and increment
+        last_num = int(last_reg[0].split('-')[2])
+        new_num = last_num + 1
+    else:
+        new_num = 1
+    
+    # Generate new registration ID
+    registration_id = f'VOL-{year}-{new_num:04d}'
+    return registration_id
+
 @app.route('/about')
 def about():
     # Get dynamic about page content
@@ -261,6 +669,8 @@ def about():
     
     return render_template('about.html', about_sections=about_sections, officers=officers, success_stories=success_stories)
 
+
+
 @app.route('/initiatives')
 def initiatives():
     # Get dynamic initiatives from database
@@ -271,203 +681,6 @@ def initiatives():
     conn.close()
     
     return render_template('initiatives.html', initiatives_data=initiatives_data)
-
-@app.route('/volunteer-registration', methods=['GET', 'POST'])
-def volunteer_registration():
-    if request.method == 'POST':
-        # Clear any existing flashed messages
-        session.pop('_flashes', None)
-        
-        # Handle form submission - Get all form data
-        name = request.form.get('name')
-        email = request.form.get('email')
-        phone = request.form.get('phone')
-        age = request.form.get('age')
-        address = request.form.get('address')
-        occupation = request.form.get('occupation')
-        education = request.form.get('education')
-        experience = request.form.get('experience')
-        motivation = request.form.get('motivation')
-        availability = request.form.get('availability')
-        skills = request.form.get('skills')
-
-        # Validate form data
-        errors = []
-        
-        # Name validation    
-        if not name:
-            errors.append('Name is required')
-        elif len(name.strip()) < 3:
-            errors.append('Name must be at least 3 characters')
-        elif not all(x.isalpha() or x.isspace() for x in name):
-            errors.append('Name should only contain letters and spaces')
-            
-        # Email validation
-        if not email:
-            errors.append('Email is required')
-        elif '@' not in email or '.' not in email:
-            errors.append('Please enter a valid email address')
-            
-        # Phone validation
-        if not phone:
-            errors.append('Phone number is required')
-        elif len(phone) != 10 or not phone.isdigit():
-            errors.append('Phone number must be exactly 10 digits')
-        elif phone.startswith('0'):
-            errors.append('Phone number cannot start with 0')
-        elif all(d == phone[0] for d in phone):
-            errors.append('Invalid phone number - cannot be all same digits')
-            
-        # Age validation
-        if not age:
-            errors.append('Age is required')
-        else:
-            try:
-                age_num = int(age)
-                if age_num < 18:
-                    errors.append('You must be at least 18 years old to volunteer')
-                elif age_num > 65:
-                    errors.append('Age must be 65 or below')
-            except:
-                errors.append('Please enter a valid age number')
-            
-        # Address validation
-        if not address:
-            errors.append('Address is required')
-        elif len(address.strip()) < 10:
-            errors.append('Please enter your complete address (minimum 10 characters)')
-            
-        # Occupation validation
-        if not occupation:
-            errors.append('Occupation is required')
-        elif len(occupation.strip()) < 3:
-            errors.append('Please enter a valid occupation')
-            
-        # Education validation
-        if not education:
-            errors.append('Education details are required')
-        elif len(education.strip()) < 5:
-            errors.append('Please provide complete education details')
-            
-        # Experience validation (optional but if provided should be valid)
-        if experience and len(experience.strip()) < 5:
-            errors.append('If providing experience, please give more details')
-            
-        # Motivation validation
-        if not motivation:
-            errors.append('Please tell us why you want to volunteer')
-        elif len(motivation.strip()) < 30:
-            errors.append('Please provide more details about your motivation (minimum 30 characters)')
-            
-        # Availability validation
-        if not availability:
-            errors.append('Please specify your availability')
-        elif len(availability.strip()) < 5:
-            errors.append('Please provide more details about your availability')
-            
-        # Skills validation
-        if not skills:
-            errors.append('Please list your relevant skills')
-        elif len(skills.strip()) < 5:
-            errors.append('Please provide more details about your skills')
-
-        # If there are any validation errors
-        if errors:
-            # Clear any previous messages
-            session.pop('_flashes', None)
-            # Show only the error messages
-            for error in errors:
-                flash(error, 'error')
-            # Return the form with the current input values
-            return render_template('volunteer_registration.html', 
-                form_data={
-                    'name': name,
-                    'email': email,
-                    'phone': phone,
-                    'age': age,
-                    'address': address,
-                    'occupation': occupation,
-                    'education': education,
-                    'experience': experience,
-                    'motivation': motivation,
-                    'availability': availability,
-                    'skills': skills
-                }
-            )
-        try:
-            conn = sqlite3.connect('women_safety.db')
-            cursor = conn.cursor()
-            
-            # First check if phone number already exists
-            cursor.execute('SELECT id FROM volunteers WHERE phone = ?', (phone,))
-            existing_phone = cursor.fetchone()
-            
-            if existing_phone:
-                flash('This phone number is already registered', 'error')
-                return redirect(url_for('volunteer_registration'))
-                
-            cursor.execute('''
-                INSERT INTO volunteers (name, email, phone, age, address, occupation, education, experience, motivation, availability, skills)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (name, email, phone, age, address, occupation, education, experience, motivation, availability, skills))
-            
-            # Get the volunteer ID
-            volunteer_id = cursor.lastrowid
-            conn.commit()
-            
-            # Send notification email to admin
-            admin_subject = "New Volunteer Application Received"
-            admin_body = f"""A new volunteer application has been received:
-
-Applicant Details:
------------------
-Name: {name}
-Age: {age}
-Phone: {phone}
-Email: {email}
-Address: {address}
-
-Professional Background:
----------------------
-Occupation: {occupation}
-Education: {education}
-Experience: {experience}
-
-Skills & Availability:
--------------------
-Skills: {skills}
-Availability: {availability}
-
-Motivation:
-----------
-{motivation}
-
-Please review this application in the admin dashboard."""
-
-            try:
-                msg = Message(subject=admin_subject,
-                            recipients=[ADMIN_EMAIL],
-                            body=admin_body)
-                mail.send(msg)
-            except Exception as e:
-                # Log email failure but continue with registration
-                print(f"Warning: Failed to send admin notification email: {str(e)}")
-            
-            conn.close()
-            
-            # Show success message to user
-            session.pop('_flashes', None)
-            flash('Thank you for registering! Your application has been submitted successfully.', 'success')
-            
-            # Redirect to success page
-            return render_template('volunteer_success.html')
-            
-        except Exception as e:
-            print(f"Volunteer registration error: {str(e)}")
-            flash('An error occurred while processing your application. Please try again.', 'error')
-            return redirect(url_for('volunteer_registration'))
-    
-    return render_template('volunteer_registration.html')
 
 @app.route('/safety-tips')
 def safety_tips():
@@ -1534,6 +1747,23 @@ def admin_dashboard():
     # Count gallery items by category
     cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE category = "Images" AND is_active = 1')
     images_count = cursor.fetchone()[0]
+    
+    # Get volunteer statistics
+    cursor.execute('SELECT COUNT(*) FROM volunteers')
+    total_volunteers = cursor.fetchone()[0] or 0
+    
+    cursor.execute('SELECT COUNT(*) FROM volunteer_status WHERE status = "pending"')
+    pending_volunteers = cursor.fetchone()[0] or 0
+    
+    cursor.execute('SELECT COUNT(*) FROM volunteer_status WHERE status = "accepted"')
+    accepted_volunteers = cursor.fetchone()[0] or 0
+    
+    # Get volunteer statistics
+    cursor.execute('SELECT COUNT(*) FROM volunteers')
+    total_volunteers = cursor.fetchone()[0] or 0
+    
+    cursor.execute('SELECT COUNT(*) FROM volunteer_status WHERE status = "pending"')
+    pending_volunteers = cursor.fetchone()[0] or 0
     
     cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE category = "Videos" AND is_active = 1')
     videos_count = cursor.fetchone()[0]
@@ -4542,12 +4772,6 @@ def save_status():
         result += f"<p style='color:red;'>Error: {e}</p>"
     
     return result
-
-@app.route('/final-commit-hash')
-def final_commit_hash():
-    import subprocess
-    import os
-    from datetime import datetime
     
     result = "<h2>🎯 FINAL COMMIT & HASH CODE</h2>"
     
