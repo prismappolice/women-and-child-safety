@@ -19,6 +19,9 @@
             justify-content: center; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
+        .stat-card.volunteer { border-left: 4px solid #28a745; }
+        .stat-card.volunteer:hover { background: #f8fff8; }
+        }
         .header-title { font-size: 2em; font-weight: bold; }
         .logout-btn { background: #e74c3c; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; }
         .logout-btn:hover { background: #c0392b; }
@@ -106,8 +109,28 @@
         <h1 class="dashboard-title">Admin Dashboard - Gallery Management</h1>
         
         <div class="stats-grid">
+            <!-- Volunteer Statistics -->
+            <div class="stat-card volunteer">
+                <div class="stat-icon volunteers"><i class="fas fa-users"></i></div>
+                <div class="stat-number">{{ total_volunteers or 0 }}</div>
+                <div class="stat-label">Total Volunteers</div>
+            </div>
+            
+            <div class="stat-card volunteer">
+                <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
+                <div class="stat-number">{{ pending_volunteers or 0 }}</div>
+                <div class="stat-label">Pending Applications</div>
+            </div>
+            
+            <div class="stat-card volunteer">
+                <div class="stat-icon accepted"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-number">{{ accepted_volunteers or 0 }}</div>
+                <div class="stat-label">Accepted Volunteers</div>
+            </div>
+            
+            <!-- Gallery Statistics -->
             <div class="stat-card">
-                <div class="stat-icon volunteers"><i class="fas fa-images"></i></div>
+                <div class="stat-icon gallery"><i class="fas fa-images"></i></div>
                 <div class="stat-number">{{ stats.images or 0 }}</div>
                 <div class="stat-label">Images</div>
             </div>
@@ -137,6 +160,19 @@
                 Gallery Management - Quick Actions
             </h2>
             <div class="quick-actions">
+                <!-- Volunteer Management -->
+                <a href="/admin/volunteers" class="quick-action">
+                    <i class="fas fa-users"></i>
+                    Manage Volunteers
+                    <small style="display: block; font-size: 0.8em; margin-top: 5px;">View and manage volunteer applications</small>
+                </a>
+                <a href="/admin/volunteers?status=pending" class="quick-action">
+                    <i class="fas fa-clock"></i>
+                    Pending Applications
+                    <small style="display: block; font-size: 0.8em; margin-top: 5px;">Review new volunteer applications</small>
+                </a>
+                
+                <!-- Gallery Management -->
                 <a href="/admin/gallery?category=Images" class="quick-action">
                     <i class="fas fa-images"></i>
                     Manage Gallery

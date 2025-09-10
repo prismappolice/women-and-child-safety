@@ -20,6 +20,11 @@
         .page-title { font-size: 2.5em; color: #2c3e50; text-align: center; margin-bottom: 20px; }
         .breadcrumb { text-align: center; margin-bottom: 40px; color: #7f8c8d; }
         .breadcrumb a { color: #3498db; text-decoration: none; }
+        .action-links { display: flex; justify-content: center; gap: 20px; margin-top: 20px; }
+        .action-btn { display: inline-block; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; transition: all 0.3s; }
+        .check-status-btn { background: #3498db; color: #fff; }
+        .admin-btn { background: #2c3e50; color: #fff; }
+        .action-btn:hover { opacity: 0.9; transform: translateY(-2px); }
         
         .form-container { background: #fff; padding: 40px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
         .form-intro { text-align: center; margin-bottom: 40px; }
@@ -78,7 +83,7 @@
             <a href="/">Home</a>
             <a href="/about">About Us</a>
             <a href="/initiatives">Initiatives</a>
-            <a href="/volunteer-registration" class="active">Volunteer</a>
+            <a href="{{ url_for('volunteer_registration') }}" class="active">Volunteer</a>
             <a href="/safety-tips">Safety Tips</a>
             <a href="/pdf-resources">PDF Resources</a>
             <a href="/contact">Contact Us</a>
@@ -91,6 +96,12 @@
         <h1 class="page-title">Volunteer Registration</h1>
         <div class="breadcrumb">
             <a href="/">Home</a> / Volunteer Registration
+        </div>
+        
+        <div class="action-links">
+            <a href="/check-volunteer-status" class="action-btn check-status-btn">
+                <i class="fas fa-search"></i> Check Application Status
+            </a>
         </div>
         
         {% if get_flashed_messages() %}
@@ -122,7 +133,7 @@
                 <p>Be part of the change by volunteering with AP Women Safety Wing. Help us create a safer environment for women across Andhra Pradesh.</p>
             </div>
             
-            <form method="POST" action="/volunteer-registration">
+            <form method="POST" action="{{ url_for('volunteer_registration') }}">
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label" for="name">

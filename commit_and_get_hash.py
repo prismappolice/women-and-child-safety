@@ -24,7 +24,7 @@ try:
         print("✅ Added all files to staging")
         
         # Commit with descriptive message
-        commit_msg = f"Final commit - AP Women Safety project complete with 26 districts - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        commit_msg = f"Fix volunteer status database connection issue - removed duplicate code after finally block - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         result = subprocess.run(['git', 'commit', '-m', commit_msg], capture_output=True, text=True)
         
         if result.returncode == 0:

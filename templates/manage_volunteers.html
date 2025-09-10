@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Volunteers - Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        .status-pending { color: #ffc107; }
+        .status-hold { color: #fd7e14; }
+        .status-accepted { color: #28a745; }
+        .status-rejected { color: #dc3545; }
+        .action-buttons button { margin-right: 5px; }
+        .search-box { margin-bottom: 20px; }
+        .volunteer-details { font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-users"></i> Volunteer Applications Management</h2>
+            <a href="/admin-dashboard" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="card-header">
+                <div class="search-box">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search by name, ID, phone, or status...">
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Registration ID</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Age</th>
+                                <th>Education</th>
+                                <th>Status</th>
+                                <th>Applied On</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if volunteers %}
+                                {% for volunteer in volunteers %}
+                                <tr>
+                                    <td><strong>{{ volunteer.registration_id }}</strong></td>
+                                    <td>{{ volunteer.name }}</td>
+                                    <td>{{ volunteer.phone }}</td>
+                                    <td>{{ volunteer.age }}</td>
+                                    <td>{{ volunteer.education }}</td>
+                                    <td>
+                                        <span class="status-{{ volunteer.status.lower() if volunteer.status else 'pending' }}">
+                                            <i class="fas fa-circle"></i> 
+                                            {{ volunteer.status.title() if volunteer.status else 'Pending' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ volunteer.created_at }}</td>
+                                    <td class="action-buttons">
+                                        {% if not volunteer.status or volunteer.status == 'pending' %}
+                                            <form action="{{ url_for('update_volunteer_status') }}" method="POST" style="display: inline;">
+                                                <input type="hidden" name="volunteer_id" value="{{ volunteer.id }}">
+                                                <button type="submit" name="action" value="hold" class="btn btn-warning btn-sm" title="Put on Hold">
+                                                    <i class="fas fa-pause"></i> Hold
+                                                </button>
+                                                <button type="submit" name="action" value="accept" class="btn btn-success btn-sm" title="Accept Application">
+                                                    <i class="fas fa-check"></i> Accept
+                                                </button>
+                                                <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm" title="Reject Application">
+                                                    <i class="fas fa-times"></i> Reject
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#detailsModal{{ volunteer.id }}" title="View Details">
+                                            <i class="fas fa-eye"></i> View
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="8" class="text-center">No volunteer applications found</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modals -->
+    {% if volunteers %}
+        {% for volunteer in volunteers %}
+        <div class="modal fade" id="detailsModal{{ volunteer.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Volunteer Details - {{ volunteer.name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body volunteer-details">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <dl class="row">
+                                    <dt class="col-sm-5">Registration ID:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.registration_id }}</dd>
+
+                                    <dt class="col-sm-5">Name:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.name }}</dd>
+
+                                    <dt class="col-sm-5">Email:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.email }}</dd>
+
+                                    <dt class="col-sm-5">Phone:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.phone }}</dd>
+
+                                    <dt class="col-sm-5">Age:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.age }}</dd>
+
+                                    <dt class="col-sm-5">Occupation:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.occupation }}</dd>
+                                </dl>
+                            </div>
+                            <div class="col-md-6">
+                                <dl class="row">
+                                    <dt class="col-sm-5">Education:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.education }}</dd>
+
+                                    <dt class="col-sm-5">Experience:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.experience or 'Not specified' }}</dd>
+
+                                    <dt class="col-sm-5">Skills:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.skills }}</dd>
+
+                                    <dt class="col-sm-5">Availability:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.availability }}</dd>
+
+                                    <dt class="col-sm-5">Status:</dt>
+                                    <dd class="col-sm-7">
+                                        <span class="status-{{ volunteer.status.lower() if volunteer.status else 'pending' }}">
+                                            {{ volunteer.status.title() if volunteer.status else 'Pending' }}
+                                        </span>
+                                    </dd>
+
+                                    <dt class="col-sm-5">Applied On:</dt>
+                                    <dd class="col-sm-7">{{ volunteer.created_at }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <dt>Address:</dt>
+                                <dd>{{ volunteer.address }}</dd>
+                                
+                                <dt>Motivation:</dt>
+                                <dd>{{ volunteer.motivation }}</dd>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        {% if not volunteer.status or volunteer.status == 'pending' %}
+                            <form action="{{ url_for('update_volunteer_status') }}" method="POST" style="display: inline;">
+                                <input type="hidden" name="volunteer_id" value="{{ volunteer.id }}">
+                                <button type="submit" name="action" value="hold" class="btn btn-warning">
+                                    <i class="fas fa-pause"></i> Put on Hold
+                                </button>
+                                <button type="submit" name="action" value="accept" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Accept
+                                </button>
+                                <button type="submit" name="action" value="reject" class="btn btn-danger">
+                                    <i class="fas fa-times"></i> Reject
+                                </button>
+                            </form>
+                        {% endif %}
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('keyup', function() {
+            var input = this.value.toLowerCase();
+            var rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(function(row) {
+                var text = row.textContent.toLowerCase();
+                row.style.display = text.includes(input) ? '' : 'none';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Application Status - AP Police Women Safety Wing</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px; color: white; }
+        .status-pending { color: #ffc107; }
+        .status-hold { color: #fd7e14; }
+        .status-accepted { color: #28a745; }
+        .status-rejected { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="header text-center">
+        <h2><i class="fas fa-search"></i> Check Volunteer Application Status</h2>
+    </div>
+    
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title mb-4">Application Status Inquiry</h4>
+                        
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}">
+                                        {{ message }}
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+                        
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="identifier" class="form-label">
+                                    <i class="fas fa-id-card"></i> Registration ID or Phone Number
+                                </label>
+                                <input type="text" class="form-control form-control-lg" id="identifier" 
+                                       name="identifier" required 
+                                       placeholder="Enter your Registration ID (e.g., VOL-2025-0001) or Phone Number">
+                                <small class="text-muted">
+                                    You can use either your Registration ID that you received after applying, or the phone number you used during registration.
+                                </small>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-search"></i> Check Status
+                                </button>
+                            </div>
+                        </form>
+                        
+                        {% if application %}
+                        <div class="mt-4">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0"><i class="fas fa-user"></i> Application Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <dl class="row">
+                                                <dt class="col-sm-5">Registration ID:</dt>
+                                                <dd class="col-sm-7"><strong>{{ application.registration_id }}</strong></dd>
+                                                
+                                                <dt class="col-sm-5">Name:</dt>
+                                                <dd class="col-sm-7">{{ application.name }}</dd>
+                                                
+                                                <dt class="col-sm-5">Phone:</dt>
+                                                <dd class="col-sm-7">{{ application.phone }}</dd>
+                                                
+                                                <dt class="col-sm-5">Email:</dt>
+                                                <dd class="col-sm-7">{{ application.email }}</dd>
+                                            </dl>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <dl class="row">
+                                                <dt class="col-sm-5">Applied On:</dt>
+                                                <dd class="col-sm-7">{{ application.created_at }}</dd>
+                                                
+                                                <dt class="col-sm-5">Current Status:</dt>
+                                                <dd class="col-sm-7">
+                                                    <span class="status-{{ application.status.lower() if application.status else 'pending' }}">
+                                                        <i class="fas fa-circle"></i>
+                                                        <strong>{{ application.status.title() if application.status else 'Pending' }}</strong>
+                                                    </span>
+                                                </dd>
+                                                
+                                                <dt class="col-sm-5">Last Updated:</dt>
+                                                <dd class="col-sm-7">{{ application.updated_at }}</dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <div class="alert alert-info">
+                                            <h6><i class="fas fa-info-circle"></i> Status Information:</h6>
+                                            {% if application.status == 'pending' or not application.status %}
+                                                <p class="mb-0">Your application is under review. We will update the status once it's processed.</p>
+                                            {% elif application.status == 'hold' %}
+                                                <p class="mb-0">Your application is on hold. We may need additional information from you.</p>
+                                            {% elif application.status == 'accepted' %}
+                                                <p class="mb-0">Congratulations! Your application has been accepted. You will be contacted soon for further steps.</p>
+                                            {% elif application.status == 'rejected' %}
+                                                <p class="mb-0">We regret to inform you that your application could not be accepted at this time.</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mt-4 text-center">
+                            <a href="/volunteer-registration" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Registration
+                            </a>
+                            <a href="/" class="btn btn-outline-primary">
+                                <i class="fas fa-home"></i> Home
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
