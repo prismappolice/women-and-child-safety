@@ -16,18 +16,21 @@ def init_volunteer_tables():
         conn = sqlite3.connect('women_safety.db')
         cursor = conn.cursor()
         
-        # Check current table structure
-        cursor.execute("PRAGMA table_info(volunteers)")
-        existing_columns = cursor.fetchall()
-        print(f"Existing volunteers table columns: {existing_columns}")
+        # Check if volunteers table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='volunteers'")
+        volunteers_table_exists = cursor.fetchone()
         
-        # Drop and recreate volunteers table to ensure proper structure
-        cursor.execute('DROP TABLE IF EXISTS volunteers')
-        cursor.execute('DROP TABLE IF EXISTS volunteer_status')
+        if volunteers_table_exists:
+            cursor.execute("PRAGMA table_info(volunteers)")
+            existing_columns = cursor.fetchall()
+            print(f"Existing volunteers table columns: {existing_columns}")
+            print("Volunteers table already exists - preserving data")
+        else:
+            print("Creating volunteers table for first time")
         
-        # Create volunteers table with correct structure
+        # Create volunteers table only if it doesn't exist (preserves existing data)
         cursor.execute('''
-            CREATE TABLE volunteers (
+            CREATE TABLE IF NOT EXISTS volunteers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 registration_id TEXT UNIQUE NOT NULL,
                 name TEXT NOT NULL,
@@ -45,9 +48,9 @@ def init_volunteer_tables():
             )
         ''')
 
-        # Create volunteer_status table
+        # Create volunteer_status table only if it doesn't exist (preserves existing data)
         cursor.execute('''
-            CREATE TABLE volunteer_status (
+            CREATE TABLE IF NOT EXISTS volunteer_status (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 volunteer_id INTEGER UNIQUE,
                 status TEXT DEFAULT 'pending',
@@ -58,7 +61,7 @@ def init_volunteer_tables():
         ''')
         
         conn.commit()
-        print("Volunteer tables created successfully with proper structure")
+        print("Volunteer tables initialized successfully - data preserved")
     except Exception as e:
         print(f"Error initializing volunteer tables: {e}")
         import traceback
@@ -1752,18 +1755,16 @@ def admin_dashboard():
     cursor.execute('SELECT COUNT(*) FROM volunteers')
     total_volunteers = cursor.fetchone()[0] or 0
     
-    cursor.execute('SELECT COUNT(*) FROM volunteer_status WHERE status = "pending"')
+    # Count volunteers with pending status (including those without status records)
+    cursor.execute('''
+        SELECT COUNT(*) FROM volunteers v 
+        LEFT JOIN volunteer_status vs ON v.id = vs.volunteer_id 
+        WHERE vs.status = "pending" OR vs.status IS NULL
+    ''')
     pending_volunteers = cursor.fetchone()[0] or 0
     
     cursor.execute('SELECT COUNT(*) FROM volunteer_status WHERE status = "accepted"')
     accepted_volunteers = cursor.fetchone()[0] or 0
-    
-    # Get volunteer statistics
-    cursor.execute('SELECT COUNT(*) FROM volunteers')
-    total_volunteers = cursor.fetchone()[0] or 0
-    
-    cursor.execute('SELECT COUNT(*) FROM volunteer_status WHERE status = "pending"')
-    pending_volunteers = cursor.fetchone()[0] or 0
     
     cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE category = "Videos" AND is_active = 1')
     videos_count = cursor.fetchone()[0]
@@ -1787,7 +1788,12 @@ def admin_dashboard():
         'total_gallery': total_gallery_count
     }
     
-    return render_template('admin_dashboard.html', stats=stats, recent_gallery_items=recent_gallery_items)
+    return render_template('admin_dashboard.html', 
+                         stats=stats, 
+                         recent_gallery_items=recent_gallery_items,
+                         total_volunteers=total_volunteers,
+                         pending_volunteers=pending_volunteers,
+                         accepted_volunteers=accepted_volunteers)
 
 # Admin Safety Tips Management
 @app.route('/admin-safety-tips')
