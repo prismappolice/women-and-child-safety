@@ -9,7 +9,7 @@
     <style>
         body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
         .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; }
-        .logo { width: 120px; height: 120px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-weight: bold; font-size: 1.2em; color: #2c3e50; overflow: hidden; position: relative; }
+        .logo { width: 120px; height: 120px; background: transparent; border-radius: 50%; display: flex; align-items: center; justify-content: center;  font-weight: bold; font-size: 1.2em; color: #2c3e50; overflow: hidden; position: relative; }
         .logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
         .main-title { color: #fff; font-size: 2.5em; font-weight: bold; text-align: center; flex: 1; }
         .navbar { background: rgba(255,255,255,0.95); padding: 15px 60px; display: flex; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
@@ -61,13 +61,13 @@
         
         /* Leadership Team Styles */
         .leadership-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; margin-top: 30px; }
-        .leader-card { background: #f8f9fa; padding: 30px; border-radius: 15px; text-align: center; transition: transform 0.3s; }
+        .leader-card { background: #d3eed5; padding: 35px; border-radius: 15px; text-align: center; transition: transform 0.3s; }
         .leader-card:hover { transform: translateY(-5px); }
         .leader-photo { width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 2.5em; }
         .leader-name { font-size: 1.4em; color: #2c3e50; margin-bottom: 10px; font-weight: bold; }
         .leader-designation { color: #3498db; font-weight: 600; margin-bottom: 15px; }
-        .leader-department { color: #7f8c8d; font-style: italic; margin-bottom: 15px; }
-        .leader-contact { color: #7f8c8d; font-size: 0.9em; line-height: 1.6; }
+        .leader-department { color: #000; font-style: italic; margin-bottom: 15px; }
+        .leader-contact { color: #000; font-size: 0.9em; line-height: 1.6; }
         .leader-bio { color: #34495e; font-size: 0.9em; line-height: 1.5; margin-top: 15px; text-align: left; }
         
         /* Success Stories Styles */
@@ -311,12 +311,12 @@
                             <div class="stat-number">500+</div>
                             <div class="stat-label">Trained Personnel</div>
                         </div>
-                        <div class="stat-card">
+                        <!-- <div class="stat-card">
                             <div class="stat-number">1000+</div>
                             <div class="stat-label">Active Volunteers</div>
-                        </div>
+                        </div> -->
                         <div class="stat-card">
-                            <div class="stat-number">13</div>
+                            <div class="stat-number">26</div>
                             <div class="stat-label">District Offices</div>
                         </div>
                         <div class="stat-card">
@@ -413,7 +413,7 @@
                         <p class="story-description">
                             Our SHE Teams successfully prevented 150+ cases of harassment in public spaces this month. 
                             Through proactive patrolling and immediate response, we've created safer environments in educational institutions, 
-                            workplaces, and public transportation systems across all 13 districts.
+                            workplaces, and public transportation systems across all 26 districts.
                         </p>
                         <div class="story-stats">
                             <div class="story-stat">
@@ -421,7 +421,7 @@
                                 <div class="story-stat-label">Cases Prevented</div>
                             </div>
                             <div class="story-stat">
-                                <div class="story-stat-number">13</div>
+                                <div class="story-stat-number">26</div>
                                 <div class="story-stat-label">Districts Covered</div>
                             </div>
                             <div class="story-stat">

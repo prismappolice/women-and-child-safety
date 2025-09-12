@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+# Database
+*.db
+women_safety.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# VS Code
+.vscode/
+
+# Git
+.git/
+
+# Backup files
+*_backup_*/
+chatbot_backup_*/
+
+# Temporary scripts
+create_comprehensive_chatbot.py
+implement_enhanced_chatbot.py
+quick_db_check.py
+run_scanner*.py
+site_aware_chatbot.py
+update_chatbot*.py
+website_content_scanner.py
+git_clean_script.py
+manual_cleanup.py
+clean_repo.bat
+
+# Markdown documentation for temporary features
+SITE_AWARE_CHATBOT_IMPLEMENTATION.md
