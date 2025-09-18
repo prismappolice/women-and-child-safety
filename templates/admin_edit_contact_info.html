@@ -75,29 +75,70 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="type" class="form-label">Type *</label>
-                                            <select class="form-control" id="type" name="type" required>
-                                                <option value="phone" {% if contact_info[1] == 'phone' %}selected{% endif %}>Phone</option>
-                                                <option value="email" {% if contact_info[1] == 'email' %}selected{% endif %}>Email</option>
-                                                <option value="address" {% if contact_info[1] == 'address' %}selected{% endif %}>Address</option>
-                                                <option value="office" {% if contact_info[1] == 'office' %}selected{% endif %}>Office Location</option>
-                                                <option value="emergency" {% if contact_info[1] == 'emergency' %}selected{% endif %}>Emergency Contact</option>
-                                                <option value="helpline" {% if contact_info[1] == 'helpline' %}selected{% endif %}>Helpline</option>
+                                            <select class="form-control" id="contact_type" name="contact_type" required>
+                                                <option value="phone" {% if contact[1] == 'phone' %}selected{% endif %}>Phone</option>
+                                                <option value="email" {% if contact[1] == 'email' %}selected{% endif %}>Email</option>
+                                                <option value="address" {% if contact[1] == 'address' %}selected{% endif %}>Address</option>
+                                                <option value="office" {% if contact[1] == 'office' %}selected{% endif %}>Office Location</option>
+                                                <option value="emergency" {% if contact[1] == 'emergency' %}selected{% endif %}>Emergency Contact</option>
+                                                <option value="helpline" {% if contact[1] == 'helpline' %}selected{% endif %}>Helpline</option>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
+                                            <label for="title" class="form-label">Title *</label>
+                                            <input type="text" class="form-control" id="title" name="title" 
+                                                   value="{{ contact[2] }}" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
                                             <label for="value" class="form-label">Value *</label>
                                             <input type="text" class="form-control" id="value" name="value" 
-                                                   value="{{ contact_info[2] }}" required>
+                                                   value="{{ contact[3] }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="icon_class" class="form-label">Icon Class</label>
+                                            <input type="text" class="form-control" id="icon_class" name="icon_class" 
+                                                   value="{{ contact[5] }}" placeholder="e.g., fas fa-phone">
+                                            <small class="form-text text-muted">FontAwesome icon class for this contact</small>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="mb-3">
                                     <label for="description" class="form-label">Description</label>
-                                    <textarea class="form-control" id="description" name="description" rows="3">{{ contact_info[3] or '' }}</textarea>
+                                    <textarea class="form-control" id="description" name="description" rows="3">{{ contact[4] or '' }}</textarea>
                                     <small class="form-text text-muted">Additional details or context for this contact information</small>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="is_primary" name="is_primary" 
+                                                   {% if contact[6] %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_primary">
+                                                Primary Contact
+                                            </label>
+                                            <small class="d-block form-text text-muted">Mark as a primary contact for this type</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                                   {% if contact[7] %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_active">
+                                                Active
+                                            </label>
+                                            <small class="d-block form-text text-muted">Show this contact on the website</small>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="d-flex gap-2">

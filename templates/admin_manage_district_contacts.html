@@ -64,7 +64,7 @@
     <div class="header">
         <div class="logo">AP</div>
         <div class="header-title">{{ district_name }} District Management</div>
-        <a href="/admin-logout" class="logout-btn">
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>
     </div>
@@ -109,7 +109,7 @@
                         <a href="/admin/district-contacts/edit-sp/{{ sp[0] }}" class="edit-btn">
                             <i class="fas fa-edit"></i> Edit
                         </a>
-                        <button onclick="deleteContact('sp', {{ sp[0] }})" class="delete-btn">
+                        <button onclick="deleteContact('sp', '{{ sp[0] }}')" class="delete-btn">
                             <i class="fas fa-trash"></i> Delete
                         </button>
                     </div>
@@ -148,7 +148,7 @@
                         <a href="/admin/district-contacts/edit-team/{{ team[0] }}" class="edit-btn">
                             <i class="fas fa-edit"></i> Edit
                         </a>
-                        <button onclick="deleteContact('team', {{ team[0] }})" class="delete-btn">
+                        <button onclick="deleteContact('team', '{{ team[0] }}')" class="delete-btn">
                             <i class="fas fa-trash"></i> Delete
                         </button>
                     </div>
@@ -187,7 +187,7 @@
                         <a href="/admin/district-contacts/edit-station/{{ station[0] }}" class="edit-btn">
                             <i class="fas fa-edit"></i> Edit
                         </a>
-                        <button onclick="deleteContact('station', {{ station[0] }})" class="delete-btn">
+                        <button onclick="deleteContact('station', '{{ station[0] }}')" class="delete-btn">
                             <i class="fas fa-trash"></i> Delete
                         </button>
                     </div>
@@ -227,7 +227,7 @@
                         <a href="/admin/district-contacts/edit-center/{{ center[0] }}" class="edit-btn">
                             <i class="fas fa-edit"></i> Edit
                         </a>
-                        <button onclick="deleteContact('center', {{ center[0] }})" class="delete-btn">
+                        <button onclick="deleteContact('center', '{{ center[0] }}')" class="delete-btn">
                             <i class="fas fa-trash"></i> Delete
                         </button>
                     </div>

@@ -21,8 +21,8 @@
         .breadcrumb { text-align: center; margin-bottom: 40px; color: #7f8c8d; }
         .breadcrumb a { color: #3498db; text-decoration: none; }
         
-        .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; margin-bottom: 40px; }
-        .contact-card { background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); text-align: center; }
+        .contact-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin: 0 auto 40px; max-width: 1000px; }
+        .contact-card { background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); text-align: center; min-height: 200px; display: flex; flex-direction: column; justify-content: center; }
         .contact-icon { font-size: 3em; margin-bottom: 20px; }
         .contact-card:nth-child(1) .contact-icon { color: #e74c3c; }
         .contact-card:nth-child(2) .contact-icon { color: #3498db; }
@@ -33,12 +33,53 @@
         .contact-info a { color: #3498db; text-decoration: none; }
         .contact-info a:hover { text-decoration: underline; }
         
-        .emergency-section { background: #e74c3c; color: #fff; padding: 40px; border-radius: 15px; margin-bottom: 40px; text-align: center; }
-        .emergency-title { font-size: 2em; margin-bottom: 20px; }
-        .emergency-numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
-        .emergency-item { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; }
-        .emergency-number { font-size: 2em; font-weight: bold; margin-bottom: 10px; }
-        .emergency-label { font-size: 1.1em; }
+        .emergency-section { 
+            background: #405758; 
+            color: #fff; 
+            padding: 35px;
+            border-radius: 12px; 
+            margin: 0 auto 40px;
+            text-align: center;
+            max-width: 1000px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .emergency-title { 
+            font-size: 2em; 
+            margin-bottom: 25px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .emergency-numbers { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 20px; 
+            margin: 0 auto;
+            max-width: 900px;
+        }
+        .emergency-item { 
+            background: rgba(255,255,255,0.15); 
+            padding: 20px; 
+            border-radius: 8px; 
+            transition: all 0.3s ease;
+        }
+        .emergency-item:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .emergency-number { 
+            font-size: 2.2em; 
+            font-weight: bold; 
+            margin-bottom: 8px;
+        }
+        .emergency-label { 
+            font-size: 1.1em; 
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .emergency-description { 
+            font-size: 0.9em; 
+            opacity: 0.95; 
+            line-height: 1.4;
+        }
         
         .office-locations { background: #fff; padding: 40px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); margin-bottom: 40px; }
         .section-title { font-size: 2em; color: #2c3e50; text-align: center; margin-bottom: 30px; }
@@ -58,8 +99,16 @@
             .content { padding: 0 10px; }
             .footer { padding: 40px 20px 20px; }
             .contact-grid { grid-template-columns: 1fr; }
-            .emergency-numbers { grid-template-columns: 1fr; }
+            .emergency-numbers { grid-template-columns: repeat(2, 1fr); }
+            .emergency-item { min-height: 140px; }
         }
+        
+        @media (max-width: 480px) {
+            .emergency-numbers { grid-template-columns: 1fr; }
+            .emergency-item { min-height: auto; padding: 15px; }
+            .contact-card { padding: 20px; min-height: auto; }
+        }
+        
     </style>
 </head>
 <body>
@@ -94,51 +143,37 @@
             <div class="emergency-numbers">
                 <div class="emergency-item">
                     <div class="emergency-number">112</div>
-                    <div class="emergency-label">Police</div>
-                </div>
-                <div class="emergency-item">
-                    <div class="emergency-number">181</div>
-                    <div class="emergency-label">Women's Helpline</div>
-                </div>
-                <div class="emergency-item">
-                    <div class="emergency-number">108</div>
-                    <div class="emergency-label">Emergency Services</div>
+                    <div class="emergency-label">Emergency Helpline</div>
+                    <div class="emergency-description">24/7 Emergency services for immediate assistance</div>
                 </div>
                 <div class="emergency-item">
                     <div class="emergency-number">1098</div>
                     <div class="emergency-label">Child Helpline</div>
+                    <div class="emergency-description">Support for child-related emergencies</div>
                 </div>
-                
                 <div class="emergency-item">
-                    <div class="emergency-number">1093</div>
-                    <div class="emergency-label">Cyber crime</div>
+                    <div class="emergency-number">1091</div>
+                    <div class="emergency-label">Women Helpline</div>
+                    <div class="emergency-description">Dedicated helpline for women in distress</div>
                 </div>
-                
             </div>
         </div>
         
         <div class="contact-grid">
-            <!-- Default contact cards -->
             <div class="contact-card">
-                <div class="contact-icon"><i class="fas fa-phone"></i></div>
-                <h3 class="contact-title">Phone Support</h3>
+                <div class="contact-icon"><i class="fas fa-file-alt"></i></div>
+                <h3 class="contact-title">Complaints</h3>
                 <div class="contact-info">
-                    <p><strong>Main Office:</strong> 0864-5237348</p>
-                    <p><strong>Women's Helpline:</strong> 1091</p>
-                    <p><strong>24/7 Emergency:</strong> 112</p>
+                    <p><a href="mailto:complaints@apwomensafety.gov.in">complaints@apwomensafety.gov.in</a></p>
+                    <p class="description">File complaints and grievances</p>
                 </div>
             </div>
-            
             <div class="contact-card">
-                <div class="contact-icon"><i class="fas fa-envelope"></i></div>
-                <h3 class="contact-title">Email Support</h3>
+                <div class="contact-icon"><i class="fas fa-info-circle"></i></div>
+                <h3 class="contact-title">General Info</h3>
                 <div class="contact-info">
-                    <p><strong>General Inquiries:</strong><br>
-                    <a href="mailto:info@apwomensafety.gov.in">info@apwomensafety.gov.in</a></p>
-                    <p><strong>Complaints:</strong><br>
-                    <a href="mailto:complaints@apwomensafety.gov.in">complaints@apwomensafety.gov.in</a></p>
-                    <p><strong>Media:</strong><br>
-                    <a href="mailto:media@apwomensafety.gov.in">media@apwomensafety.gov.in</a></p>
+                    <p><a href="mailto:info@apwomensafety.gov.in">info@apwomensafety.gov.in</a></p>
+                    <p class="description">General inquiries and information</p>
                 </div>
             </div>
             
@@ -207,7 +242,7 @@
                 </style>
             </div>
             
-            <div class="contact-card">
+            <!-- <div class="contact-card">
                 <div class="contact-icon"><i class="fas fa-clock"></i></div>
                 <h3 class="contact-title">Office Hours</h3>
                 <div class="contact-info">
@@ -216,7 +251,7 @@
                     <p><strong>Emergency Services:</strong><br>24/7 Available</p>
                     <p><strong>Sunday:</strong><br>Emergency Only</p>
                 </div>
-            </div>
+            </div> -->
         </div>
         
         <div class="office-locations">

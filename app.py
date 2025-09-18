@@ -1,4 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, make_response
+from flask_wtf.csrf import CSRFProtect
+
+csrf = CSRFProtect()
 from flask_mail import Mail, Message
 import sqlite3
 import os
@@ -9,6 +12,47 @@ import re
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
+
+# Initialize CSRF protection
+csrf.init_app(app)
+
+# Add security headers to prevent caching
+@app.after_request
+def add_security_headers(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
+
+# Validate admin session before each request to admin routes
+@app.before_request
+def check_admin_authorization():
+    # Skip auth check for static files and login routes
+    if (request.path.startswith('/static/') or
+        request.path == '/admin-login' or
+        request.path == '/admin/logout' or
+        not request.path.startswith('/admin')):
+        return
+    
+    # Check if trying to access admin area
+    if request.path.startswith('/admin') or 'admin' in request.path:
+        # Verify admin is properly logged in with all required session data
+        if not all([
+            session.get('admin_logged_in'),
+            session.get('login_time'),
+            session.get('admin_id')
+        ]):
+            # Clear any partial session data for security
+            session.clear()
+            flash('Please login to access admin area', 'error')
+            return redirect(url_for('admin_login'))
+        
+        # Check session age (auto-logout after 2 hours of inactivity)
+        login_time = datetime.strptime(session['login_time'], '%Y-%m-%d %H:%M:%S')
+        if (datetime.now() - login_time).total_seconds() > 7200:  # 2 hours
+            session.clear()
+            flash('Session expired. Please login again.', 'warning')
+            return redirect(url_for('admin_login'))
 
 # Initialize volunteer tables on app startup
 def init_volunteer_tables():
@@ -378,6 +422,38 @@ def allowed_file(filename):
 def init_db():
     conn = sqlite3.connect('women_safety.db')
     cursor = conn.cursor()
+    
+    # Create contact_info table if it doesn't exist
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS contact_info (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contact_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            value TEXT NOT NULL,
+            description TEXT,
+            icon_class TEXT,
+            is_primary INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Insert default contact info if table is empty
+    cursor.execute('SELECT COUNT(*) FROM contact_info')
+    if cursor.fetchone()[0] == 0:
+        default_contacts = [
+            ('phone', 'Emergency Helpline', '100', 'Police Emergency Helpline', 'fas fa-phone', 1, 1),
+            ('phone', 'Women Helpline', '181', '24/7 Women Emergency Helpline', 'fas fa-phone-volume', 1, 1),
+            ('email', 'General Inquiries', 'info@apwomensafety.gov.in', 'For general inquiries and support', 'fas fa-envelope', 1, 1),
+            ('address', 'Head Office', 'AP Police Headquarters, Mangalagiri, Guntur District', 'Main office address', 'fas fa-building', 1, 1)
+        ]
+        cursor.executemany('''
+            INSERT INTO contact_info 
+            (contact_type, title, value, description, icon_class, is_primary, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', default_contacts)
+        conn.commit()
     
     # Create volunteers table with registration ID
     cursor.execute('''
@@ -1401,11 +1477,29 @@ def contact_simple_test():
 
 @app.route('/contact')
 def contact():
+    emergency_contacts = []
     district_contacts = []
-    contact_info = []
     
     try:
         conn = sqlite3.connect('women_safety.db')
+        cursor = conn.cursor()
+        
+        # Get emergency and general contacts
+        cursor.execute('''
+            SELECT contact_type, title, value, description, icon_class 
+            FROM contact_info 
+            WHERE is_active = 1 
+            ORDER BY is_primary DESC, contact_type, title
+        ''')
+        emergency_contacts = [{
+            'type': row[0],
+            'title': row[1],
+            'value': row[2],
+            'description': row[3],
+            'icon': row[4] or 'fas fa-phone'
+        } for row in cursor.fetchall()]
+        
+        # Get district contacts
         cursor = conn.cursor()
         
         # Get all districts with their actual contact data
@@ -1544,7 +1638,7 @@ def contact():
             }
             district_contacts.append(district_data)
     
-    return render_template('contact.html', contact_info=contact_info, district_contacts=district_contacts)
+    return render_template('contact.html', emergency_contacts=emergency_contacts, district_contacts=district_contacts)
 
 def create_district_tables(cursor):
     """Create district contact tables"""
@@ -1725,18 +1819,53 @@ def gallery_debug():
 
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+    try:
+        # Always clear any existing session data when accessing login page
+        session.clear()
         
-        # Simple admin check (replace with proper authentication)
-        if username == 'admin' and password == 'admin123':
-            session['admin_logged_in'] = True
-            return redirect(url_for('admin_dashboard'))
-        else:
-            flash('Invalid credentials', 'error')
-    
-    return render_template('admin_login.html')
+        if request.method == 'POST':
+            # Get form data with default values to prevent None
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '').strip()
+            
+            # Basic validation
+            if not username or not password:
+                flash('Both username and password are required', 'error')
+                return render_template('admin_login.html')
+            
+            # Add a small delay to prevent brute force attempts
+            time.sleep(0.5)
+            
+            # Check credentials
+            if username == 'admin' and password == 'admin123':
+                # Clear any old session data first
+                session.clear()
+                
+                # Set new session data
+                session['admin_logged_in'] = True
+                session['login_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                session['admin_id'] = 1
+                session.permanent = True  # Make session cookie persistent
+                
+                # Log successful login
+                print(f"Admin login successful at {session['login_time']}")
+                
+                flash('Logged in successfully!', 'success')
+                return redirect(url_for('admin_dashboard'))
+            else:
+                flash('Invalid username or password', 'error')
+        
+        # GET request or failed POST - show login form
+        response = make_response(render_template('admin_login.html'))
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+        return response
+        
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        flash('An error occurred during login. Please try again.', 'error')
+        return render_template('admin_login.html')
 
 @app.route('/admin-dashboard')
 def admin_dashboard():
@@ -2427,16 +2556,20 @@ def admin_edit_contact_info(contact_id):
     
     if request.method == 'POST':
         contact_type = request.form.get('contact_type')
-        label = request.form.get('label')
+        title = request.form.get('title')
         value = request.form.get('value')
-        additional_info = request.form.get('additional_info')
+        description = request.form.get('description')
+        icon_class = request.form.get('icon_class', '')
+        is_primary = 1 if request.form.get('is_primary') else 0
         is_active = 1 if request.form.get('is_active') else 0
         
         cursor.execute('''
             UPDATE contact_info 
-            SET contact_type = ?, label = ?, value = ?, additional_info = ?, is_active = ?
+            SET contact_type = ?, title = ?, value = ?, description = ?, 
+                icon_class = ?, is_primary = ?, is_active = ?,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        ''', (contact_type, label, value, additional_info, is_active, contact_id))
+        ''', (contact_type, title, value, description, icon_class, is_primary, is_active, contact_id))
         conn.commit()
         conn.close()
         
@@ -2444,7 +2577,11 @@ def admin_edit_contact_info(contact_id):
         return redirect(url_for('admin_contact'))
     
     # GET request - fetch contact data
-    cursor.execute('SELECT id, contact_type, label, value, additional_info, is_active FROM contact_info WHERE id = ?', (contact_id,))
+    cursor.execute('''
+        SELECT id, contact_type, title, value, description, 
+               icon_class, is_primary, is_active
+        FROM contact_info WHERE id = ?
+    ''', (contact_id,))
     contact = cursor.fetchone()
     conn.close()
     
@@ -2452,7 +2589,7 @@ def admin_edit_contact_info(contact_id):
         flash('Contact information not found!', 'error')
         return redirect(url_for('admin_contact'))
     
-    return render_template('admin_edit_contact.html', contact=contact)
+    return render_template('admin_edit_contact_info.html', contact=contact)
 
 @app.route('/admin/contact/delete/<int:contact_id>', methods=['POST'])
 def admin_delete_contact_info(contact_id):
@@ -2935,13 +3072,26 @@ def admin_delete_volunteer(volunteer_id):
 
 @app.route('/admin/logout')
 def admin_logout():
-    session.pop('admin_logged_in', None)
-    return redirect(url_for('home'))
-
-@app.route('/admin-logout')
-def admin_logout_alt():
-    session.pop('admin_logged_in', None)
-    return redirect(url_for('home'))
+    # Clear all session data completely
+    session.clear()
+    
+    # Set flash message
+    flash('Logged out successfully!', 'success')
+    
+    # Redirect to home with no-cache headers
+    response = make_response(redirect(url_for('home')))
+    
+    # Set strict no-cache headers
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    
+    # Clear session cookie
+    response.set_cookie('session', '', expires=0)
+    
+    return response
+    response.headers['Expires'] = '-1'
+    return response
 
 # Officers Management Routes
 @app.route('/admin/officers')

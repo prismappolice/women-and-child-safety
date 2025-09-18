@@ -41,9 +41,19 @@
             <div class="logo">AP</div>
             <h1 class="login-title">Admin Login</h1>
             <p class="login-subtitle">Access the administrative dashboard</p>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}" {% if category == 'error' %}style="margin: 20px 0; padding: 15px; border-radius: 8px; background-color: #ffe6e6; color: #cc0000;"{% else %}style="margin: 20px 0; padding: 15px; border-radius: 8px; background-color: #e6ffe6; color: #006600;"{% endif %}>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
         </div>
         
-        <form method="POST" action="/admin-login">
+        <form method="POST" action="{{ url_for('admin_login') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="username" class="form-label">
                     <i class="fas fa-user"></i> Username
