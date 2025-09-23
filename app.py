@@ -284,6 +284,7 @@ def volunteer_registration():
     return render_template('volunteer_registration.html')
 
 @app.route('/check-volunteer-status', methods=['GET', 'POST'])
+@csrf.exempt
 def check_volunteer_status():
     if request.method == 'GET':
         return render_template('check_volunteer_status.html')
