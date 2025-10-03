@@ -210,9 +210,9 @@ class WomenSafetyChatbot {
 }
 
 // Initialize chatbot when page loads
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if we're not on admin login page
-    if (!window.location.pathname.includes('admin-login')) {
-        new WomenSafetyChatbot();
-    }
-});
+// document.addEventListener('DOMContentLoaded', () => {
+//     // Check if we're not on admin login page
+//     if (!window.location.pathname.includes('admin-login')) {
+//         new WomenSafetyChatbot();
+//     }
+// });
