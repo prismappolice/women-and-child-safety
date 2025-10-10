@@ -48,6 +48,72 @@
         }
         
         /* Navigation Styles */
+        .nav-bar {
+            background: #ffffff;
+            padding: 10px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 100%;
+            overflow: visible;
+        }
+        .nav-menu {
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            padding: 0 10px;
+            flex-wrap: nowrap;
+            overflow-x: visible;
+            position: relative;
+        }
+        @media screen and (max-width: 1200px) {
+            .nav-menu {
+                overflow-x: auto;
+                justify-content: flex-start;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding: 0 5px;
+            }
+        }
+        .nav-menu::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Edge */
+        }
+        .nav-menu a {
+            color: #2c3e50;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            transition: all 0.3s;
+            white-space: nowrap;
+            font-size: 16px;
+            font-weight: 500;
+            margin: 0 2px;
+            border: 1px solid transparent;
+        }
+        .nav-menu a:hover {
+            background: #f8f9fa;
+            color: #1e3c72;
+            border-color: #e9ecef;
+        }
+        .nav-menu a.active {
+            color: #1e3c72;
+            font-weight: 600;
+            background-color: #f8f9fa;
+            border-color: #e9ecef;
+        }
+        @media (max-width: 768px) {
+            .nav-menu {
+                padding: 0 10px;
+            }
+            .nav-menu a {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+        }
         .navbar { 
             background: rgba(255,255,255,0.95); 
             padding: 15px 60px; 
@@ -380,17 +446,17 @@
         </div>
     </div>
     
-    <div class="navbar">
+    <div class="nav-bar">
         <div class="nav-menu">
             <a href="/" class="active">Home</a>
-            <a href="/about">About Us</a>
+            <a href="/about">About&nbsp;Us</a>
             <a href="/initiatives">Initiatives</a>
             <a href="/volunteer-registration">Volunteer</a>
-            <a href="/safety-tips">Safety Tips</a>
-            <a href="/pdf-resources">PDF Resources</a>
-            <a href="/contact">Contact Us</a>
-            <a href="/gallery">Media & Events</a>
-            <a href="/admin-login">Admin Login</a>
+            <a href="/safety-tips">Safety&nbsp;Tips</a>
+            <a href="/pdf-resources">PDF&nbsp;Resources</a>
+            <a href="/contact">Contact&nbsp;Us</a>
+            <a href="/gallery">Media&nbsp;&&nbsp;Events</a>
+            <a href="/admin-login">Admin&nbsp;Login</a>
         </div>
     </div>
     

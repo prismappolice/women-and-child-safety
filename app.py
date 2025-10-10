@@ -1,5 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.security import generate_password_hash, check_password_hash
+from admin_security import (init_admin_security_db, set_security_questions, 
+                         get_security_questions, verify_security_questions, 
+                         check_session_timeout, verify_answer)
 
 csrf = CSRFProtect()
 from flask_mail import Mail, Message
@@ -13,8 +17,68 @@ import re
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
 
-# Initialize CSRF protection
+# Initialize CSRF protection with strong secret key
+app.config['WTF_CSRF_SECRET_KEY'] = 'your-csrf-secret-key-change-this'  # Change this to a secure random key
 csrf.init_app(app)
+
+# Initialize database tables
+def init_db():
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    
+    # Create admin credentials table
+    c.execute('''CREATE TABLE IF NOT EXISTS admin_credentials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    # Check if default admin exists
+    c.execute('SELECT * FROM admin_credentials WHERE username = ?', ('admin',))
+    if not c.fetchone():
+        # Insert default admin with password hash
+        from werkzeug.security import generate_password_hash
+        default_password_hash = generate_password_hash('admin123')
+        c.execute('INSERT INTO admin_credentials (username, password_hash) VALUES (?, ?)',
+                 ('admin', default_password_hash))
+    
+    conn.commit()
+    conn.close()
+
+# Initialize databases
+init_db()
+init_admin_security_db()
+csrf.init_app(app)
+
+@app.route('/event/<int:event_id>')
+def event_details(event_id):
+    conn = sqlite3.connect('women_safety.db')
+    cursor = conn.cursor()
+    
+    # Get event details
+    cursor.execute('SELECT * FROM gallery_items WHERE id = ? AND category = "upcoming_events"', (event_id,))
+    event = cursor.fetchone()
+    
+    if event is None:
+        conn.close()
+        flash('Event not found', 'error')
+        return redirect(url_for('gallery'))
+    
+    # Convert tuple to dictionary for easier template access
+    event_dict = {
+        'id': event[0],
+        'title': event[1],
+        'image_url': event[2],
+        'description': event[3],
+        'category': event[4],
+        'date': event[5],
+        'location': event[6] if len(event) > 6 else None,
+        'additional_details': event[7] if len(event) > 7 else None
+    }
+    
+    conn.close()
+    return render_template('event_details.html', event=event_dict)
 
 # Add security headers to prevent caching
 @app.after_request
@@ -1821,42 +1885,50 @@ def gallery_debug():
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
     try:
-        # Always clear any existing session data when accessing login page
-        session.clear()
-        
         if request.method == 'POST':
-            # Get form data with default values to prevent None
             username = request.form.get('username', '').strip()
             password = request.form.get('password', '').strip()
             
-            # Basic validation
             if not username or not password:
                 flash('Both username and password are required', 'error')
                 return render_template('admin_login.html')
             
-            # Add a small delay to prevent brute force attempts
-            time.sleep(0.5)
-            
-            # Check credentials
-            if username == 'admin' and password == 'admin123':
-                # Clear any old session data first
-                session.clear()
-                
-                # Set new session data
+            # Get admin credentials from database
+            conn = sqlite3.connect('database.db')
+            c = conn.cursor()
+            c.execute('SELECT id, password_hash FROM admin_credentials WHERE username = ?', (username,))
+            admin = c.fetchone()
+            conn.close()
+
+            if admin and check_password_hash(admin[1], password):
+                # Set session data
+                session.clear()  # Clear any old session data
+                session.permanent = True
                 session['admin_logged_in'] = True
+                session['admin_last_activity'] = time.time()
                 session['login_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                session['admin_id'] = 1
-                session.permanent = True  # Make session cookie persistent
+                session['admin_id'] = admin[0]
                 
                 # Log successful login
                 print(f"Admin login successful at {session['login_time']}")
                 
+                # Check security questions
+                questions = get_security_questions()
+                print("Security Questions Status:", "Set" if questions else "Not Set")
+                
+                if not questions:
+                    print("Redirecting to security setup")
+                    flash('Please set up your security questions', 'warning')
+                    return redirect('/admin/setup-security')
+                
+                print("Redirecting to dashboard")
                 flash('Logged in successfully!', 'success')
-                return redirect(url_for('admin_dashboard'))
-            else:
-                flash('Invalid username or password', 'error')
+                return redirect('/admin-dashboard')
+            
+            flash('Invalid username or password', 'error')
+            return render_template('admin_login.html')
         
-        # GET request or failed POST - show login form
+        # GET request - show login form with cache control
         response = make_response(render_template('admin_login.html'))
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
         response.headers['Pragma'] = 'no-cache'
@@ -1868,7 +1940,138 @@ def admin_login():
         flash('An error occurred during login. Please try again.', 'error')
         return render_template('admin_login.html')
 
+@app.route('/admin/change-password', methods=['GET', 'POST'])
+def change_admin_password():
+    if 'admin_logged_in' not in session:
+        flash('Please login to access this area', 'error')
+        return redirect('/admin-login')
+
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        selected_question = request.form.get('selected_question')
+        security_answer = request.form.get('security_answer')
+
+        # Validate current password
+        if current_password != 'admin123':  # Replace with secure password check
+            flash('Current password is incorrect', 'danger')
+            return render_template('change_password.html')
+
+        # Validate new password
+        if new_password != confirm_password:
+            flash('New passwords do not match', 'danger')
+            return render_template('change_password.html')
+
+        if len(new_password) < 8:
+            flash('New password must be at least 8 characters long', 'danger')
+            return render_template('change_password.html')
+
+        # Verify security answer
+        questions = get_security_questions()
+        if not questions:
+            flash('Security questions not set up', 'danger')
+            return redirect('/admin/setup-security')
+
+        # Get the correct answer hash based on selected question
+        answer_hash = None
+        if not questions:
+            flash('Security questions not found. Please set them up first.', 'danger')
+            return redirect('/admin/setup-security')
+            
+        try:
+            if selected_question == '1':
+                answer_hash = questions['answer1_hash']
+            elif selected_question == '2':
+                answer_hash = questions['answer2_hash']
+            elif selected_question == '3':
+                answer_hash = questions['answer3_hash']
+        except KeyError:
+            flash('Error accessing security questions. Please set them up again.', 'danger')
+            return redirect('/admin/setup-security')
+
+        if not answer_hash or not verify_answer(answer_hash, security_answer):
+            flash('Security answer is incorrect', 'danger')
+            return render_template('change_password.html')
+
+        try:
+            # Update password in database
+            conn = None
+            try:
+                conn = sqlite3.connect('database.db')
+                c = conn.cursor()
+                
+                # First verify current password
+                c.execute('SELECT password_hash FROM admin_credentials WHERE id = ?', (session['admin_id'],))
+                current_hash = c.fetchone()
+                
+                if not current_hash or not check_password_hash(current_hash[0], current_password):
+                    flash('Current password is incorrect', 'danger')
+                    return render_template('change_password.html')
+                
+                # Update with new password
+                new_password_hash = generate_password_hash(new_password)
+                c.execute('UPDATE admin_credentials SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                         (new_password_hash, session['admin_id']))
+                conn.commit()
+                
+                flash('Password changed successfully! Please login with your new password', 'success')
+                session.clear()  # Force re-login with new password
+                return redirect('/admin-login')
+                
+            except Exception as e:
+                print(f"Error updating password: {str(e)}")
+                flash('An error occurred while updating password', 'danger')
+                return render_template('change_password.html')
+            finally:
+                if conn:
+                    conn.close()
+        except Exception as e:
+            print(f"Error changing password: {str(e)}")
+            flash('An error occurred while changing password', 'danger')
+            return render_template('change_password.html')
+
+    return render_template('change_password.html')
+
+@app.route('/admin/setup-security', methods=['GET', 'POST'])
+def setup_security_questions():
+    # Ensure user is logged in
+    if 'admin_logged_in' not in session:
+        flash('Please login to access this area', 'error')
+        return redirect('/admin-login')
+
+    if request.method == 'POST':
+        # Get form data
+        question1 = "What is your mother's maiden name?"  # Fixed question
+        answer1 = request.form.get('answer1')
+        question2 = "What was the name of your first pet?"  # Fixed question
+        answer2 = request.form.get('answer2')
+        question3 = "In which city were you born?"  # Fixed question
+        answer3 = request.form.get('answer3')
+        
+        # Validate answers
+        if not all([answer1, answer2, answer3]):
+            flash('All answers are required', 'danger')
+            return render_template('setup_security_questions.html')
+        
+        try:
+            # Save security questions
+            set_security_questions(question1, answer1, question2, answer2, question3, answer3)
+            flash('Security questions have been set successfully', 'success')
+            return redirect('/admin-dashboard')
+        except Exception as e:
+            print(f"Error setting security questions: {str(e)}")
+            flash('An error occurred while saving security questions', 'danger')
+            return render_template('setup_security_questions.html')
+            
+    # GET request - show the form
+    return render_template('setup_security_questions.html')
+            
+    # For GET request, show the form
+    return render_template('setup_security_questions.html')
+
 @app.route('/admin-dashboard')
+@check_session_timeout
 def admin_dashboard():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))

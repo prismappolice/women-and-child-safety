@@ -1,0 +1,30 @@
+.nav-items {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+    width: 100%;
+    padding: 10px 0;
+    background-color: #f8f9fa;
+}
+
+.nav-items a {
+    white-space: nowrap;
+    padding: 8px 15px;
+    color: #333;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+@media screen and (max-width: 768px) {
+    .nav-items {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+    }
+    
+    .nav-items::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Edge */
+    }
+}

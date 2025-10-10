@@ -25,8 +25,10 @@
         .stat-card.volunteer { border-left: 4px solid #28a745; }
         .stat-card.volunteer:hover { background: #f8fff8; }
         .header-title { font-size: 2em; font-weight: bold; }
-        .logout-btn { background: #e74c3c; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; }
+        .logout-btn { background: #e74c3c; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; margin-left: 10px; }
         .logout-btn:hover { background: #c0392b; }
+        .change-pwd-btn { background: #2980b9; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; }
+        .change-pwd-btn:hover { background: #2471a3; }
         
         .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
         .dashboard-title { font-size: 2.5em; color: #2c3e50; text-align: center; margin-bottom: 40px; }
@@ -102,6 +104,9 @@
                  style="height: 65px; width: 65px; object-fit: contain; padding: 5px;">
         </div>
         <div class="header-title">Admin Dashboard</div>
+        <a href="/admin/change-password" class="change-pwd-btn">
+            <i class="fas fa-key"></i> Change Password
+        </a>
         <a href="{{ url_for('admin_logout') }}" class="logout-btn">
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>
