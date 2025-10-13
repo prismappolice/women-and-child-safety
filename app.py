@@ -1950,15 +1950,12 @@ def change_admin_password():
         current_password = request.form.get('current_password')
         new_password = request.form.get('new_password')
         confirm_password = request.form.get('confirm_password')
-        selected_question = request.form.get('selected_question')
-        security_answer = request.form.get('security_answer')
-
-        # Validate current password
-        if current_password != 'admin123':  # Replace with secure password check
-            flash('Current password is incorrect', 'danger')
-            return render_template('change_password.html')
 
         # Validate new password
+        if not all([current_password, new_password, confirm_password]):
+            flash('All password fields are required', 'danger')
+            return render_template('change_password.html')
+
         if new_password != confirm_password:
             flash('New passwords do not match', 'danger')
             return render_template('change_password.html')
@@ -1967,69 +1964,53 @@ def change_admin_password():
             flash('New password must be at least 8 characters long', 'danger')
             return render_template('change_password.html')
 
-        # Verify security answer
-        questions = get_security_questions()
-        if not questions:
-            flash('Security questions not set up', 'danger')
-            return redirect('/admin/setup-security')
+        # Additional password strength check
+        if not any(c.isupper() for c in new_password) or not any(c.islower() for c in new_password) or not any(c.isdigit() for c in new_password):
+            flash('Password must contain at least one uppercase letter, one lowercase letter, and one number', 'danger')
+            return render_template('change_password.html')
 
-        # Get the correct answer hash based on selected question
-        answer_hash = None
-        if not questions:
-            flash('Security questions not found. Please set them up first.', 'danger')
-            return redirect('/admin/setup-security')
+        # Update password in database
+        conn = None
+        try:
+            conn = sqlite3.connect('database.db')
+            c = conn.cursor()
             
-        try:
-            if selected_question == '1':
-                answer_hash = questions['answer1_hash']
-            elif selected_question == '2':
-                answer_hash = questions['answer2_hash']
-            elif selected_question == '3':
-                answer_hash = questions['answer3_hash']
-        except KeyError:
-            flash('Error accessing security questions. Please set them up again.', 'danger')
-            return redirect('/admin/setup-security')
-
-        if not answer_hash or not verify_answer(answer_hash, security_answer):
-            flash('Security answer is incorrect', 'danger')
-            return render_template('change_password.html')
-
-        try:
-            # Update password in database
-            conn = None
-            try:
-                conn = sqlite3.connect('database.db')
-                c = conn.cursor()
-                
-                # First verify current password
-                c.execute('SELECT password_hash FROM admin_credentials WHERE id = ?', (session['admin_id'],))
-                current_hash = c.fetchone()
-                
-                if not current_hash or not check_password_hash(current_hash[0], current_password):
-                    flash('Current password is incorrect', 'danger')
-                    return render_template('change_password.html')
-                
-                # Update with new password
-                new_password_hash = generate_password_hash(new_password)
-                c.execute('UPDATE admin_credentials SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                         (new_password_hash, session['admin_id']))
-                conn.commit()
-                
-                flash('Password changed successfully! Please login with your new password', 'success')
-                session.clear()  # Force re-login with new password
-                return redirect('/admin-login')
-                
-            except Exception as e:
-                print(f"Error updating password: {str(e)}")
-                flash('An error occurred while updating password', 'danger')
+            # First verify current password
+            c.execute('SELECT password_hash FROM admin_credentials WHERE id = ?', (session['admin_id'],))
+            current_hash = c.fetchone()
+            
+            if not current_hash:
+                flash('Admin account not found', 'danger')
                 return render_template('change_password.html')
-            finally:
-                if conn:
-                    conn.close()
+            
+            # Verify current password using werkzeug's check_password_hash
+            if not check_password_hash(current_hash[0], current_password):
+                print("Current password verification failed")
+                flash('Current password is incorrect', 'danger')
+                return render_template('change_password.html')
+            
+            print("Current password verified successfully")
+            
+            # Update with new password
+            new_password_hash = generate_password_hash(new_password)
+            c.execute('UPDATE admin_credentials SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                     (new_password_hash, session['admin_id']))
+            conn.commit()
+            
+            print("Password updated successfully")
+            flash('Password changed successfully! Please login with your new password', 'success')
+            session.clear()  # Force re-login with new password
+            return redirect(url_for('admin_login'))
+            
         except Exception as e:
-            print(f"Error changing password: {str(e)}")
-            flash('An error occurred while changing password', 'danger')
+            print(f"Error in password change: {str(e)}")
+            if conn:
+                conn.rollback()
+            flash('An error occurred while updating password', 'danger')
             return render_template('change_password.html')
+        finally:
+            if conn:
+                conn.close()
 
     return render_template('change_password.html')
 
