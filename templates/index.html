@@ -58,6 +58,24 @@
             width: 100%;
             overflow: visible;
         }
+        .hamburger {
+            display: none;
+            cursor: pointer;
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            position: absolute;
+            right: 20px;
+            top: 10px;
+        }
+        .hamburger span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            margin: 5px 0;
+            background: #2c3e50;
+            transition: all 0.3s ease;
+        }
         .nav-menu {
             width: 100%;
             margin: 0 auto;
@@ -69,6 +87,43 @@
             flex-wrap: nowrap;
             overflow-x: visible;
             position: relative;
+        }
+        @media screen and (max-width: 768px) {
+            .hamburger {
+                display: block;
+                z-index: 1001;
+                position: absolute;
+                right: 20px;
+                top: 10px;
+            }
+            .nav-menu {
+                display: none !important;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background: #ffffff;
+                padding: 20px 0;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            .nav-menu.active {
+                display: flex !important;
+            }
+            .nav-menu a {
+                width: 100%;
+                text-align: center;
+                padding: 15px 0;
+            }
+            .hamburger.active span:nth-child(1) {
+                transform: rotate(45deg) translate(5px, 6px);
+            }
+            .hamburger.active span:nth-child(2) {
+                opacity: 0;
+            }
+            .hamburger.active span:nth-child(3) {
+                transform: rotate(-45deg) translate(5px, -6px);
+            }
         }
         @media screen and (max-width: 1200px) {
             .nav-menu {
@@ -447,6 +502,11 @@
     </div>
     
     <div class="nav-bar">
+        <button class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
         <div class="nav-menu">
             <a href="/" class="active">Home</a>
             <a href="/about">About&nbsp;Us</a>
@@ -459,6 +519,32 @@
             <a href="/admin-login">Admin&nbsp;Login</a>
         </div>
     </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const hamburger = document.querySelector('.hamburger');
+            const navMenu = document.querySelector('.nav-menu');
+            
+            hamburger.addEventListener('click', function(e) {
+                e.stopPropagation();
+                hamburger.classList.toggle('active');
+                navMenu.classList.toggle('active');
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!hamburger.contains(event.target) && !navMenu.contains(event.target)) {
+                    hamburger.classList.remove('active');
+                    navMenu.classList.remove('active');
+                }
+            });
+
+            // Prevent menu from closing when clicking inside it
+            navMenu.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        });
+    </script>
     
     <div class="main-content">
         <div class="welcome-section">
