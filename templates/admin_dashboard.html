@@ -15,12 +15,12 @@
         .logo { 
             width: 100px; 
             height: 100px; 
-            background: #fff;
-            border-radius: 50%;
+            background: transparent;
+            /* border-radius: 50%; */
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            /* box-shadow: 0 4px 12px rgba(0,0,0,0.2); */
         }
         .stat-card.volunteer { border-left: 4px solid #28a745; }
         .stat-card.volunteer:hover { background: #f8fff8; }
@@ -99,9 +99,9 @@
 <body>
     <div class="header">
         <div class="logo">
-            <img src="{{ url_for('static', filename='images/ap_police_logo.png') }}" 
-                 alt="AP Police Logo" 
-                 style="height: 65px; width: 65px; object-fit: contain; padding: 5px;">
+            <img src="static/images/shakthi_logo.png" alt="SHAKTHI Logo"
+                  
+                 style="height: 100px; width: 100px; object-fit: contain; padding: 5px;">
         </div>
         <div class="header-title">Admin Dashboard</div>
         <a href="/admin/change-password" class="change-pwd-btn">
