@@ -44,14 +44,14 @@
         /* Optional: Image containers with fixed height */
         .img-box {
             width: 100%;        /* Full width of container */
-            height: 200px;      /* Adjust as needed */
-            overflow: hidden;   /* Hide overflow */
+            height: auto; /* Allow height to adjust dynamically */
+            overflow: visible;   /* Ensure no part of the image is hidden */
         }
 
         .img-box img {
             width: 100%;
-            height: 100%;
-            object-fit: cover;  /* Fill box while maintaining aspect ratio */
+            height: auto; /* Maintain aspect ratio */
+            object-fit: scale-down;  /* Ensure the full image is displayed without cropping */
             object-position: center; /* Center the image */
         }
 
@@ -72,14 +72,14 @@
         /* Optional: Image containers with fixed height */
         .img-box {
             width: 100%;        /* Full width of container */
-            height: 200px;      /* Adjust as needed */
-            overflow: hidden;   /* Hide overflow */
+            height: auto; /* Allow height to adjust dynamically */
+            overflow: visible;   /* Ensure no part of the image is hidden */
         }
 
         .img-box img {
             width: 100%;
-            height: 100%;
-            object-fit: cover;  /* Fill box while maintaining aspect ratio */
+            height: auto; /* Maintain aspect ratio */
+            object-fit: scale-down;  /* Ensure the full image is displayed without cropping */
             object-position: center; /* Center the image */
         }
 
@@ -145,14 +145,15 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
-            min-height: 1000px;  /* Increased for 23.8 inch displays */
+            min-height: auto; /* Ensure flexible height */
+            margin-top: 20px;
         }
 
         .image-container img {
             width: 100%;
-            height: auto;
-            max-height: 900px;  /* Increased max-height for better display */
-            object-fit: contain;
+            height: auto; /* Maintain aspect ratio */
+            max-width: 100%;
+            object-fit: fill; /* Ensure the image fills the container */
             object-position: center;
             margin: 0;
             padding: 0;
@@ -162,8 +163,10 @@
             .image-container {
                 padding: 10px;
             }
+
             .image-container img {
-                max-height: 350px;
+                max-height: none; /* Remove height constraints */
+                object-fit: contain; /* Ensure the full image is visible */
             }
         }
         
@@ -672,6 +675,72 @@
                 font-size: 2em;
             }
         }
+
+        /* Mobile slideshow fixes: make slides stack naturally and not be cropped */
+        @media (max-width: 768px) {
+            .slideshow-container {
+                padding: 16px !important;
+                min-height: auto !important; /* don't force tall container on mobile */
+                overflow: visible !important;
+                display: block !important; /* let images determine height */
+                position: relative !important;
+            }
+
+            /* Ensure slide images are not absolutely positioned and use contain */
+            .slideshow-container img,
+            .slideshow-container .slide-image {
+                position: static !important;
+                width: 100% !important;
+                height: auto !important;
+                object-fit: contain !important;
+                object-position: center !important;
+                border-radius: 12px !important;
+                transition: opacity 0.5s ease-in-out !important;
+                display: block !important;
+            }
+
+            /* Remove colored background/frame behind image on mobile and increase visible image height */
+            .slideshow-container {
+                background: transparent !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                border-radius: 0 !important; /* keep image rounded instead of container */
+            }
+
+            .slideshow-container img,
+            .slideshow-container .slide-image {
+                border-radius: 12px !important; /* rounded corners on the image itself */
+                max-height: 75vh !important; /* allow taller images on mobile */
+            }
+
+            /* If you use absolute positioning for layering, keep only opacity logic via classes */
+            .slideshow-container img.inactive {
+                display: none !important; /* hide inactive slides on mobile so they don't take space */
+            }
+
+            .slideshow-container img.active {
+                display: block !important;
+                opacity: 1 !important;
+            }
+        }
+        /* Footer Styles */
+.footer { 
+    background: #2c3e50; 
+    color: #fff; 
+    padding: 40px 60px 20px; 
+    margin-top: 60px; 
+}
+.footer-bottom { 
+    text-align: center; 
+    color: #95a5a6; 
+}
+
+/* Media Query for responsiveness on small screens (e.g., mobile) */
+@media (max-width: 768px) {
+    .footer { 
+        padding: 40px 20px 20px; 
+    }
+}
     </style>
 </head>
 <body>
@@ -851,5 +920,11 @@ s0.parentNode.insertBefore(s1,s0);
 })();
 </script>
 <!--End of Tawk.to Script-->
+<div class="footer">
+    <div class="footer-bottom">
+        <p>&copy; 2025 AP Police Women and Child Safety Wing. All rights reserved.</p>
+        <p>Email: womensafety@appolice.gov.in | Emergency Helpline: 181 | Women's Helpline: 1091</p>
+    </div>
+</div>
 </body>
 </html>
