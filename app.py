@@ -15,10 +15,12 @@ from datetime import datetime
 import re
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this'
+app.secret_key = 'AP-Women-Safety-Secret-Key-2025'  # Updated secure key
 
-# Initialize CSRF protection with strong secret key
-app.config['WTF_CSRF_SECRET_KEY'] = 'your-csrf-secret-key-change-this'  # Change this to a secure random key
+# Initialize CSRF protection
+app.config['WTF_CSRF_ENABLED'] = True
+app.config['WTF_CSRF_SECRET_KEY'] = 'AP-Women-Safety-CSRF-Key-2025'
+app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour token expiry
 csrf.init_app(app)
 
 # Initialize database tables

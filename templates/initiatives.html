@@ -7,14 +7,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/chatbot.css">
     <style>
+        /* General Styles - Retained */
         body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
         .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; }
-        .logo { width: 120px; height: 120px; background: transparent; border-radius: 50%; display: flex; align-items: center; justify-content: center;  font-weight: bold; font-size: 1.2em; color: #2c3e50; overflow: hidden; position: relative; }
+        .logo { width: 120px; height: 120px; background: transparent; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em; color: #2c3e50; overflow: hidden; position: relative; }
         .logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
         .main-title { color: #fff; font-size: 2.5em; font-weight: bold; text-align: center; flex: 1; }
-        .navbar { background: rgba(255,255,255,0.95); padding: 15px 60px; display: flex; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .nav-menu { display: flex; gap: 40px; font-size: 1.1em; }
-        .nav-menu a { color: #2c3e50; text-decoration: none; font-weight: 600; padding: 10px 15px; border-radius: 5px; transition: all 0.3s; }
+        .navbar { background: rgba(255,255,255,0.95); padding: 15px 60px; display: flex; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10; }
+        .nav-menu { display: flex; gap: 22px; font-size: 1.1em; flex-wrap: nowrap;}
+        .nav-menu a { color: #2c3e50; text-decoration: none; font-weight: 600; padding: 10px 15px; border-radius: 5px; transition: all 0.3s;white-space: nowrap; }
         .nav-menu a:hover, .nav-menu a.active { background: #3498db; color: #fff; }
         .content { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
         .page-title { font-size: 2.5em; color: #2c3e50; text-align: center; margin-bottom: 20px; }
@@ -30,31 +31,120 @@
         .initiative-icon { font-size: 3em; color: #3498db; text-align: center; margin-bottom: 20px; }
         .initiative-title { font-size: 1.5em; color: #2c3e50; margin-bottom: 15px; font-weight: bold; }
         .initiative-description { color: #7f8c8d; line-height: 1.6; margin-bottom: 20px; }
-        .initiative-features { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px; }
-        .initiative-features h4 { color: #2c3e50; margin-bottom: 15px; }
-        .feature-list { list-style: none; padding: 0; }
-        .feature-list li { padding: 5px 0; color: #555; }
-        .feature-list li:before { content: "✓"; color: #27ae60; font-weight: bold; margin-right: 10px; }
         
         .footer { background: #2c3e50; color: #fff; padding: 40px 60px 20px; margin-top: 60px; }
         .footer-bottom { text-align: center; color: #95a5a6; }
-        
+
+        /* Mobile Slide Menu Hidden by Default (on Desktop) */
+        .mobile-nav-slide {
+            display: none; 
+        }
+
+        /* Hamburger Button Hidden by Default (on Desktop) */
+        .hamburger-btn {
+            display: none; 
+            font-size: 30px;
+            color: #2c3e50;
+            cursor: pointer;
+            z-index: 1005;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
         @media (max-width: 768px) {
-            .header { padding: 10px 20px; flex-direction: column; gap: 20px; }
-            .main-title { font-size: 2em; }
-            .navbar { padding: 10px 20px; }
-            .nav-menu { flex-wrap: wrap; gap: 20px; }
+            /* Header adjustments for Mobile - TO GET 2-LINE TITLE */
+            .header { 
+                padding: 10px 10px; 
+                flex-direction: row; 
+                gap: 5px; 
+                align-items: center; 
+                justify-content: space-between; 
+                height: 110px; 
+            }
+            .logo { width: 70px; height: 70px; }
+            
+            /* MAIN TITLE ADJUSTMENT */
+            .main-title { 
+                font-size: 1.2em; 
+                line-height: 1.2; 
+                flex: 1; 
+                text-align: center; 
+                margin: 0 5px; 
+            }
+            
+            /* Navbar adjustments for Mobile */
+            .navbar { 
+                padding: 10px 20px; 
+                justify-content: flex-end; 
+                height: 50px; 
+            }
+            /* Total height: 110px (Header) + 50px (Navbar) = 160px */
+
+            /* Hamburger Button (Visible on Mobile) */
+            .hamburger-btn {
+                display: block; /* Show the button on mobile */
+                order: 2; 
+            }
+
+            /* Hide the desktop menu links in the main navbar on mobile */
+            .navbar .nav-menu {
+                display: none;
+            }
+            
+            /* Mobile Menu Container (VISIBLE on Mobile) */
+            .mobile-nav-slide {
+                display: flex; /* Show the sliding menu on mobile */
+                position: fixed; 
+                top: 175px; 
+                right: 0;
+                width: 50vw; 
+                max-width: 300px;
+                height: calc(100vh - 230px); 
+                background: rgba(255,255,255,0.98); 
+                box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+                transform: translateX(100%); 
+                transition: transform 0.3s ease-in-out;
+                z-index: 1003; 
+                flex-direction: column;
+                gap: 0;
+                padding: 10px 0;
+                overflow-y: auto; 
+            }
+
+            .mobile-nav-slide.active {
+                transform: translateX(0); 
+            }
+
+            /* Menu Link Styles */
+            .mobile-nav-slide a {
+                width: 100%;
+                text-align: left;
+                padding: 15px 20px; 
+                border-bottom: 1px solid #eee;
+                margin: 0;
+                border-radius: 0;
+                color: #2c3e50;
+                font-weight: 600;
+                background: transparent;
+                display: block;
+                text-decoration: none;
+            }
+            .mobile-nav-slide a:hover, .mobile-nav-slide a.active {
+                background: #f0f0f0;
+                color: #3498db;
+            }
+            
             .content { padding: 0 10px; }
-            .footer { padding: 40px 20px 20px; }
             .initiatives-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="header">
-    <div class="logo"><img src="/static/images/shakthi_logo.png" alt="SHAKTHI Logo"></div>
+        <div class="logo"><img src="/static/images/shakthi_logo.png" alt="SHAKTHI Logo"></div>
         <div class="main-title">AP Police Women & Child Safety Wing</div>
-    <div class="logo"><img src="/static/images/ap_police_logo.png" alt="AP Police Logo"></div>
+        <div class="logo"><img src="/static/images/ap_police_logo.png" alt="AP Police Logo"></div>
     </div>
     
     <div class="navbar">
@@ -69,7 +159,25 @@
             <a href="/gallery">Media & Events</a>
             <a href="/admin-login">Admin Login</a>
         </div>
+        
+        <div class="hamburger-btn" id="hamburger-btn">
+            <i class="fas fa-bars"></i>
+        </div>
+        
     </div>
+    
+    <div class="mobile-nav-slide" id="mobile-nav-slide">
+        <a href="/">Home</a>
+        <a href="/about">About Us</a>
+        <a href="/initiatives" class="active">Initiatives</a>
+        <a href="/volunteer-registration">Volunteer</a>
+        <a href="/safety-tips">Safety Tips</a>
+        <a href="/pdf-resources">PDF Resources</a>
+        <a href="/contact">Contact Us</a>
+        <a href="/gallery">Media & Events</a>
+        <a href="/admin-login">Admin Login</a>
+    </div>
+
     
     <div class="content">
         <h1 class="page-title">Our Initiatives</h1>
@@ -111,8 +219,43 @@
         </div>
     </div>
     
-    <!--Start of Tawk.to Script-->
-<script type="text/javascript">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var hamburgerBtn = document.getElementById('hamburger-btn');
+            var mobileMenu = document.getElementById('mobile-nav-slide');
+            var menuLinks = mobileMenu.querySelectorAll('a');
+            
+            if (hamburgerBtn && mobileMenu) {
+                hamburgerBtn.onclick = function() {
+                    var icon = this.querySelector('i');
+                    
+                    // Toggle the 'active' class on the mobile menu
+                    mobileMenu.classList.toggle('active');
+
+                    // Change icon from bars to times (X)
+                    if (mobileMenu.classList.contains('active')) {
+                        icon.classList.remove('fa-bars');
+                        icon.classList.add('fa-times');
+                    } else {
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                };
+
+                // Close menu on link click (improves mobile UX)
+                menuLinks.forEach(link => {
+                    link.addEventListener('click', () => {
+                        var icon = hamburgerBtn.querySelector('i');
+                        mobileMenu.classList.remove('active');
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    });
+                });
+            }
+        });
+    </script>
+    
+    <script type="text/javascript">
 var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
 (function(){
 var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
@@ -123,6 +266,5 @@ s1.setAttribute('crossorigin','*');
 s0.parentNode.insertBefore(s1,s0);
 })();
 </script>
-<!--End of Tawk.to Script-->
 </body>
 </html>

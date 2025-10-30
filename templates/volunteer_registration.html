@@ -7,78 +7,182 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/chatbot.css">
     <style>
+        /* ---------------------------------
+            GENERAL STYLES - RETAINED
+            --------------------------------- */
         body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        
+        /* Added: Ensure global links have no underline */
+        a { text-decoration: none !important; }
+
         .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #20b2aa 100%); padding: 20px 60px; display: flex; align-items: center; justify-content: space-between; }
-        .logo { width: 120px; height: 120px; background: transparent; border-radius: 50%; display: flex; align-items: center; justify-content: center;  font-weight: bold; font-size: 1.2em; color: #2c3e50; overflow: hidden; position: relative; }
+        .logo { width: 120px; height: 120px; background: transparent; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em; color: #2c3e50; overflow: hidden; position: relative; }
         .logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
         .main-title { color: #fff; font-size: 2.5em; font-weight: bold; text-align: center; flex: 1; }
-        .navbar { background: rgba(255,255,255,0.95); padding: 15px 60px; display: flex; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .nav-menu { display: flex; gap: 40px; font-size: 1.1em; }
-        .nav-menu a { color: #2c3e50; text-decoration: none; font-weight: 600; padding: 10px 15px; border-radius: 5px; transition: all 0.3s; }
+        
+        /* Added: position: sticky for desktop */
+        .navbar { background: rgba(255,255,255,0.95); padding: 15px 60px; display: flex; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 999; }
+        
+        .nav-menu { display: flex; gap: 22px; font-size: 1.1em;flex-wrap: nowrap; }
+        .nav-menu a { color: #2c3e50; text-decoration: none; font-weight: 600; padding: 10px 15px; border-radius: 5px; transition: all 0.3s;white-space: nowrap; }
         .nav-menu a:hover, .nav-menu a.active { background: #3498db; color: #fff; }
+        
+        /* Content margin reset for desktop, will be set in media query for mobile */
         .content { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        
+        /* Form and other styles - RETAINED */
         .page-title { font-size: 2.5em; color: #2c3e50; text-align: center; margin-bottom: 20px; }
         .breadcrumb { text-align: center; margin-bottom: 40px; color: #7f8c8d; }
         .breadcrumb a { color: #3498db; text-decoration: none; }
         .action-links { display: flex; justify-content: center; gap: 20px; margin-top: 20px; }
         .action-btn { display: inline-block; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; transition: all 0.3s; }
         .check-status-btn { background: #3498db; color: #fff; }
-        .admin-btn { background: #2c3e50; color: #fff; }
         .action-btn:hover { opacity: 0.9; transform: translateY(-2px); }
-        
         .form-container { background: #fff; padding: 40px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
         .form-intro { text-align: center; margin-bottom: 40px; }
-        .form-intro h2 { color: #2c3e50; margin-bottom: 15px; }
-        .form-intro p { color: #7f8c8d; line-height: 1.6; }
-        
         .form-group { margin-bottom: 25px; }
         .form-label { display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 600; }
-        .form-input { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; }
-        .form-input:focus { outline: none; border-color: #3498db; }
-        .form-textarea { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; min-height: 120px; resize: vertical; transition: border-color 0.3s; }
-        .form-textarea:focus { outline: none; border-color: #3498db; }
-        .form-select { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; }
-        .form-select:focus { outline: none; border-color: #3498db; }
-        
+        .form-input { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; }
+        .form-textarea { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; min-height: 120px; resize: vertical; }
+        .form-select { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        
-        .submit-btn { background: linear-gradient(135deg, #27ae60, #229954); color: #fff; padding: 15px 40px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: all 0.3s; width: 100%; }
-        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(39, 174, 96, 0.3); }
-        
-        .success-message { background: #d4edda; color: #155724; padding: 20px; border-radius: 8px; margin-bottom: 30px; text-align: center; border: 1px solid #c3e6cb; }
-        .success-message i { font-size: 2em; margin-bottom: 10px; display: block; }
-        
-        .requirements { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #3498db; }
-        .requirements h3 { color: #2c3e50; margin-bottom: 15px; }
-        .requirements ul { color: #555; line-height: 1.6; }
-        
+        .submit-btn { background: linear-gradient(135deg, #27ae60, #229954); color: #fff; padding: 15px 40px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; }
         .footer { background: #2c3e50; color: #fff; text-align: center; padding: 20px; margin-top: 50px; }
-        
-        .error-message {
-            color: #dc3545;
-            font-size: 14px;
-            margin-top: 5px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
+        .error-message { color: #dc3545; font-size: 14px; margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+
+        /* NEW: Hamburger Button Hidden by Default (on Desktop) */
+        .hamburger-btn {
+            display: none;
+            font-size: 30px;
+            color: #2c3e50;
+            cursor: pointer;
+            z-index: 999999;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        /* NEW: Mobile Slide Menu Hidden by Default (on Desktop) */
+        .mobile-nav-slide {
+            display: none; /* Will be set to flex in media query */
         }
         
+        /* =================================================================== */
+        /* 🚀 MOBILE STYLES START */
+        /* =================================================================== */
         @media (max-width: 768px) {
+            
+            /* 1. Header fixed positioning (110px) */
+            .header {
+                padding: 10px 10px;
+                flex-direction: row; /* Change back to row to accommodate hamburger */
+                justify-content: space-between;
+                height: 110px;
+                position: fixed;
+                width: 100%;
+                top: 0;
+                z-index: 9999;
+            }
+            .logo { width: 70px; height: 70px; }
+            .main-title {
+                font-size: 1.2em;
+                line-height: 1.2;
+                flex: 1;
+                text-align: center;
+                margin: 0 5px;
+            }
+            
+            /* 2. Navbar fixed positioning (The White Ribbon - 50px) */
+            .navbar {
+                padding: 10px 0px;
+                justify-content: flex-end; /* Push hamburger to the right */
+                height: 30px;
+                position: fixed;
+                width: 100%;
+                top: 110px; /* Starts right below the header (110px) */
+                z-index: 99999;
+            }
+
+            /* Hamburger Button (Visible on Mobile) */
+            .hamburger-btn {
+                display: block;
+                order: 2;
+                z-index: 999999;
+            }
+
+            /* Hide the desktop menu links in the main navbar on mobile */
+            .navbar .nav-menu {
+                display: none;
+            }
+            
+            /* 3. Mobile Menu Container (The Sliding Panel) */
+            .mobile-nav-slide {
+                display: flex; /* Make sure it's flex on mobile */
+                position: fixed;
+                top: 160px; /* Starts right below Navbar (110px + 50px) */
+                right: 0;
+                width: 50vw;
+                max-width: 300px;
+                height: calc(100vh - 240px);
+                background: rgba(255,255,255,0.98);
+                box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+                transform: translateX(100%); /* Hidden initially */
+                transition: transform 0.3s ease-in-out;
+                z-index: 9998;
+                flex-direction: column;
+                padding: 10px 0;
+                overflow-y: auto;
+            }
+
+            .mobile-nav-slide.active {
+                transform: translateX(0); /* Visible state */
+            }
+            
+            /* Menu Link Styles */
+            .mobile-nav-slide a {
+                width: 100%;
+                text-align: left;
+                padding: 15px 20px;
+                border-bottom: 1px solid #eee;
+                margin: 0;
+                border-radius: 0;
+                color: #2c3e50;
+                font-weight: 600;
+                background: transparent;
+                display: block;
+                text-decoration: none !important;
+            }
+            .mobile-nav-slide a:hover, .mobile-nav-slide a.active {
+                background: #f0f0f0;
+                color: #3498db;
+            }
+            
+            /* 4. Content margin adjustment (110px + 50px = 160px) */
+            .content {
+                padding: 0 10px;
+                margin-top: 160px; /* Crucial for fixed header space */
+            }
             .form-row { grid-template-columns: 1fr; }
-            .content { padding: 0 10px; }
-            .header { padding: 10px 20px; flex-direction: column; gap: 20px; }
-            .main-title { font-size: 1.8em; }
+            
+            /* Re-adjust header to fit logo/title/hamburger on one row */
+            .header { padding: 10px 10px; flex-direction: row; gap: 5px; }
         }
+        /* =================================================================== */
+        /* 🚀 MOBILE STYLES END */
+        /* =================================================================== */
     </style>
 </head>
 <body>
     <div class="header">
-    <div class="logo"><img src="/static/images/shakthi_logo.png" alt="SHAKTHI Logo"></div>
+        <div class="logo"><img src="/static/images/shakthi_logo.png" alt="SHAKTHI Logo"></div>
         <div class="main-title">AP Police Women & Child Safety Wing</div>
-    <div class="logo"><img src="/static/images/ap_police_logo.png" alt="AP Police Logo"></div>
+        <div class="logo"><img src="/static/images/ap_police_logo.png" alt="AP Police Logo"></div>
     </div>
     
     <div class="navbar">
+        <div class="hamburger-btn" onclick="toggleMobileMenu()">
+            <i class="fas fa-bars"></i>
+        </div>
         <div class="nav-menu">
             <a href="/">Home</a>
             <a href="/about">About Us</a>
@@ -90,6 +194,18 @@
             <a href="/gallery">Media & Events</a>
             <a href="/admin-login">Admin Login</a>
         </div>
+    </div>
+
+    <div class="mobile-nav-slide" id="mobileNav">
+        <a href="/">Home</a>
+        <a href="/about">About Us</a>
+        <a href="/initiatives">Initiatives</a>
+        <a href="{{ url_for('volunteer_registration') }}" class="active">Volunteer</a>
+        <a href="/safety-tips">Safety Tips</a>
+        <a href="/pdf-resources">PDF Resources</a>
+        <a href="/contact">Contact Us</a>
+        <a href="/gallery">Media & Events</a>
+        <a href="/admin-login">Admin Login</a>
     </div>
     
     <div class="content">
@@ -134,6 +250,7 @@
             </div>
             
             <form method="POST" action="{{ url_for('volunteer_registration') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label" for="name">
@@ -162,9 +279,8 @@
                         <input type="tel" id="phone" name="phone" class="form-input" required
                                pattern="[1-9][0-9]{9}"
                                maxlength="10"
-                               title="Phone number must be 10 digits and cannot start with 0"
-                               value="{{ form_data.phone if form_data else '' }}"
-                               title="Phone number must be exactly 10 digits and cannot start with 0">
+                               title="Phone number must be exactly 10 digits and cannot start with 0"
+                               value="{{ form_data.phone if form_data else '' }}">
                     </div>
                     
                     <div class="form-group">
@@ -182,7 +298,7 @@
                     <label class="form-label" for="address">
                         <i class="fas fa-map-marker-alt"></i> Address *
                     </label>
-                    <textarea id="address" name="address" class="form-textarea" required 
+                    <textarea id="address" name="address" class="form-textarea" required
                               placeholder="Enter your complete address including district"
                               minlength="10">{{ form_data.address if form_data else '' }}</textarea>
                 </div>
@@ -211,7 +327,7 @@
                     <label class="form-label" for="experience">
                         <i class="fas fa-star"></i> Previous Volunteer Experience
                     </label>
-                    <textarea id="experience" name="experience" class="form-textarea" 
+                    <textarea id="experience" name="experience" class="form-textarea"
                               placeholder="Describe any previous volunteer work or social service experience">{{ form_data.experience if form_data else '' }}</textarea>
                 </div>
 
@@ -227,22 +343,24 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label" for="availability">
-                            <i class="fas fa-clock"></i> Availability
+                            <i class="fas fa-clock"></i> Availability *
                         </label>
-                        <select id="availability" name="availability" class="form-select">
+                        <select id="availability" name="availability" class="form-select" required>
                             <option value="">Select your availability</option>
-                            <option value="weekdays">Weekdays</option>
-                            <option value="weekends">Weekends</option>
-                            <option value="both">Both Weekdays & Weekends</option>
-                            <option value="flexible">Flexible</option>
+                            <option value="weekdays" {% if form_data and form_data.availability == 'weekdays' %}selected{% endif %}>Weekdays</option>
+                            <option value="weekends" {% if form_data and form_data.availability == 'weekends' %}selected{% endif %}>Weekends</option>
+                            <option value="both" {% if form_data and form_data.availability == 'both' %}selected{% endif %}>Both Weekdays & Weekends</option>
+                            <option value="flexible" {% if form_data and form_data.availability == 'flexible' %}selected{% endif %}>Flexible</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label" for="skills">
-                            <i class="fas fa-tools"></i> Special Skills
+                            <i class="fas fa-tools"></i> Special Skills *
                         </label>
-                        <input type="text" id="skills" name="skills" class="form-input" placeholder="Languages, technical skills, etc.">
+                        <input type="text" id="skills" name="skills" class="form-input" required
+                               value="{{ form_data.skills if form_data else '' }}"
+                               placeholder="Languages, technical skills, etc. (minimum 5 characters)">
                     </div>
                 </div>
                 
@@ -258,25 +376,40 @@
         <p>Emergency Helpline: 181 | Email: womensafety@appolice.gov.in</p>
     </div>
     
-    <!--Start of Tawk.to Script-->
-<script type="text/javascript">
-var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-(function(){
-var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-s1.async=true;
-s1.src='https://embed.tawk.to/68d154c9f2621819237b4ab1/1j5or6d5u';
-s1.charset='UTF-8';
-s1.setAttribute('crossorigin','*');
-s0.parentNode.insertBefore(s1,s0);
-})();
-</script>
-<!--End of Tawk.to Script-->
+    <script type="text/javascript">
+        var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+        (function(){
+        var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+        s1.async=true;
+        s1.src='https://embed.tawk.to/68d154c9f2621819237b4ab1/1j5or6d5u';
+        s1.charset='UTF-8';
+        s1.setAttribute('crossorigin','*');
+        s0.parentNode.insertBefore(s1,s0);
+        })();
+    </script>
     <script>
-        function showError(input, message) {
-            // Remove any existing error
-            removeError(input);
+        /* ---------------------------------
+            NEW: MOBILE MENU TOGGLE FUNCTION
+            --------------------------------- */
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileNav');
+            const buttonIcon = document.querySelector('.hamburger-btn i');
+            menu.classList.toggle('active');
             
-            // Create and show new error
+            if (menu.classList.contains('active')) {
+                buttonIcon.classList.remove('fa-bars');
+                buttonIcon.classList.add('fa-times'); // Change to X icon
+            } else {
+                buttonIcon.classList.remove('fa-times');
+                buttonIcon.classList.add('fa-bars'); // Change back to hamburger
+            }
+        }
+        
+        /* ---------------------------------
+            FORM VALIDATION - RETAINED AND UPDATED
+            --------------------------------- */
+        function showError(input, message) {
+            removeError(input);
             const error = document.createElement('div');
             error.id = input.id + '-error';
             error.className = 'error-message';
@@ -363,6 +496,16 @@ s0.parentNode.insertBefore(s1,s0);
             }
             return true;
         }
+        
+        function validateOccupation(input) {
+            removeError(input);
+            const occupation = input.value.trim();
+            if (occupation.length < 3) {
+                showError(input, 'Please provide your occupation');
+                return false;
+            }
+            return true;
+        }
 
         function validateEducation(input) {
             removeError(input);
@@ -390,8 +533,8 @@ s0.parentNode.insertBefore(s1,s0);
             removeError(input);
             const availability = input.value.trim();
             
-            if (availability.length < 5) {
-                showError(input, 'Please provide more details about your availability');
+            if (availability === "") { // Check if the default option is still selected
+                showError(input, 'Please select your availability');
                 return false;
             }
             return true;
@@ -402,7 +545,7 @@ s0.parentNode.insertBefore(s1,s0);
             const skills = input.value.trim();
             
             if (skills.length < 5) {
-                showError(input, 'Please provide more details about your skills');
+                showError(input, 'Please provide at least 5 characters for special skills');
                 return false;
             }
             return true;
@@ -411,15 +554,17 @@ s0.parentNode.insertBefore(s1,s0);
         function validateForm(event) {
             let isValid = true;
             
+            // Validate all required fields
             isValid = validateName(document.getElementById('name')) && isValid;
             isValid = validateEmail(document.getElementById('email')) && isValid;
             isValid = validatePhone(document.getElementById('phone')) && isValid;
             isValid = validateAge(document.getElementById('age')) && isValid;
             isValid = validateAddress(document.getElementById('address')) && isValid;
+            isValid = validateOccupation(document.getElementById('occupation')) && isValid; // Added
             isValid = validateEducation(document.getElementById('education')) && isValid;
             isValid = validateMotivation(document.getElementById('motivation')) && isValid;
-            isValid = validateAvailability(document.getElementById('availability')) && isValid;
-            isValid = validateSkills(document.getElementById('skills')) && isValid;
+            isValid = validateAvailability(document.getElementById('availability')) && isValid; // Added
+            isValid = validateSkills(document.getElementById('skills')) && isValid; // Changed to required logic
             
             if (!isValid) {
                 event.preventDefault();
@@ -434,14 +579,15 @@ s0.parentNode.insertBefore(s1,s0);
             document.getElementById('phone').addEventListener('input', function() { validatePhone(this); });
             document.getElementById('age').addEventListener('input', function() { validateAge(this); });
             document.getElementById('address').addEventListener('input', function() { validateAddress(this); });
+            document.getElementById('occupation').addEventListener('input', function() { validateOccupation(this); }); // Added
             document.getElementById('education').addEventListener('input', function() { validateEducation(this); });
             document.getElementById('motivation').addEventListener('input', function() { validateMotivation(this); });
-            document.getElementById('availability').addEventListener('input', function() { validateAvailability(this); });
-            document.getElementById('skills').addEventListener('input', function() { validateSkills(this); });
+            document.getElementById('availability').addEventListener('input', function() { validateAvailability(this); }); // Added
+            document.getElementById('skills').addEventListener('input', function() { validateSkills(this); }); // Added
             
             // Add form submit validation
             document.querySelector('form').addEventListener('submit', validateForm);
         });
     </script>
-    </body>
+</body>
 </html>
