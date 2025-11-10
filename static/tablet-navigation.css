@@ -1,0 +1,41 @@
+/* =========================
+   Tablet Navigation Fix for iPad Pro, iPad Air, Surface Pro 7
+   Applied to all pages in the website
+   ========================= */
+@media screen and (min-width: 769px) and (max-width: 1199px) {
+    /* Navigation fixes for tablets */
+    .navbar, .nav-bar {
+        padding: 12px 20px !important;
+    }
+    
+    .nav-menu {
+        gap: 8px !important;
+        font-size: 0.95em !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        max-width: 100% !important;
+        overflow-x: visible !important;
+    }
+    
+    .nav-menu a {
+        padding: 8px 10px !important;
+        font-size: 0.9em !important;
+        white-space: normal !important;
+        text-align: center !important;
+        min-width: auto !important;
+    }
+    
+    /* Header scaling for tablets */
+    .header {
+        padding: 15px 30px !important;
+    }
+    
+    .main-title {
+        font-size: 2.2em !important;
+    }
+    
+    .logo {
+        width: 100px !important;
+        height: 100px !important;
+    }
+}

@@ -314,6 +314,83 @@
         }
 
         /* =========================
+           Tablet Media Query (iPad Pro, iPad Air, Surface Pro 7)
+           ========================= */
+        @media screen and (min-width: 769px) and (max-width: 1199px) {
+            /* Navigation fixes for tablets */
+            .nav-bar {
+                padding: 12px 20px;
+            }
+            
+            .nav-menu {
+                gap: 8px;
+                font-size: 0.95em;
+                flex-wrap: wrap;
+                justify-content: center;
+                max-width: 100%;
+            }
+            
+            .nav-menu a {
+                padding: 8px 10px;
+                font-size: 0.9em;
+                white-space: normal;
+                text-align: center;
+                min-width: auto;
+            }
+            
+            /* Content scaling for tablets */
+            .header {
+                padding: 15px 30px;
+            }
+            
+            .main-title {
+                font-size: 2.2em;
+            }
+            
+            .logo {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .main-content {
+                padding: 25px 30px;
+                gap: 25px;
+                flex-direction: column;
+            }
+            
+            .welcome-section {
+                padding: 30px;
+            }
+            
+            .welcome-title {
+                font-size: 2.4em;
+            }
+            
+            .welcome-tagline {
+                font-size: 1.4em;
+            }
+            
+            .welcome-header {
+                font-size: 1.6em;
+            }
+            
+            .slideshow-container {
+                padding: 30px;
+                min-height: 400px;
+            }
+            
+            .emergency-buttons {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            
+            .emergency-btn {
+                padding: 12px 16px;
+                font-size: 0.95em;
+            }
+        }
+
+        /* =========================
            Media Queries (Mobile) 
            ========================= */
         @media screen and (max-width: 768px) {
@@ -356,7 +433,7 @@
                 display: none !important; 
                 flex-direction: column !important; 
                 position: fixed !important; 
-                top: 0 !important;
+                top: 10px !important;
                 right: 0 !important;
                 width: 50vw !important; 
                 max-width: 300px;
@@ -436,25 +513,16 @@
             }
         }
 
-        /* 1200px Media Query */
-        @media screen and (max-width: 1200px) {
+        /* Large Desktop Media Query (Above tablet range) */
+        @media screen and (min-width: 1200px) and (max-width: 1400px) {
             .nav-bar {
-                padding: 15px 20px;
+                padding: 15px 40px;
             }
             .nav-menu {
-                gap: 15px; 
-                overflow-x: auto;
-                justify-content: flex-start;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-                padding: 0 5px;
+                gap: 20px;
             }
             .nav-menu a {
-                padding: 10px 10px;
-            }
-            .main-content {
-                flex-direction: column;
-                padding: 20px;
+                padding: 10px 12px;
             }
         }
         
