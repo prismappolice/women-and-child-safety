@@ -104,16 +104,41 @@
                  style="height: 100px; width: 100px; object-fit: contain; padding: 5px;">
         </div>
         <div class="header-title">Admin Dashboard</div>
-        <a href="/admin/change-password" class="change-pwd-btn">
-            <i class="fas fa-key"></i> Change Password
-        </a>
-        <a href="{{ url_for('admin_logout') }}" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i> Logout
-        </a>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            {% if security_questions_set %}
+                <!-- <span class="security-status" style="background: #27ae60; color: white; padding: 8px 15px; border-radius: 20px; font-size: 0.9em;">
+                    <i class="fas fa-shield-alt"></i> Security Questions Set
+                </span> -->
+            {% else %}
+                <span class="security-status" style="background: #e74c3c; color: white; padding: 8px 15px; border-radius: 20px; font-size: 0.9em;">
+                    <i class="fas fa-exclamation-triangle"></i> Security Setup Required
+                </span>
+            {% endif %}
+            <a href="/admin/change-password" class="change-pwd-btn">
+                <i class="fas fa-key"></i> change Password & Security
+            </a>
+            <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
     </div>
     
     <div class="container">
         <h1 class="dashboard-title">Admin Dashboard - Gallery Management</h1>
+        
+        {% if not security_questions_set %}
+        <div class="alert alert-warning" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 10px; padding: 20px; margin-bottom: 30px; text-align: center;">
+            <h4 style="color: #856404; margin-bottom: 15px;">
+                <i class="fas fa-exclamation-triangle"></i> Security Setup Required
+            </h4>
+            <p style="color: #856404; margin-bottom: 20px;">
+                For your account security, please set up your security questions. These will be used for password recovery if you forget your password.
+            </p>
+            <a href="/admin/change-password" class="btn btn-warning" style="background: #f39c12; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                <i class="fas fa-shield-alt"></i> Set Up Security Questions Now
+            </a>
+        </div>
+        {% endif %}
         
         <div class="stats-grid">
             <!-- Volunteer Statistics -->

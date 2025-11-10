@@ -3,7 +3,7 @@ from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 from admin_security import (init_admin_security_db, set_security_questions, 
                          get_security_questions, verify_security_questions, 
-                         check_session_timeout, verify_answer)
+                         check_session_timeout, verify_answer, get_admin_id_by_username)
 
 csrf = CSRFProtect()
 from flask_mail import Mail, Message
@@ -93,10 +93,13 @@ def add_security_headers(response):
 # Validate admin session before each request to admin routes
 @app.before_request
 def check_admin_authorization():
-    # Skip auth check for static files and login routes
+    # Skip auth check for static files, login routes, and password recovery routes
     if (request.path.startswith('/static/') or
         request.path == '/admin-login' or
         request.path == '/admin/logout' or
+        request.path == '/admin/forgot-password' or
+        request.path == '/admin/verify-security' or
+        request.path == '/admin/reset-password' or
         not request.path.startswith('/admin')):
         return
     
@@ -1948,30 +1951,58 @@ def change_admin_password():
         flash('Please login to access this area', 'error')
         return redirect('/admin-login')
 
+    admin_id = session.get('admin_id')
+    
     if request.method == 'POST':
+        # Get form data
         current_password = request.form.get('current_password')
         new_password = request.form.get('new_password')
         confirm_password = request.form.get('confirm_password')
+        
+        # Security questions data
+        question1 = request.form.get('question1')
+        answer1 = request.form.get('answer1')
+        question2 = request.form.get('question2')
+        answer2 = request.form.get('answer2')
+        question3 = request.form.get('question3')
+        answer3 = request.form.get('answer3')
 
-        # Validate new password
+        # Validate password fields
         if not all([current_password, new_password, confirm_password]):
             flash('All password fields are required', 'danger')
-            return render_template('change_password.html')
+            current_questions = get_security_questions(admin_id)
+            return render_template('change_password.html', current_questions=current_questions)
+
+        # Validate security questions
+        if not all([question1, answer1, question2, answer2, question3, answer3]):
+            flash('All security questions and answers are required', 'danger')
+            current_questions = get_security_questions(admin_id)
+            return render_template('change_password.html', current_questions=current_questions)
+        
+        # Check for duplicate questions
+        questions = [question1, question2, question3]
+        if len(set(questions)) != len(questions):
+            flash('Please select different questions for each security question', 'danger')
+            current_questions = get_security_questions(admin_id)
+            return render_template('change_password.html', current_questions=current_questions)
 
         if new_password != confirm_password:
             flash('New passwords do not match', 'danger')
-            return render_template('change_password.html')
+            current_questions = get_security_questions(admin_id)
+            return render_template('change_password.html', current_questions=current_questions)
 
         if len(new_password) < 8:
             flash('New password must be at least 8 characters long', 'danger')
-            return render_template('change_password.html')
+            current_questions = get_security_questions(admin_id)
+            return render_template('change_password.html', current_questions=current_questions)
 
-        # Additional password strength check
+        # Enhanced password strength check
         if not any(c.isupper() for c in new_password) or not any(c.islower() for c in new_password) or not any(c.isdigit() for c in new_password):
             flash('Password must contain at least one uppercase letter, one lowercase letter, and one number', 'danger')
-            return render_template('change_password.html')
+            current_questions = get_security_questions(admin_id)
+            return render_template('change_password.html', current_questions=current_questions)
 
-        # Update password in database
+        # Update password and security questions in database
         conn = None
         try:
             conn = sqlite3.connect('database.db')
@@ -1983,38 +2014,224 @@ def change_admin_password():
             
             if not current_hash:
                 flash('Admin account not found', 'danger')
-                return render_template('change_password.html')
+                current_questions = get_security_questions(admin_id)
+                return render_template('change_password.html', current_questions=current_questions)
             
             # Verify current password using werkzeug's check_password_hash
             if not check_password_hash(current_hash[0], current_password):
                 print("Current password verification failed")
                 flash('Current password is incorrect', 'danger')
-                return render_template('change_password.html')
+                current_questions = get_security_questions(admin_id)
+                return render_template('change_password.html', current_questions=current_questions)
             
             print("Current password verified successfully")
             
-            # Update with new password
+            # Update password
             new_password_hash = generate_password_hash(new_password)
             c.execute('UPDATE admin_credentials SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
                      (new_password_hash, session['admin_id']))
-            conn.commit()
             
-            print("Password updated successfully")
-            flash('Password changed successfully! Please login with your new password', 'success')
-            session.clear()  # Force re-login with new password
-            return redirect(url_for('admin_login'))
+            # Update security questions using the same connection
+            success = set_security_questions(question1, answer1, question2, answer2, question3, answer3, admin_id, conn)
+            
+            if success:
+                conn.commit()
+                print("Password and security questions updated successfully")
+                flash('Password and security questions updated successfully! Please login with your new password', 'success')
+                session.clear()  # Force re-login with new password
+                return redirect(url_for('admin_login'))
+            else:
+                conn.rollback()
+                flash('Error updating security questions. Please try again.', 'danger')
+                current_questions = get_security_questions(admin_id)
+                return render_template('change_password.html', current_questions=current_questions)
             
         except Exception as e:
             print(f"Error in password change: {str(e)}")
             if conn:
                 conn.rollback()
-            flash('An error occurred while updating password', 'danger')
-            return render_template('change_password.html')
+            flash('An error occurred while updating password and security questions', 'danger')
+            current_questions = get_security_questions(admin_id)
+            return render_template('change_password.html', current_questions=current_questions)
         finally:
             if conn:
                 conn.close()
 
-    return render_template('change_password.html')
+    # GET request - show form with current security questions
+    current_questions = get_security_questions(admin_id)
+    return render_template('change_password.html', current_questions=current_questions)
+
+# Password Recovery Routes
+@app.route('/admin/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Step 1: Get username for password recovery"""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        
+        if not username:
+            flash('Username is required', 'danger')
+            return render_template('forgot_password.html')
+        
+        try:
+            # Check if user exists and has security questions
+            conn = sqlite3.connect('database.db')
+            c = conn.cursor()
+            
+            # Check admin exists
+            c.execute('SELECT id FROM admin_credentials WHERE username = ?', (username,))
+            admin = c.fetchone()
+            
+            if not admin:
+                # Don't reveal if username exists or not for security
+                flash('If this username exists, you will be redirected to security questions', 'info')
+                return render_template('forgot_password.html')
+            
+            # Get admin ID and check security questions exist
+            admin_id = admin[0]
+            questions = get_security_questions(admin_id)
+            if not questions:
+                flash('Security questions not set up for this account. Contact system administrator.', 'warning')
+                return render_template('forgot_password.html')
+            
+            conn.close()
+            
+            # Store username and admin_id in session for next step
+            session['recovery_username'] = username
+            session['recovery_admin_id'] = admin_id
+            session['recovery_step'] = 'security_questions'
+            
+            return redirect('/admin/verify-security')
+            
+        except Exception as e:
+            print(f"Forgot password error: {str(e)}")
+            flash('An error occurred. Please try again.', 'danger')
+            return render_template('forgot_password.html')
+    
+    return render_template('forgot_password.html')
+
+@app.route('/admin/verify-security', methods=['GET', 'POST'])
+def verify_security_answers():
+    """Step 2: Verify security question answers"""
+    # Check if user came from step 1
+    if 'recovery_username' not in session or session.get('recovery_step') != 'security_questions':
+        flash('Please start the password recovery process from the beginning', 'warning')
+        return redirect('/admin/forgot-password')
+    
+    username = session['recovery_username']
+    
+    if request.method == 'POST':
+        answer1 = request.form.get('answer1', '').strip()
+        answer2 = request.form.get('answer2', '').strip()
+        answer3 = request.form.get('answer3', '').strip()
+        
+        if not all([answer1, answer2, answer3]):
+            flash('All security answers are required', 'danger')
+            questions = get_security_questions()
+            return render_template('verify_security_questions.html', username=username, questions=questions)
+        
+        try:
+            # Verify answers for specific admin
+            admin_id = session.get('recovery_admin_id')
+            answers = [answer1, answer2, answer3]
+            if verify_security_questions(answers, admin_id):
+                # Answers correct, proceed to password reset
+                session['recovery_step'] = 'reset_password'
+                return redirect('/admin/reset-password')
+            else:
+                flash('One or more security answers are incorrect. Please try again.', 'danger')
+                questions = get_security_questions(admin_id)
+                return render_template('verify_security_questions.html', username=username, questions=questions)
+        
+        except Exception as e:
+            print(f"Security verification error: {str(e)}")
+            flash('An error occurred during verification. Please try again.', 'danger')
+            questions = get_security_questions()
+            return render_template('verify_security_questions.html', username=username, questions=questions)
+    
+    # GET request - show security questions
+    admin_id = session.get('recovery_admin_id')
+    questions = get_security_questions(admin_id)
+    if not questions:
+        flash('Security questions not found. Please contact system administrator.', 'warning')
+        return redirect('/admin/forgot-password')
+    
+    return render_template('verify_security_questions.html', username=username, questions=questions)
+
+@app.route('/admin/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    """Step 3: Reset password after security verification"""
+    # Check if user completed security verification
+    if 'recovery_username' not in session or session.get('recovery_step') != 'reset_password':
+        flash('Please complete the security verification first', 'warning')
+        return redirect('/admin/forgot-password')
+    
+    username = session['recovery_username']
+    
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        
+        # Validate passwords
+        if not new_password or not confirm_password:
+            flash('Both password fields are required', 'danger')
+            return render_template('reset_password.html', username=username)
+        
+        if new_password != confirm_password:
+            flash('Passwords do not match', 'danger')
+            return render_template('reset_password.html', username=username)
+        
+        if len(new_password) < 8:
+            flash('Password must be at least 8 characters long', 'danger')
+            return render_template('reset_password.html', username=username)
+        
+        # Enhanced password validation
+        if not any(c.isupper() for c in new_password):
+            flash('Password must contain at least one uppercase letter', 'danger')
+            return render_template('reset_password.html', username=username)
+        
+        if not any(c.islower() for c in new_password):
+            flash('Password must contain at least one lowercase letter', 'danger')
+            return render_template('reset_password.html', username=username)
+        
+        if not any(c.isdigit() for c in new_password):
+            flash('Password must contain at least one number', 'danger')
+            return render_template('reset_password.html', username=username)
+        
+        try:
+            # Update password in database
+            conn = sqlite3.connect('database.db')
+            c = conn.cursor()
+            
+            # Get admin ID
+            c.execute('SELECT id FROM admin_credentials WHERE username = ?', (username,))
+            admin = c.fetchone()
+            
+            if not admin:
+                flash('Admin account not found', 'danger')
+                return render_template('reset_password.html', username=username)
+            
+            # Hash and update password
+            password_hash = generate_password_hash(new_password)
+            c.execute('UPDATE admin_credentials SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                     (password_hash, admin[0]))
+            conn.commit()
+            conn.close()
+            
+            # Clear recovery session data
+            session.pop('recovery_username', None)
+            session.pop('recovery_admin_id', None)
+            session.pop('recovery_step', None)
+            
+            flash('Password reset successfully! Please login with your new password.', 'success')
+            return redirect('/admin-login')
+            
+        except Exception as e:
+            print(f"Password reset error: {str(e)}")
+            flash('An error occurred while resetting password. Please try again.', 'danger')
+            return render_template('reset_password.html', username=username)
+    
+    # GET request - show reset form
+    return render_template('reset_password.html', username=username)
 
 @app.route('/admin/setup-security', methods=['GET', 'POST'])
 def setup_security_questions():
@@ -2104,12 +2321,18 @@ def admin_dashboard():
         'total_gallery': total_gallery_count
     }
     
+    # Check security questions status
+    admin_id = session.get('admin_id')
+    security_questions = get_security_questions(admin_id)
+    security_questions_set = security_questions is not None
+    
     return render_template('admin_dashboard.html', 
                          stats=stats, 
                          recent_gallery_items=recent_gallery_items,
                          total_volunteers=total_volunteers,
                          pending_volunteers=pending_volunteers,
-                         accepted_volunteers=accepted_volunteers)
+                         accepted_volunteers=accepted_volunteers,
+                         security_questions_set=security_questions_set)
 
 # Admin Safety Tips Management
 @app.route('/admin-safety-tips')
