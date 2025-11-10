@@ -50,6 +50,41 @@
         .submit-btn { background: linear-gradient(135deg, #27ae60, #229954); color: #fff; padding: 15px 40px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; }
         .footer { background: #2c3e50; color: #fff; text-align: center; padding: 20px; margin-top: 50px; }
         .error-message { color: #dc3545; font-size: 14px; margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+        
+        /* Success and Error Message Styles */
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .success-message i, .error-message i {
+            font-size: 1.2em;
+            margin-right: 10px;
+        }
+        
+        .success-message h3, .error-message h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .success-message p, .error-message p {
+            margin: 0;
+        }
 
         /* NEW: Hamburger Button Hidden by Default (on Desktop) */
         .hamburger-btn {
@@ -221,15 +256,25 @@
             </a>
         </div>
         
-        {% if get_flashed_messages() %}
-            {% for message in get_flashed_messages() %}
-                <div class="success-message">
-                    <i class="fas fa-check-circle"></i>
-                    <h3>Registration Successful!</h3>
-                    <p>{{ message }}</p>
-                </div>
-            {% endfor %}
-        {% endif %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% if category == 'success' %}
+                        <div class="success-message">
+                            <i class="fas fa-check-circle"></i>
+                            <h3>Registration Successful!</h3>
+                            <p>{{ message }}</p>
+                        </div>
+                    {% elif category == 'error' %}
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>Registration Error</h3>
+                            <p>{{ message }}</p>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
         
         <div class="requirements">
             <h3><i class="fas fa-info-circle"></i> Volunteer Requirements</h3>

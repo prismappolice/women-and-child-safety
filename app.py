@@ -303,7 +303,7 @@ def volunteer_registration():
             cursor.execute('SELECT id, registration_id FROM volunteers WHERE phone = ?', (phone,))
             existing = cursor.fetchone()
             if existing:
-                flash(f'This phone number is already registered with ID: {existing[1]}', 'error')
+                flash(f'This phone number ({phone}) is already registered with Registration ID: {existing[1]}. Please use a different phone number or check your application status.', 'error')
                 return redirect(url_for('volunteer_registration'))
 
             # Generate registration ID
