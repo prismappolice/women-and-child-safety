@@ -63,7 +63,7 @@ csrf.init_app(app)
 
 @app.route('/event/<int:event_id>')
 def event_details(event_id):
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Get event details
@@ -131,17 +131,20 @@ def check_admin_authorization():
 # Initialize volunteer tables on app startup
 def init_volunteer_tables():
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
-        # Check if volunteers table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='volunteers'")
-        volunteers_table_exists = cursor.fetchone()
+        # Check if volunteers table exists (PostgreSQL syntax)
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'volunteers'
+            )
+        """)
+        volunteers_table_exists = cursor.fetchone()[0]
         
         if volunteers_table_exists:
-            cursor.execute("PRAGMA table_info(volunteers)")
-            existing_columns = cursor.fetchall()
-            print(f"Existing volunteers table columns: {existing_columns}")
             print("Volunteers table already exists - preserving data")
         else:
             print("Creating volunteers table for first time")
@@ -149,7 +152,7 @@ def init_volunteer_tables():
         # Create volunteers table only if it doesn't exist (preserves existing data)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS volunteers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 registration_id TEXT UNIQUE NOT NULL,
                 name TEXT NOT NULL,
                 email TEXT NOT NULL,
@@ -169,7 +172,7 @@ def init_volunteer_tables():
         # Create volunteer_status table only if it doesn't exist (preserves existing data)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS volunteer_status (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 volunteer_id INTEGER UNIQUE,
                 status TEXT DEFAULT 'pending',
                 admin_notes TEXT,
@@ -198,7 +201,7 @@ def manage_volunteers():
         return redirect(url_for('admin_login'))
         
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         # Get all columns with proper aliases
@@ -255,7 +258,7 @@ def update_volunteer_status():
         return redirect(url_for('manage_volunteers'))
     
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         # Map action to status
@@ -423,7 +426,7 @@ def check_volunteer_status():
             conn.close()
 
 def generate_registration_id():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Get the current year
@@ -448,7 +451,7 @@ def generate_registration_id():
 
 # Initialize database
 def init_volunteer_db():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Create volunteers table
@@ -508,13 +511,13 @@ def allowed_file(filename):
 
 # Database initialization
 def init_db():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Create contact_info table if it doesn't exist
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS contact_info (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             contact_type TEXT NOT NULL,
             title TEXT NOT NULL,
             value TEXT NOT NULL,
@@ -528,7 +531,8 @@ def init_db():
     ''')
 
     # Insert default contact info if table is empty
-    cursor.execute('SELECT COUNT(*) FROM contact_info')
+    query = adapt_query('SELECT COUNT(*) FROM contact_info')
+    cursor.execute(query)
     if cursor.fetchone()[0] == 0:
         default_contacts = [
             ('phone', 'Emergency Helpline', '100', 'Police Emergency Helpline', 'fas fa-phone', 1, 1),
@@ -536,17 +540,18 @@ def init_db():
             ('email', 'General Inquiries', 'info@apwomensafety.gov.in', 'For general inquiries and support', 'fas fa-envelope', 1, 1),
             ('address', 'Head Office', 'AP Police Headquarters, Mangalagiri, Guntur District', 'Main office address', 'fas fa-building', 1, 1)
         ]
-        cursor.executemany('''
+        insert_query = adapt_query('''
             INSERT INTO contact_info 
             (contact_type, title, value, description, icon_class, is_primary, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', default_contacts)
+        ''')
+        cursor.executemany(insert_query, default_contacts)
         conn.commit()
     
     # Create volunteers table with registration ID
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS volunteers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             registration_id TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
             email TEXT NOT NULL,
@@ -566,7 +571,7 @@ def init_db():
     # Create home_content table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS home_content (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             section_name TEXT NOT NULL,
             title TEXT NOT NULL,
             content TEXT,
@@ -579,21 +584,10 @@ def init_db():
         )
     ''')
     
-    # Create contact_info table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS contact_info (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            type TEXT NOT NULL,
-            value TEXT NOT NULL,
-            description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
     # Create pdf_resources table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pdf_resources (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             title TEXT NOT NULL,
             description TEXT,
             file_name TEXT NOT NULL,
@@ -607,7 +601,7 @@ def init_db():
     # Create about_content table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS about_content (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             section_type TEXT NOT NULL,
             title TEXT NOT NULL,
             content TEXT,
@@ -619,7 +613,7 @@ def init_db():
     # Create initiatives table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS initiatives (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             title TEXT NOT NULL,
             description TEXT,
             location TEXT,
@@ -633,7 +627,7 @@ def init_db():
     # Create success_stories table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS success_stories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             title TEXT NOT NULL,
             description TEXT NOT NULL,
             date TEXT,
@@ -653,7 +647,7 @@ def init_db():
     # Create safety_tips table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS safety_tips (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             title TEXT NOT NULL,
             content TEXT NOT NULL,
             category TEXT,
@@ -665,7 +659,7 @@ def init_db():
     # Create gallery_items table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS gallery_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             title TEXT NOT NULL,
             description TEXT,
             image_url TEXT,
@@ -681,7 +675,7 @@ def init_db():
     # Create email_notifications table for managing email communications
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS email_notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             volunteer_id INTEGER,
             email_type TEXT NOT NULL,
             subject TEXT NOT NULL,
@@ -695,7 +689,7 @@ def init_db():
     # Create volunteer status table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS volunteer_status (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             volunteer_id INTEGER UNIQUE,
             status TEXT DEFAULT 'pending',
             admin_notes TEXT,
@@ -707,7 +701,7 @@ def init_db():
     # Create admin_settings table for email configuration
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS admin_settings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             setting_name TEXT UNIQUE NOT NULL,
             setting_value TEXT,
             description TEXT,
@@ -725,7 +719,7 @@ init_db()
 def log_email_notification(volunteer_id, subject, body):
     """Log email notifications in database"""
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -743,9 +737,9 @@ def log_email_notification(volunteer_id, subject, body):
 @app.route('/')
 def home():
     # Get dynamic home page content
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, section_name, title, content, image_url, link_url, icon_class, sort_order, is_active FROM home_content WHERE is_active = 1 ORDER BY section_name, sort_order')
+    cursor.execute('SELECT id, section_name, title, content, image_url, link_url, icon_class, sort_order, is_active FROM home_content WHERE is_active::integer = 1 ORDER BY section_name, sort_order')
     home_content = cursor.fetchall()
     conn.close()
     
@@ -819,17 +813,17 @@ def generate_volunteer_id():
 @app.route('/about')
 def about():
     # Get dynamic about page content
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, section_name, title, content, image_url, sort_order, is_active FROM about_content WHERE is_active = 1 ORDER BY sort_order, section_name')
+    cursor.execute("SELECT id, section_name, title, content, image_url, sort_order, is_active FROM about_content WHERE is_active::integer = 1 ORDER BY sort_order, section_name")
     about_sections = cursor.fetchall()
     
     # Get officers data for leadership team
-    cursor.execute('SELECT id, name, designation, department, phone, email, image_url, bio, position_order, is_active FROM officers WHERE is_active = 1 ORDER BY position_order, name')
+    cursor.execute("SELECT id, name, designation, department, phone, email, image_url, bio, position_order, is_active FROM officers WHERE is_active::integer = 1 ORDER BY position_order, name")
     officers = cursor.fetchall()
     
     # Get success stories for about page
-    cursor.execute('SELECT id, title, description, date, stat1_number, stat1_label, stat2_number, stat2_label, stat3_number, stat3_label, image_url FROM success_stories WHERE is_active = 1 ORDER BY sort_order, id DESC')
+    cursor.execute("SELECT id, title, description, date, stat1_number, stat1_label, stat2_number, stat2_label, stat3_number, stat3_label, image_url FROM success_stories WHERE is_active::integer = 1 ORDER BY sort_order, id DESC")
     success_stories = cursor.fetchall()
     
     conn.close()
@@ -841,9 +835,9 @@ def about():
 @app.route('/initiatives')
 def initiatives():
     # Get dynamic initiatives from database
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('SELECT title, description, image_url, is_featured FROM initiatives WHERE is_active = 1 ORDER BY is_featured DESC, id')
+    cursor.execute('SELECT title, description, image_url, is_featured FROM initiatives WHERE is_active::integer = 1 ORDER BY is_featured DESC, id')
     initiatives_data = cursor.fetchall()
     conn.close()
     
@@ -852,15 +846,15 @@ def initiatives():
 @app.route('/safety-tips')
 def safety_tips():
     # Get dynamic safety tips from database
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Get safety tips
-    cursor.execute('SELECT title, icon, tips FROM safety_tips WHERE is_active = 1 ORDER BY id')
+    cursor.execute('SELECT title, icon, tips FROM safety_tips WHERE is_active::integer = 1 ORDER BY id')
     tips_data = cursor.fetchall()
     
     # Get emergency numbers
-    cursor.execute('SELECT number, label FROM emergency_numbers WHERE is_active = 1 ORDER BY sort_order')
+    cursor.execute('SELECT number, label FROM emergency_numbers WHERE is_active::integer = 1 ORDER BY sort_order')
     emergency_numbers = cursor.fetchall()
     
     conn.close()
@@ -870,9 +864,9 @@ def safety_tips():
 @app.route('/pdf-resources')
 def pdf_resources():
     # Get dynamic PDF resources from database
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('SELECT title, description, file_path, icon FROM pdf_resources WHERE is_active = 1 ORDER BY id')
+    cursor.execute('SELECT title, description, file_path, icon FROM pdf_resources WHERE is_active::integer = 1 ORDER BY id')
     pdf_data = cursor.fetchall()
     conn.close()
     
@@ -880,7 +874,7 @@ def pdf_resources():
 
 @app.route('/update-districts-db')
 def update_districts_db():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Create districts table if not exists
@@ -939,7 +933,7 @@ def update_districts_db():
 
 @app.route('/test-districts-check')
 def test_districts_check():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Check if districts table exists and has data
@@ -970,11 +964,11 @@ def test_districts_check():
 
 @app.route('/contact-debug')
 def contact_debug():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Check districts
-    cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name')
+    cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name')
     districts = cursor.fetchall()
     
     result = f"Found {len(districts)} districts:<br><br>"
@@ -986,7 +980,7 @@ def contact_debug():
 
 @app.route('/check-all-districts-mapping')
 def check_all_districts_mapping():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     output = "<h1>All Districts Data Mapping Check</h1>"
@@ -1044,7 +1038,7 @@ def check_all_districts_mapping():
 
 @app.route('/fix-all-districts-mapping')
 def fix_all_districts_mapping():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     output = "<h1>Fixing All Districts Mapping</h1>"
@@ -1110,7 +1104,7 @@ def fix_all_districts_mapping():
 
 @app.route('/find-srikakulam-id')
 def find_srikakulam_id():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     cursor.execute('SELECT id, district_name FROM districts WHERE district_name LIKE "%Srikakulam%"')
@@ -1138,7 +1132,7 @@ def find_srikakulam_id():
 
 @app.route('/fix-district-data-mapping')
 def fix_district_data_mapping():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     output = "<h1>Fixing District Data Mapping</h1>"
@@ -1225,7 +1219,7 @@ def fix_district_data_mapping():
 
 @app.route('/debug-district-mapping/<int:district_id>')
 def debug_district_mapping(district_id):
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     output = f"<h1>Debug District Mapping for ID: {district_id}</h1>"
@@ -1255,7 +1249,7 @@ def debug_district_mapping(district_id):
 
 @app.route('/fix-districts-table')
 def fix_districts_table():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     output = "<h1>Fixing Districts Table</h1>"
@@ -1297,7 +1291,7 @@ def fix_districts_table():
         conn.commit()
         
         # Verify
-        cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active = 1')
+        cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active::integer = 1')
         count = cursor.fetchone()[0]
         output += f"<h2>✓ Total districts created: {count}</h2>"
         
@@ -1309,7 +1303,7 @@ def fix_districts_table():
 
 @app.route('/check-districts-table')
 def check_districts_table():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     output = "<h1>Districts Table Structure</h1>"
@@ -1345,11 +1339,11 @@ def check_districts_table():
 @app.route('/quick-districts-check')
 def quick_districts_check():
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active = 1')
+        cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active::integer = 1')
         count = cursor.fetchone()[0]
-        cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 LIMIT 3')
+        cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 LIMIT 3')
         sample = cursor.fetchall()
         conn.close()
         
@@ -1370,7 +1364,7 @@ def db_status():
         output += f"<p>Current directory: {os.getcwd()}</p>"
         output += f"<p>Database file exists: {os.path.exists('women_safety.db')}</p>"
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         # Check if districts table exists
@@ -1384,7 +1378,7 @@ def db_status():
             total_count = cursor.fetchone()[0]
             output += f"<p><strong>Total districts in table: {total_count}</strong></p>"
             
-            cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active = 1')
+            cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active::integer = 1')
             active_count = cursor.fetchone()[0]
             output += f"<p><strong>Active districts: {active_count}</strong></p>"
             
@@ -1410,7 +1404,7 @@ def db_status():
 
 @app.route('/force-populate-districts')
 def force_populate_districts():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # First, clear existing districts
@@ -1442,12 +1436,12 @@ def force_populate_districts():
     conn.commit()
     
     # Check final count
-    cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active = 1')
+    cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active::integer = 1')
     final_count = cursor.fetchone()[0]
     output += f"<h2>Final districts count: {final_count}</h2>"
     
     # List all districts
-    cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name')
+    cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name')
     all_districts = cursor.fetchall()
     output += "<h3>All Districts:</h3>"
     for dist_id, dist_name in all_districts:
@@ -1458,10 +1452,10 @@ def force_populate_districts():
 
 @app.route('/test-template')
 def test_template():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
-    cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name LIMIT 3')
+    cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name LIMIT 3')
     districts = cursor.fetchall()
     
     district_contacts = []
@@ -1489,10 +1483,10 @@ def test_template():
 
 @app.route('/test-contact-simple')
 def test_contact_simple():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
-    cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name LIMIT 5')
+    cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name LIMIT 5')
     districts = cursor.fetchall()
     
     conn.close()
@@ -1520,11 +1514,11 @@ def test_contact_simple():
 
 @app.route('/contact-debug-full')
 def contact_debug_full():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Check districts
-    cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name')
+    cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name')
     districts = cursor.fetchall()
     
     # Check contact_info
@@ -1550,10 +1544,10 @@ def contact_debug_full():
 
 @app.route('/contact-simple-test')
 def contact_simple_test():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
-    cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name')
+    cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name')
     districts = cursor.fetchall()
     
     output = f"<h1>Districts Found: {len(districts)}</h1><br>"
@@ -1569,14 +1563,14 @@ def contact():
     district_contacts = []
     
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         # Get emergency and general contacts
         cursor.execute('''
             SELECT contact_type, title, value, description, icon_class 
             FROM contact_info 
-            WHERE is_active = 1 
+            WHERE is_active::integer = 1 
             ORDER BY is_primary DESC, contact_type, title
         ''')
         emergency_contacts = [{
@@ -1591,7 +1585,7 @@ def contact():
         cursor = conn.cursor()
         
         # Get all districts with their actual contact data
-        cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name')
+        cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name')
         districts = cursor.fetchall()
         
         for district_id, district_name in districts:
@@ -1842,7 +1836,7 @@ def create_district_tables(cursor):
         INSERT OR IGNORE INTO district_sps (district_id, sp_name, contact_number, email)
         SELECT id, 'SP ' || district_name, '+91-' || CAST((8000000000 + (id * 1000000)) AS TEXT), 
                LOWER(district_name) || '.sp@appolice.gov.in'
-        FROM districts WHERE is_active = 1
+        FROM districts WHERE is_active::integer = 1
     ''')
     
     # Sample Shakthi Teams
@@ -1852,7 +1846,7 @@ def create_district_tables(cursor):
             INSERT OR IGNORE INTO shakthi_teams (district_id, team_name, incharge_name, contact_number, area_coverage)
             SELECT id, ?, 'Inspector ' || ?, '+91-' || CAST((9000000000 + (id * 100000) + ?) AS TEXT), 
                    'Zone ' || CAST(? AS TEXT)
-            FROM districts WHERE is_active = 1
+            FROM districts WHERE is_active::integer = 1
         ''', (team, team.split()[1], (i+1)*1000, i+1))
     
     # Sample Women Police Stations
@@ -1861,7 +1855,7 @@ def create_district_tables(cursor):
         SELECT id, district_name || ' Women PS', 'CI ' || district_name, 
                '+91-' || CAST((7000000000 + (id * 1000000)) AS TEXT),
                'Women Police Station, ' || district_name
-        FROM districts WHERE is_active = 1
+        FROM districts WHERE is_active::integer = 1
     ''')
     
     # Sample One Stop Centers
@@ -1872,7 +1866,7 @@ def create_district_tables(cursor):
                'Coordinator ' || district_name,
                '+91-' || CAST((6000000000 + (id * 1000000)) AS TEXT),
                'Legal Aid, Medical Support, Counseling, Shelter'
-        FROM districts WHERE is_active = 1
+        FROM districts WHERE is_active::integer = 1
     ''')
     
     print("District contact tables created successfully!")
@@ -1880,11 +1874,11 @@ def create_district_tables(cursor):
 @app.route('/gallery')
 def gallery():
     # Get dynamic gallery items for 3 sections
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('''SELECT id, title, description, image_url, video_url, 
                      category, event_date, is_featured, is_active 
-                     FROM gallery_items WHERE is_active = 1 
+                     FROM gallery_items WHERE is_active::integer = 1 
                      ORDER BY category, is_featured DESC, event_date DESC''')
     gallery_items = cursor.fetchall()
     conn.close()
@@ -1894,7 +1888,7 @@ def gallery():
 @app.route('/gallery-debug')
 def gallery_debug():
     # Debug route to check gallery data
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('''SELECT id, title, description, image_url, video_url, 
                      category, event_date, is_featured, is_active 
@@ -2080,40 +2074,48 @@ def admin_dashboard():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    # Get gallery statistics for dashboard
-    conn = sqlite3.connect('women_safety.db')
+    # Get gallery statistics for dashboard (Using PostgreSQL via db_config)
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Count gallery items by category
-    cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE category = "Images" AND is_active = 1')
+    query = adapt_query('SELECT COUNT(*) FROM gallery_items WHERE category = ? AND is_active = 1')
+    cursor.execute(query, ('Images',))
     images_count = cursor.fetchone()[0]
     
     # Get volunteer statistics
-    cursor.execute('SELECT COUNT(*) FROM volunteers')
+    query = adapt_query('SELECT COUNT(*) FROM volunteers')
+    cursor.execute(query)
     total_volunteers = cursor.fetchone()[0] or 0
     
     # Count volunteers with pending status (including those without status records)
-    cursor.execute('''
+    query = adapt_query('''
         SELECT COUNT(*) FROM volunteers v 
         LEFT JOIN volunteer_status vs ON v.id = vs.volunteer_id 
-        WHERE vs.status = "pending" OR vs.status IS NULL
+        WHERE vs.status = ? OR vs.status IS NULL
     ''')
+    cursor.execute(query, ('pending',))
     pending_volunteers = cursor.fetchone()[0] or 0
     
-    cursor.execute('SELECT COUNT(*) FROM volunteer_status WHERE status = "accepted"')
+    query = adapt_query('SELECT COUNT(*) FROM volunteer_status WHERE status = ?')
+    cursor.execute(query, ('accepted',))
     accepted_volunteers = cursor.fetchone()[0] or 0
     
-    cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE category = "Videos" AND is_active = 1')
+    query = adapt_query('SELECT COUNT(*) FROM gallery_items WHERE category = ? AND is_active = 1')
+    cursor.execute(query, ('Videos',))
     videos_count = cursor.fetchone()[0]
     
-    cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE category = "Upcoming Events" AND is_active = 1')
+    query = adapt_query('SELECT COUNT(*) FROM gallery_items WHERE category = ? AND is_active = 1')
+    cursor.execute(query, ('Upcoming Events',))
     events_count = cursor.fetchone()[0]
     
-    cursor.execute('SELECT COUNT(*) FROM gallery_items WHERE is_active = 1')
+    query = adapt_query('SELECT COUNT(*) FROM gallery_items WHERE is_active::integer = 1')
+    cursor.execute(query)
     total_gallery_count = cursor.fetchone()[0]
     
     # Get recent gallery items
-    cursor.execute('SELECT id, title, category, event_date, is_active FROM gallery_items ORDER BY id DESC LIMIT 5')
+    query = adapt_query('SELECT id, title, category, event_date, is_active FROM gallery_items ORDER BY id DESC LIMIT 5')
+    cursor.execute(query)
     recent_gallery_items = cursor.fetchall()
     
     conn.close()
@@ -2138,7 +2140,7 @@ def admin_safety_tips():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT id, category, title, icon, tips, is_active FROM safety_tips ORDER BY id')
     tips = cursor.fetchall()
@@ -2157,7 +2159,7 @@ def admin_add_safety_tip():
         icon = request.form.get('icon')
         tips = request.form.get('tips')
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO safety_tips (category, title, icon, tips)
@@ -2176,7 +2178,7 @@ def admin_edit_safety_tip(tip_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -2208,7 +2210,7 @@ def admin_delete_safety_tip(tip_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM safety_tips WHERE id=?', (tip_id,))
     conn.commit()
@@ -2223,7 +2225,7 @@ def admin_pdf_resources():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT id, title, description, file_name, icon, is_active FROM pdf_resources ORDER BY id')
     pdfs = cursor.fetchall()
@@ -2254,7 +2256,7 @@ def admin_add_pdf_resource():
                 
                 file.save(file_path)
                 
-                conn = sqlite3.connect('women_safety.db')
+                conn = get_db_connection('main')
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO pdf_resources (title, description, file_name, file_path, icon)
@@ -2273,7 +2275,7 @@ def admin_edit_pdf_resource(pdf_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -2337,7 +2339,7 @@ def admin_delete_pdf_resource(pdf_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Get file path before deleting record
@@ -2364,7 +2366,7 @@ def admin_initiatives():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT id, title, description, image_url, is_featured, is_active FROM initiatives ORDER BY id')
     initiatives = cursor.fetchall()
@@ -2405,7 +2407,7 @@ def admin_add_initiative():
                         print(f"Error saving initiative image: {e}")  # Debug print
                         flash(f'Error uploading image: {e}', 'error')
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO initiatives (title, description, image_url, is_featured)
@@ -2424,7 +2426,7 @@ def admin_edit_initiative(initiative_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -2483,7 +2485,7 @@ def admin_delete_initiative(initiative_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM initiatives WHERE id = ?', (initiative_id,))
     conn.commit()
@@ -2498,7 +2500,7 @@ def admin_about():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT id, section_name, title, content, image_url, sort_order, is_active FROM about_content ORDER BY sort_order, section_name')
     about_sections = cursor.fetchall()
@@ -2518,7 +2520,7 @@ def admin_add_about_section():
         image_url = request.form.get('image_url')
         sort_order = request.form.get('sort_order', 0)
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO about_content (section_name, title, content, image_url, sort_order)
@@ -2537,7 +2539,7 @@ def admin_edit_about_section(section_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -2575,7 +2577,7 @@ def admin_delete_about_section(section_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM about_content WHERE id = ?', (section_id,))
     conn.commit()
@@ -2590,7 +2592,7 @@ def admin_home():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT id, section_name, title, content, image_url, link_url, icon_class, sort_order, is_active FROM home_content ORDER BY section_name, sort_order')
     home_content = cursor.fetchall()
@@ -2603,7 +2605,7 @@ def admin_edit_home_content(content_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -2644,7 +2646,7 @@ def admin_delete_home_content(content_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     cursor.execute('DELETE FROM home_content WHERE id = ?', (content_id,))
@@ -2668,7 +2670,7 @@ def admin_add_home_content(section):
         extra_info = request.form.get('extra_info')
         is_active = request.form.get('is_active') == 'on'
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO home_content (section_name, title, content, image_url, link_url, sort_order, is_active)
@@ -2688,7 +2690,7 @@ def admin_contact():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT id, contact_type, title, value, description, icon_class, is_primary, is_active FROM contact_info ORDER BY contact_type, is_primary DESC')
     contact_info = cursor.fetchall()
@@ -2708,7 +2710,7 @@ def admin_add_contact_info():
         description = request.form.get('description')
         is_active = request.form.get('is_active') == 'on'
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO contact_info (contact_type, title, value, description, is_active)
@@ -2732,7 +2734,7 @@ def admin_add_office_location():
         address = request.form.get('address')
         is_active = request.form.get('is_active') == 'on'
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO contact_info (contact_type, title, value, is_active)
@@ -2759,7 +2761,7 @@ def admin_edit_contact_info(contact_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -2804,7 +2806,7 @@ def admin_delete_contact_info(contact_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM contact_info WHERE id = ?', (contact_id,))
     conn.commit()
@@ -2821,14 +2823,16 @@ def admin_gallery():
     
     category_filter = request.args.get('category', 'Images')  # Default to Images
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if category_filter in ['Images', 'Videos', 'Upcoming Events']:
-        cursor.execute('SELECT id, title, description, image_url, event_date, category, is_featured, is_active FROM gallery_items WHERE category = ? ORDER BY event_date DESC', (category_filter,))
+        query = adapt_query('SELECT id, title, description, image_url, video_url, event_date, category, is_featured, is_active FROM gallery_items WHERE category = ? ORDER BY event_date DESC')
+        cursor.execute(query, (category_filter,))
     else:
         # Fallback to Images if invalid category
-        cursor.execute('SELECT id, title, description, image_url, event_date, category, is_featured, is_active FROM gallery_items WHERE category = "Images" ORDER BY event_date DESC')
+        query = adapt_query('SELECT id, title, description, image_url, video_url, event_date, category, is_featured, is_active FROM gallery_items WHERE category = ? ORDER BY event_date DESC')
+        cursor.execute(query, ('Images',))
     
     gallery_items = cursor.fetchall()
     conn.close()
@@ -2872,12 +2876,13 @@ def admin_add_gallery_item():
                     # It's an image file
                     image_url = f'/static/uploads/{filename}'
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO gallery_items (title, description, image_url, video_url, event_date, category, is_featured, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (title, description, image_url, video_url, event_date, category, is_featured, is_active))
+        ''')
+        cursor.execute(query, (title, description, image_url, video_url, event_date, category, is_featured, is_active))
         conn.commit()
         conn.close()
         
@@ -2891,7 +2896,7 @@ def admin_edit_gallery_item(item_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -2924,11 +2929,12 @@ def admin_edit_gallery_item(item_id):
                     # It's an image file
                     image_url = f'/static/uploads/{filename}'
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE gallery_items 
             SET title = ?, description = ?, image_url = ?, video_url = ?, event_date = ?, category = ?, is_featured = ?, is_active = ?
             WHERE id = ?
-        ''', (title, description, image_url, video_url, event_date, category, is_featured, is_active, item_id))
+        ''')
+        cursor.execute(query, (title, description, image_url, video_url, event_date, category, is_featured, is_active, item_id))
         conn.commit()
         conn.close()
         
@@ -2936,7 +2942,8 @@ def admin_edit_gallery_item(item_id):
         return redirect(url_for('admin_gallery'))
     
     # GET request - fetch gallery item
-    cursor.execute('SELECT * FROM gallery_items WHERE id = ?', (item_id,))
+    query = adapt_query('SELECT * FROM gallery_items WHERE id = ?')
+    cursor.execute(query, (item_id,))
     gallery_item = cursor.fetchone()
     conn.close()
     
@@ -2951,9 +2958,10 @@ def admin_delete_gallery_item(item_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM gallery_items WHERE id = ?', (item_id,))
+    query = adapt_query('DELETE FROM gallery_items WHERE id = ?')
+    cursor.execute(query, (item_id,))
     conn.commit()
     conn.close()
     
@@ -2965,7 +2973,7 @@ def admin_volunteers():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Check table structure and get volunteers with their scores
@@ -3024,7 +3032,7 @@ def admin_volunteer_detail(volunteer_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Get volunteer details with scores (robust query)
@@ -3077,7 +3085,7 @@ def admin_send_volunteer_email(volunteer_id):
         return redirect(url_for('admin_volunteer_detail', volunteer_id=volunteer_id))
     
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         # Get volunteer email
@@ -3119,7 +3127,7 @@ def admin_update_volunteer_notes(volunteer_id):
     admin_notes = request.form.get('admin_notes')
     status = request.form.get('status')
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Update volunteer scores table
@@ -3142,7 +3150,7 @@ def admin_approve_volunteer(volunteer_id):
         return redirect(url_for('admin_login'))
     
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         # Get volunteer details
@@ -3182,7 +3190,7 @@ def admin_reject_volunteer(volunteer_id):
     send_email = request.form.get('send_email') == 'on'
     
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         # Get volunteer details
@@ -3255,7 +3263,7 @@ def admin_update_volunteer_status(volunteer_id):
     
     status = request.form.get('status')
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('UPDATE volunteers SET status = ? WHERE id = ?', (status, volunteer_id))
     conn.commit()
@@ -3269,7 +3277,7 @@ def admin_delete_volunteer(volunteer_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM volunteers WHERE id = ?', (volunteer_id,))
     conn.commit()
@@ -3307,7 +3315,7 @@ def admin_officers():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT id, name, designation, department, phone, email, position_order, is_active FROM officers ORDER BY position_order, name')
     officers = cursor.fetchall()
@@ -3351,7 +3359,7 @@ def admin_add_officer():
                     except Exception as e:
                         print(f"Error saving image: {e}")  # Debug print
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO officers (name, designation, department, phone, email, image_url, bio, position_order)
@@ -3369,7 +3377,7 @@ def admin_edit_officer(officer_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -3429,7 +3437,7 @@ def admin_delete_officer(officer_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM officers WHERE id=?', (officer_id,))
     conn.commit()
@@ -3443,7 +3451,7 @@ def admin_success_stories():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT id, title, description, date, is_active, sort_order FROM success_stories ORDER BY sort_order, id DESC')
     stories = cursor.fetchall()
@@ -3481,7 +3489,7 @@ def admin_add_success_story():
                         print(f"Error saving success story image: {e}")
                         flash(f'Error uploading image: {e}', 'error')
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO success_stories (title, description, date, image_url, sort_order, is_active)
@@ -3500,7 +3508,7 @@ def admin_edit_success_story(story_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -3584,7 +3592,7 @@ def admin_delete_success_story(story_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM success_stories WHERE id=?', (story_id,))
     conn.commit()
@@ -3603,7 +3611,7 @@ def admin_district_contacts():
     if 'admin_logged_in' not in session:
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Create district tables if they don't exist
@@ -3614,7 +3622,7 @@ def admin_district_contacts():
         print(f"Error creating tables: {e}")
     
     # Ensure districts are populated
-    cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active = 1')
+    cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active::integer = 1')
     district_count = cursor.fetchone()[0]
     
     if district_count == 0:
@@ -3638,7 +3646,7 @@ def admin_district_contacts():
     # Get all districts with their contacts
     district_contacts = []
     try:
-        cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name')
+        cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name')
         districts = cursor.fetchall()
         print(f"DEBUG: Found {len(districts)} districts")  # Debug output
     except sqlite3.OperationalError as e:
@@ -3682,7 +3690,7 @@ def admin_district_contacts():
         print(f"Error creating tables: {e}")
     
     # Ensure districts are populated
-    cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active = 1')
+    cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active::integer = 1')
     district_count = cursor.fetchone()[0]
     
     if district_count == 0:
@@ -3706,7 +3714,7 @@ def admin_district_contacts():
     # Get all districts with their contacts
     district_contacts = []
     try:
-        cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name')
+        cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name')
         districts = cursor.fetchall()
         print(f"DEBUG: Found {len(districts)} districts")  # Debug output
     except sqlite3.OperationalError as e:
@@ -3749,7 +3757,7 @@ def admin_manage_district_contacts(district_id):
     if 'admin_logged_in' not in session:
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Get district info
@@ -3795,7 +3803,7 @@ def admin_add_district_sp(district_id):
         contact_number = request.form.get('contact_number')
         email = request.form.get('email')
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO district_sps (district_id, name, contact_number, email)
@@ -3808,7 +3816,7 @@ def admin_add_district_sp(district_id):
         return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
     
     # Get district name
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
     district = cursor.fetchone()
@@ -3824,7 +3832,7 @@ def admin_edit_district_sp(sp_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -3883,7 +3891,7 @@ def admin_delete_district_sp(sp_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM district_sps WHERE id = ?', (sp_id,))
     conn.commit()
@@ -3903,7 +3911,7 @@ def admin_add_shakthi_team(district_id):
         contact_number = request.form.get('contact_number')
         area_covered = request.form.get('area_covered')
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered)
@@ -3916,7 +3924,7 @@ def admin_add_shakthi_team(district_id):
         return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
     
     # Get district name
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
     district = cursor.fetchone()
@@ -3932,7 +3940,7 @@ def admin_edit_shakthi_team(team_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -3988,7 +3996,7 @@ def admin_delete_shakthi_team(team_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM shakthi_teams WHERE id = ?', (team_id,))
     conn.commit()
@@ -4008,7 +4016,7 @@ def admin_add_women_station(district_id):
         contact_number = request.form.get('contact_number')
         address = request.form.get('address')
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
@@ -4021,7 +4029,7 @@ def admin_add_women_station(district_id):
         return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
     
     # Get district name
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
     district = cursor.fetchone()
@@ -4037,7 +4045,7 @@ def admin_edit_women_station(station_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -4093,7 +4101,7 @@ def admin_delete_women_station(station_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM women_police_stations WHERE id = ?', (station_id,))
     conn.commit()
@@ -4114,7 +4122,7 @@ def admin_add_one_stop_center(district_id):
         contact_number = request.form.get('contact_number')
         services_offered = request.form.get('services_offered')
         
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
@@ -4127,7 +4135,7 @@ def admin_add_one_stop_center(district_id):
         return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
     
     # Get district name
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
     district = cursor.fetchone()
@@ -4143,7 +4151,7 @@ def admin_edit_one_stop_center(center_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     if request.method == 'POST':
@@ -4200,7 +4208,7 @@ def admin_delete_one_stop_center(center_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM one_stop_centers WHERE id = ?', (center_id,))
     conn.commit()
@@ -4212,7 +4220,7 @@ def admin_delete_one_stop_center(center_id):
 @app.route('/setup-districts')
 def setup_districts():
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         # Create Districts table
@@ -4327,7 +4335,7 @@ def setup_districts():
             INSERT OR IGNORE INTO district_sps (district_id, name, contact_number, email)
             SELECT id, 'SP ' || name, '+91-' || CAST((8000000000 + (id * 1000000)) AS TEXT), 
                    LOWER(REPLACE(name, ' ', '')) || '.sp@appolice.gov.in'
-            FROM districts WHERE is_active = 1
+            FROM districts WHERE is_active::integer = 1
         ''')
         
         # Insert sample Shakthi Teams
@@ -4342,7 +4350,7 @@ def setup_districts():
                            WHEN 1 THEN 'Rural villages and remote areas'
                            ELSE 'National and state highways'
                        END
-                FROM districts WHERE is_active = 1
+                FROM districts WHERE is_active::integer = 1
             ''', (team_name, str(i+1), (i+1)*1000, i))
         
         # Insert sample Women Police Stations
@@ -4351,7 +4359,7 @@ def setup_districts():
             SELECT id, name || ' Women Police Station', 'CI ' || name, 
                    '+91-' || CAST((7000000000 + (id * 1000000)) AS TEXT),
                    'Women Police Station, ' || name || ' District'
-            FROM districts WHERE is_active = 1
+            FROM districts WHERE is_active::integer = 1
         ''')
         
         # Insert sample One Stop Centers
@@ -4362,7 +4370,7 @@ def setup_districts():
                    'Coordinator ' || name,
                    '+91-' || CAST((6000000000 + (id * 1000000)) AS TEXT),
                    'Legal Aid, Medical Support, Psychological Counseling, Shelter Services, Police Assistance'
-            FROM districts WHERE is_active = 1
+            FROM districts WHERE is_active::integer = 1
         ''')
         
         conn.commit()
@@ -4377,7 +4385,7 @@ def setup_districts():
 @app.route('/debug-districts')
 def debug_districts():
     try:
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         # Check if tables exist
@@ -4416,7 +4424,7 @@ def debug_districts():
 def force_setup():
     try:
         # Connect to database
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
         
         # Drop existing tables if they exist
@@ -4605,9 +4613,9 @@ def admin_status_check():
     
     try:
         # Check database connection
-        conn = sqlite3.connect('women_safety.db')
+        conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active = 1')
+        cursor.execute('SELECT COUNT(*) FROM districts WHERE is_active::integer = 1')
         district_count = cursor.fetchone()[0]
         conn.close()
         
@@ -4687,14 +4695,14 @@ def test_admin_connection():
 
 @app.route('/fix-all-data-mapping')
 def fix_all_data_mapping():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     result = "<h2>🔧 Comprehensive District Data Mapping Fix</h2>"
     
     try:
         # Get all districts
-        cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name')
+        cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name')
         districts = cursor.fetchall()
         
         result += f"<p>Found {len(districts)} districts to fix...</p><ul>"
@@ -4798,7 +4806,7 @@ def fix_all_data_mapping():
 
 @app.route('/debug-edit/<int:sp_id>')
 def debug_edit_sp(sp_id):
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Get SP data
@@ -4852,7 +4860,7 @@ def test_edit():
 
 @app.route('/fix-district-mapping')
 def fix_district_mapping():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     result = "<h2>Fixing District-SP Mapping</h2>"
@@ -4929,13 +4937,13 @@ def fix_district_mapping():
 
 @app.route('/debug/district-data')
 def debug_district_data():
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     result = "<h2>District Data Debug</h2>"
     
     # Check districts
-    cursor.execute('SELECT id, district_name FROM districts WHERE is_active = 1 ORDER BY district_name LIMIT 5')
+    cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name LIMIT 5')
     districts = cursor.fetchall()
     result += "<h3>Sample Districts:</h3><ul>"
     for d in districts:
@@ -4983,7 +4991,7 @@ def debug_district_data():
 
 @app.route('/debug/test-edit/<int:sp_id>')
 def debug_test_edit(sp_id):
-    conn = sqlite3.connect('women_safety.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Simulate the exact edit query

@@ -133,6 +133,7 @@
                                 <form method="POST" action="{{ url_for('admin_delete_contact_info', contact_id=contact[0]) }}" 
                                       style="display: inline;" 
                                       onsubmit="return confirm('Delete this contact?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn btn-delete">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -173,6 +174,7 @@
                                 <form method="POST" action="{{ url_for('admin_delete_contact_info', contact_id=location[0]) }}" 
                                       style="display: inline;" 
                                       onsubmit="return confirm('Delete this location?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn btn-delete">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -196,6 +198,7 @@
                 </div>
                 <div class="contact-form">
                     <form action="{{ url_for('admin_update_contact_form') }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="form_title">Form Title</label>

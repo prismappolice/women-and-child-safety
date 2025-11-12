@@ -73,6 +73,7 @@
         
         <div class="form-container">
             <form method="POST" enctype="multipart/form-data">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-group">
                     <label for="title">Story Title</label>
                     <input type="text" id="title" name="title" required placeholder="e.g., SHE Teams Initiative Success">

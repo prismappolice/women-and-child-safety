@@ -94,6 +94,7 @@
             </h1>
             
             <form method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 {% if contact_type == 'SP' %}
                     <div class="form-group">
                         <label for="name">SP Name <span class="required">*</span></label>

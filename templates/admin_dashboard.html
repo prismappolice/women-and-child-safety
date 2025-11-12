@@ -281,6 +281,7 @@
                                     <a href="{{ url_for('admin_edit_gallery_item', item_id=item[0]) }}" class="btn btn-edit">Edit</a>
                                     <form style="display: inline;" method="POST" action="{{ url_for('admin_delete_gallery_item', item_id=item[0]) }}"
                                           onsubmit="return confirm('Are you sure?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <button type="submit" class="btn btn-delete">Delete</button>
                                     </form>
                                 </td>

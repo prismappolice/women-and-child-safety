@@ -86,6 +86,7 @@
         
         <div class="form-container">
             <form action="{{ url_for('admin_add_about_section') }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="section_name">Section Name</label>

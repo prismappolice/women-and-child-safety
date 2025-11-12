@@ -133,18 +133,19 @@
         <div class="gallery-grid">
             {% for item in gallery_items %}
             <div class="gallery-item">
-                {% if item[3] %}
-                    {% if item[5] == 'Videos' %}
-                        <div class="gallery-placeholder">
-                            <i class="fas fa-play-circle"></i>
-                        </div>
-                    {% else %}
-                        <img src="{{ item[3] }}" alt="{{ item[1] }}" class="gallery-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <div class="gallery-placeholder" style="display: none;">
-                            <i class="fas fa-image"></i>
-                        </div>
-                    {% endif %}
+                {% if item[6] == 'Videos' and item[4] %}
+                    {# Video item - show play icon #}
+                    <div class="gallery-placeholder">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                {% elif item[3] %}
+                    {# Image item - show image #}
+                    <img src="{{ item[3] }}" alt="{{ item[1] }}" class="gallery-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="gallery-placeholder" style="display: none;">
+                        <i class="fas fa-image"></i>
+                    </div>
                 {% else %}
+                    {# No media - show placeholder #}
                     <div class="gallery-placeholder">
                         <i class="fas fa-image"></i>
                     </div>
@@ -158,13 +159,19 @@
                     </div>
                     
                     <div class="gallery-meta">
-                        <span class="category-badge">{{ item[5].title() }}</span>
-                        <span>Date: {{ item[4] if item[4] else 'Recent' }}</span>
+                        <span class="category-badge">{{ item[6].title() }}</span>
+                        <span>Date: {% if item[5] %}{{ item[5] }}{% else %}Recent{% endif %}</span>
                     </div>
                     
                     <div class="gallery-actions">
                         <div class="action-btns">
-                            {% if item[3] %}
+                            {% if item[6] == 'Videos' and item[4] %}
+                                {# Video item - link to video #}
+                                <a href="{{ item[4] }}" target="_blank" class="btn btn-view">
+                                    <i class="fas fa-external-link-alt"></i> View
+                                </a>
+                            {% elif item[3] %}
+                                {# Image item - link to image #}
                                 <a href="{{ item[3] }}" target="_blank" class="btn btn-view">
                                     <i class="fas fa-external-link-alt"></i> View
                                 </a>
@@ -174,13 +181,14 @@
                             </a>
                             <form style="display: inline;" method="POST" action="{{ url_for('admin_delete_gallery_item', item_id=item[0]) }}"
                                   onsubmit="return confirm('Are you sure you want to delete this gallery item?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <button type="submit" class="btn btn-delete">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
                             </form>
                         </div>
-                        <span class="status-badge {{ 'status-active' if item[7] else 'status-inactive' }}">
-                            {{ 'Active' if item[7] else 'Inactive' }}
+                        <span class="status-badge {{ 'status-active' if item[8] else 'status-inactive' }}">
+                            {{ 'Active' if item[8] else 'Inactive' }}
                         </span>
                     </div>
                 </div>

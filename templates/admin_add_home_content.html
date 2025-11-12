@@ -113,6 +113,7 @@
         
         <div class="form-container">
             <form action="{{ url_for('admin_add_home_content', section=section) }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="section_name" value="{{ section }}">
                 
                 <div class="form-row">

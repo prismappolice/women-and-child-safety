@@ -131,6 +131,7 @@
                 </div>
                 <div class="section-content">
                     <form action="{{ url_for('admin_update_general_settings') }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="site_title">Site Title</label>
@@ -188,6 +189,7 @@
                 </div>
                 <div class="section-content">
                     <form action="{{ url_for('admin_update_appearance_settings') }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="primary_color">Primary Color</label>
@@ -286,6 +288,7 @@
                 </div>
                 <div class="section-content">
                     <form action="{{ url_for('admin_update_social_settings') }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="facebook_url">Facebook URL</label>

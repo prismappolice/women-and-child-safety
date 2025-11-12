@@ -115,6 +115,7 @@
                                     <form method="POST" action="{{ url_for('admin_delete_home_content', content_id=item[0]) }}" 
                                           style="display: inline;" 
                                           onsubmit="return confirm('Delete this item?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <button type="submit" class="btn btn-delete">
                                             <i class="fas fa-trash"></i> Delete
                                         </button>
@@ -158,6 +159,7 @@
                                     <form method="POST" action="{{ url_for('admin_delete_home_content', content_id=item[0]) }}" 
                                           style="display: inline;" 
                                           onsubmit="return confirm('Delete this item?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <button type="submit" class="btn btn-delete">
                                             <i class="fas fa-trash"></i> Delete
                                         </button>
@@ -201,6 +203,7 @@
                                     <form method="POST" action="{{ url_for('admin_delete_home_content', content_id=item[0]) }}" 
                                           style="display: inline;" 
                                           onsubmit="return confirm('Delete this item?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <button type="submit" class="btn btn-delete">
                                             <i class="fas fa-trash"></i> Delete
                                         </button>
@@ -244,6 +247,7 @@
                                     <form method="POST" action="{{ url_for('admin_delete_home_content', content_id=item[0]) }}" 
                                           style="display: inline;" 
                                           onsubmit="return confirm('Delete this item?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <button type="submit" class="btn btn-delete">
                                             <i class="fas fa-trash"></i> Delete
                                         </button>
