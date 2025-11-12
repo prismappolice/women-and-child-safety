@@ -67,7 +67,8 @@ def event_details(event_id):
     cursor = conn.cursor()
     
     # Get event details
-    cursor.execute('SELECT * FROM gallery_items WHERE id = ? AND category = "upcoming_events"', (event_id,))
+    query = adapt_query('SELECT * FROM gallery_items WHERE id = ? AND category = "upcoming_events"')
+    cursor.execute(query, (event_id,))
     event = cursor.fetchone()
     
     if event is None:
@@ -246,7 +247,12 @@ def manage_volunteers():
         conn.close()
 
 @app.route('/admin/update-volunteer-status', methods=['POST'])
+@csrf.exempt  # Old route - deprecated, redirecting to new implementation
 def update_volunteer_status():
+    """
+    DEPRECATED: Use admin_hold_volunteer, admin_approve_volunteer, admin_reject_volunteer instead
+    This route is kept for backward compatibility only
+    """
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
         
@@ -254,32 +260,54 @@ def update_volunteer_status():
     action = request.form.get('action')
     
     if not volunteer_id or action not in ['hold', 'accept', 'reject']:
-        flash('Invalid request', 'error')
-        return redirect(url_for('manage_volunteers'))
+        flash('Invalid request - please use the new action buttons', 'error')
+        return redirect(url_for('admin_volunteers'))
     
+    try:
+        volunteer_id = int(volunteer_id)
+    except (ValueError, TypeError):
+        flash('Invalid volunteer ID', 'error')
+        return redirect(url_for('admin_volunteers'))
+    
+    # Handle the action directly here since we can't redirect POST to POST
     try:
         conn = get_db_connection('main')
         cursor = conn.cursor()
         
-        # Map action to status
-        status_map = {'hold': 'hold', 'accept': 'accepted', 'reject': 'rejected'}
+        # Map action to status for volunteer_scores table
+        status_map = {'hold': 'high_priority', 'accept': 'approved', 'reject': 'rejected'}
         status = status_map[action]
         
-        cursor.execute('''
-            UPDATE volunteer_status 
-            SET status = ?, updated_at = CURRENT_TIMESTAMP 
-            WHERE volunteer_id = ?
-        ''', (status, volunteer_id))
+        # Check if volunteer_scores record exists
+        query = adapt_query('SELECT id FROM volunteer_scores WHERE volunteer_id = ?')
+        cursor.execute(query, (volunteer_id,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Update existing record
+            query = adapt_query('''
+                UPDATE volunteer_scores 
+                SET status = ?, admin_notes = COALESCE(admin_notes, '') || ?
+                WHERE volunteer_id = ?
+            ''')
+            cursor.execute(query, (status, f'\nStatus updated to {status}', volunteer_id))
+        else:
+            # Insert new record
+            query = adapt_query('''
+                INSERT INTO volunteer_scores (volunteer_id, status, admin_notes)
+                VALUES (?, ?, ?)
+            ''')
+            cursor.execute(query, (volunteer_id, status, f'Status set to {status}'))
         
         conn.commit()
-        flash(f'Volunteer application {status} successfully', 'success')
-    except Exception as e:
-        print(f"Error: {e}")
-        flash('Error updating status', 'error')
-    finally:
         conn.close()
+        
+        flash(f'Volunteer application {action}ed successfully!', 'success')
+    except Exception as e:
+        print(f"Error updating status: {e}")
+        flash('Error updating status. Please try again.', 'error')
     
-    return redirect(url_for('manage_volunteers'))
+    return redirect(url_for('admin_volunteers'))
 
 # Volunteer Routes
 @app.route('/volunteer-registration', methods=['GET', 'POST'])
@@ -388,17 +416,32 @@ def check_volunteer_status():
         conn = get_db_connection('main')
         cursor = conn.cursor()
         
-        query = 'v.registration_id = ?' if identifier.startswith('VOL-') else 'v.phone = ?'
-        full_query = adapt_query("""
-            SELECT 
-                v.id, v.registration_id, v.name, v.email, v.phone, 
-                v.age, v.address, v.occupation, v.education, 
-                v.experience, v.motivation, v.availability, v.skills,
-                v.created_at, COALESCE(vs.status, 'pending') as status,
-                COALESCE(vs.updated_at, v.created_at) as updated_at
-            FROM volunteers v 
-            LEFT JOIN volunteer_status vs ON v.id = vs.volunteer_id 
-            WHERE """ + query)
+        if identifier.startswith('VOL-'):
+            full_query = adapt_query("""
+                SELECT 
+                    v.id, v.registration_id, v.name, v.email, v.phone, 
+                    v.age, v.address, v.occupation, v.education, 
+                    v.experience, v.motivation, v.availability, v.skills,
+                    v.created_at, COALESCE(vs.status, 'pending') as status,
+                    COALESCE(vs.created_at, v.created_at) as updated_at,
+                    vs.admin_notes
+                FROM volunteers v 
+                LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id 
+                WHERE v.registration_id = ?
+            """)
+        else:
+            full_query = adapt_query("""
+                SELECT 
+                    v.id, v.registration_id, v.name, v.email, v.phone, 
+                    v.age, v.address, v.occupation, v.education, 
+                    v.experience, v.motivation, v.availability, v.skills,
+                    v.created_at, COALESCE(vs.status, 'pending') as status,
+                    COALESCE(vs.created_at, v.created_at) as updated_at,
+                    vs.admin_notes
+                FROM volunteers v 
+                LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id 
+                WHERE v.phone = ?
+            """)
         cursor.execute(full_query, (identifier,))
         
         result = cursor.fetchone()
@@ -411,7 +454,8 @@ def check_volunteer_status():
                 'education': result[8], 'experience': result[9],
                 'motivation': result[10], 'availability': result[11],
                 'skills': result[12], 'created_at': result[13],
-                'status': result[14], 'updated_at': result[15]
+                'status': result[14], 'updated_at': result[15],
+                'admin_notes': result[16] if len(result) > 16 else None
             }
             return render_template('check_volunteer_status.html', application=app)
         
@@ -433,7 +477,8 @@ def generate_registration_id():
     year = datetime.now().year
     
     # Get the last registration number for this year
-    cursor.execute('SELECT registration_id FROM volunteers WHERE registration_id LIKE ? ORDER BY id DESC LIMIT 1', (f'VOL-{year}-%',))
+    query = adapt_query('SELECT registration_id FROM volunteers WHERE registration_id LIKE ? ORDER BY id DESC LIMIT 1')
+    cursor.execute(query, (f'VOL-{year}-%',))
     last_reg = cursor.fetchone()
     
     if last_reg:
@@ -722,10 +767,11 @@ def log_email_notification(volunteer_id, subject, body):
         conn = get_db_connection('main')
         cursor = conn.cursor()
         
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO email_notifications (volunteer_id, email_type, subject, body, status)
             VALUES (?, ?, ?, ?, ?)
-        ''', (volunteer_id, 'admin_notification', subject, body, 'sent'))
+        ''')
+        cursor.execute(query, (volunteer_id, 'admin_notification', subject, body, 'sent'))
         
         conn.commit()
         conn.close()
@@ -796,7 +842,8 @@ def generate_volunteer_id():
     year = datetime.now().year
     
     # Get the last registration number for this year
-    cursor.execute('SELECT registration_id FROM volunteers WHERE registration_id LIKE ? ORDER BY id DESC LIMIT 1', (f'VOL-{year}-%',))
+    query = adapt_query('SELECT registration_id FROM volunteers WHERE registration_id LIKE ? ORDER BY id DESC LIMIT 1')
+    cursor.execute(query, (f'VOL-{year}-%',))
     last_reg = cursor.fetchone()
     
     if last_reg:
@@ -997,7 +1044,8 @@ def check_all_districts_mapping():
     
     for district_id, district_name in districts:
         # Get SP data for this district
-        cursor.execute('SELECT sp_name FROM district_sps WHERE district_id = ? LIMIT 1', (district_id,))
+        query = adapt_query('SELECT sp_name FROM district_sps WHERE district_id = ? LIMIT 1')
+        cursor.execute(query, (district_id,))
         sp_result = cursor.fetchone()
         
         if sp_result:
@@ -1052,42 +1100,48 @@ def fix_all_districts_mapping():
         
         for district_id, district_name in districts:
             # Update SP name to match district
-            cursor.execute('''
+            query = adapt_query('''
                 UPDATE district_sps 
                 SET sp_name = ? 
                 WHERE district_id = ?
-            ''', (f'SP {district_name}', district_id))
+            ''')
+            cursor.execute(query, (f'SP {district_name}', district_id))
             
             # Update other contact names if needed
-            cursor.execute('''
+            query = adapt_query('''
                 UPDATE shakthi_teams 
                 SET incharge_name = ? 
                 WHERE district_id = ? AND team_name = 'Urban Protection Team'
-            ''', (f'Inspector {district_name[:3].upper()}-1', district_id))
+            ''')
+            cursor.execute(query, (f'Inspector {district_name[:3].upper()}-1', district_id))
             
-            cursor.execute('''
+            query = adapt_query('''
                 UPDATE shakthi_teams 
                 SET incharge_name = ? 
                 WHERE district_id = ? AND team_name = 'Rural Safety Team'
-            ''', (f'Inspector {district_name[:3].upper()}-2', district_id))
+            ''')
+            cursor.execute(query, (f'Inspector {district_name[:3].upper()}-2', district_id))
             
-            cursor.execute('''
+            query = adapt_query('''
                 UPDATE shakthi_teams 
                 SET incharge_name = ? 
                 WHERE district_id = ? AND team_name = 'Highway Patrol Team'
-            ''', (f'Inspector {district_name[:3].upper()}-3', district_id))
+            ''')
+            cursor.execute(query, (f'Inspector {district_name[:3].upper()}-3', district_id))
             
-            cursor.execute('''
+            query = adapt_query('''
                 UPDATE women_police_stations 
                 SET incharge_name = ?, station_name = ? 
                 WHERE district_id = ?
-            ''', (f'Circle Inspector {district_name}', f'Women Police Station {district_name}', district_id))
+            ''')
+            cursor.execute(query, (f'Circle Inspector {district_name}', f'Women Police Station {district_name}', district_id))
             
-            cursor.execute('''
+            query = adapt_query('''
                 UPDATE one_stop_centers 
                 SET incharge_name = ?, center_name = ? 
                 WHERE district_id = ?
-            ''', (f'Coordinator {district_name}', f'One Stop Center {district_name}', district_id))
+            ''')
+            cursor.execute(query, (f'Coordinator {district_name}', f'One Stop Center {district_name}', district_id))
             
             fixed_count += 1
             output += f"<p>✓ Fixed {district_name} (ID: {district_id})</p>"
@@ -1117,7 +1171,8 @@ def find_srikakulam_id():
         output += f"<p><a href='/admin/district-contacts/manage/{district_id}'>Go to Srikakulam Management</a></p>"
         
         # Check SP data
-        cursor.execute('SELECT sp_name, contact_number, email FROM district_sps WHERE district_id = ?', (district_id,))
+        query = adapt_query('SELECT sp_name, contact_number, email FROM district_sps WHERE district_id = ?')
+        cursor.execute(query, (district_id,))
         sp_data = cursor.fetchone()
         if sp_data:
             output += f"<h2>SP Data:</h2>"
@@ -1225,13 +1280,15 @@ def debug_district_mapping(district_id):
     output = f"<h1>Debug District Mapping for ID: {district_id}</h1>"
     
     # Get district info
-    cursor.execute('SELECT id, district_name FROM districts WHERE id = ?', (district_id,))
+    query = adapt_query('SELECT id, district_name FROM districts WHERE id = ?')
+    cursor.execute(query, (district_id,))
     district = cursor.fetchone()
     output += f"<h2>District Info:</h2>"
     output += f"<p>ID: {district[0]}, Name: {district[1]}</p>" if district else "<p>District not found!</p>"
     
     # Get SPs for this district
-    cursor.execute('SELECT id, district_id, sp_name, contact_number, email FROM district_sps WHERE district_id = ?', (district_id,))
+    query = adapt_query('SELECT id, district_id, sp_name, contact_number, email FROM district_sps WHERE district_id = ?')
+    cursor.execute(query, (district_id,))
     sps = cursor.fetchall()
     output += f"<h2>SPs for this district ({len(sps)}):</h2>"
     for sp in sps:
@@ -1592,7 +1649,8 @@ def contact():
             district_data = {'name': district_name}
             
             # Get real SP data
-            cursor.execute('SELECT name, contact_number, email FROM district_sps WHERE district_id = ? AND is_active = 1 LIMIT 1', (district_id,))
+            query = adapt_query('SELECT name, contact_number, email FROM district_sps WHERE district_id = ? AND is_active = 1 LIMIT 1')
+            cursor.execute(query, (district_id,))
             sp_data = cursor.fetchone()
             if sp_data:
                 district_data['sp'] = {
@@ -1609,7 +1667,8 @@ def contact():
                 }
             
             # Get real Shakthi Teams data
-            cursor.execute('SELECT team_name, leader_name, contact_number, area_covered FROM shakthi_teams WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT team_name, leader_name, contact_number, area_covered FROM shakthi_teams WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             teams_data = cursor.fetchall()
             if teams_data:
                 district_data['shakthi_teams'] = []
@@ -1632,7 +1691,8 @@ def contact():
                 ]
             
             # Get real Women Police Station data
-            cursor.execute('SELECT station_name, incharge_name, contact_number, address FROM women_police_stations WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT station_name, incharge_name, contact_number, address FROM women_police_stations WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             station_data = cursor.fetchone()
             if station_data:
                 district_data['women_ps'] = [{
@@ -1651,7 +1711,8 @@ def contact():
                 }]
             
             # Get real One Stop Center data
-            cursor.execute('SELECT center_name, address, incharge_name, contact_number, services_offered FROM one_stop_centers WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT center_name, address, incharge_name, contact_number, services_offered FROM one_stop_centers WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             center_data = cursor.fetchone()
             if center_data:
                 district_data['one_stop_centers'] = [{
@@ -2161,10 +2222,11 @@ def admin_add_safety_tip():
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO safety_tips (category, title, icon, tips)
             VALUES (?, ?, ?, ?)
-        ''', (category, title, icon, tips))
+        ''')
+        cursor.execute(query, (category, title, icon, tips))
         conn.commit()
         conn.close()
         
@@ -2188,18 +2250,20 @@ def admin_edit_safety_tip(tip_id):
         tips = request.form.get('tips')
         is_active = 1 if request.form.get('is_active') else 0
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE safety_tips 
             SET category=?, title=?, icon=?, tips=?, is_active=?, updated_at=?
             WHERE id=?
-        ''', (category, title, icon, tips, is_active, datetime.now(), tip_id))
+        ''')
+        cursor.execute(query, (category, title, icon, tips, is_active, datetime.now(), tip_id))
         conn.commit()
         conn.close()
         
         flash('Safety tip updated successfully!', 'success')
         return redirect(url_for('admin_safety_tips'))
     
-    cursor.execute('SELECT * FROM safety_tips WHERE id=?', (tip_id,))
+    query = adapt_query('SELECT * FROM safety_tips WHERE id=?')
+    cursor.execute(query, (tip_id,))
     tip = cursor.fetchone()
     conn.close()
     
@@ -2212,7 +2276,8 @@ def admin_delete_safety_tip(tip_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM safety_tips WHERE id=?', (tip_id,))
+    query = adapt_query('DELETE FROM safety_tips WHERE id=?')
+    cursor.execute(query, (tip_id,))
     conn.commit()
     conn.close()
     
@@ -2258,10 +2323,11 @@ def admin_add_pdf_resource():
                 
                 conn = get_db_connection('main')
                 cursor = conn.cursor()
-                cursor.execute('''
+                query = adapt_query('''
                     INSERT INTO pdf_resources (title, description, file_name, file_path, icon)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (title, description, filename, f'/static/pdfs/{filename}', icon))
+                ''')
+                cursor.execute(query, (title, description, filename, f'/static/pdfs/{filename}', icon))
                 conn.commit()
                 conn.close()
                 
@@ -2297,25 +2363,28 @@ def admin_edit_pdf_resource(pdf_id):
                 
                 file.save(file_path)
                 
-                cursor.execute('''
+                query = adapt_query('''
                     UPDATE pdf_resources 
                     SET title = ?, description = ?, file_name = ?, file_path = ?, icon = ?, is_active = ?
                     WHERE id = ?
-                ''', (title, description, filename, f'/static/pdfs/{filename}', icon, is_active, pdf_id))
+                ''')
+                cursor.execute(query, (title, description, filename, f'/static/pdfs/{filename}', icon, is_active, pdf_id))
             else:
                 # Update without changing file
-                cursor.execute('''
+                query = adapt_query('''
                     UPDATE pdf_resources 
                     SET title = ?, description = ?, icon = ?, is_active = ?
                     WHERE id = ?
-                ''', (title, description, icon, is_active, pdf_id))
+                ''')
+                cursor.execute(query, (title, description, icon, is_active, pdf_id))
         else:
             # Update without changing file
-            cursor.execute('''
+            query = adapt_query('''
                 UPDATE pdf_resources 
                 SET title = ?, description = ?, icon = ?, is_active = ?
                 WHERE id = ?
-            ''', (title, description, icon, is_active, pdf_id))
+            ''')
+            cursor.execute(query, (title, description, icon, is_active, pdf_id))
         
         conn.commit()
         conn.close()
@@ -2324,7 +2393,8 @@ def admin_edit_pdf_resource(pdf_id):
         return redirect(url_for('admin_pdf_resources'))
     
     # GET request - fetch PDF data
-    cursor.execute('SELECT id, title, description, file_name, icon, is_active FROM pdf_resources WHERE id = ?', (pdf_id,))
+    query = adapt_query('SELECT id, title, description, file_name, icon, is_active FROM pdf_resources WHERE id = ?')
+    cursor.execute(query, (pdf_id,))
     pdf_resource = cursor.fetchone()
     conn.close()
     
@@ -2343,7 +2413,8 @@ def admin_delete_pdf_resource(pdf_id):
     cursor = conn.cursor()
     
     # Get file path before deleting record
-    cursor.execute('SELECT file_path FROM pdf_resources WHERE id = ?', (pdf_id,))
+    query = adapt_query('SELECT file_path FROM pdf_resources WHERE id = ?')
+    cursor.execute(query, (pdf_id,))
     result = cursor.fetchone()
     
     if result:
@@ -2353,7 +2424,8 @@ def admin_delete_pdf_resource(pdf_id):
         if os.path.exists(full_path):
             os.remove(full_path)
     
-    cursor.execute('DELETE FROM pdf_resources WHERE id = ?', (pdf_id,))
+    query = adapt_query('DELETE FROM pdf_resources WHERE id = ?')
+    cursor.execute(query, (pdf_id,))
     conn.commit()
     conn.close()
     
@@ -2409,10 +2481,11 @@ def admin_add_initiative():
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO initiatives (title, description, image_url, is_featured)
             VALUES (?, ?, ?, ?)
-        ''', (title, description, image_url, is_featured))
+        ''')
+        cursor.execute(query, (title, description, image_url, is_featured))
         conn.commit()
         conn.close()
         
@@ -2458,11 +2531,12 @@ def admin_edit_initiative(initiative_id):
                         print(f"Error saving initiative image: {e}")  # Debug print
                         flash(f'Error uploading image: {e}', 'error')
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE initiatives 
             SET title = ?, description = ?, image_url = ?, is_featured = ?, is_active = ?
             WHERE id = ?
-        ''', (title, description, image_url, is_featured, is_active, initiative_id))
+        ''')
+        cursor.execute(query, (title, description, image_url, is_featured, is_active, initiative_id))
         conn.commit()
         conn.close()
         
@@ -2470,7 +2544,8 @@ def admin_edit_initiative(initiative_id):
         return redirect(url_for('admin_initiatives'))
     
     # GET request - fetch initiative data
-    cursor.execute('SELECT id, title, description, image_url, is_featured, is_active FROM initiatives WHERE id = ?', (initiative_id,))
+    query = adapt_query('SELECT id, title, description, image_url, is_featured, is_active FROM initiatives WHERE id = ?')
+    cursor.execute(query, (initiative_id,))
     initiative = cursor.fetchone()
     conn.close()
     
@@ -2487,7 +2562,8 @@ def admin_delete_initiative(initiative_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM initiatives WHERE id = ?', (initiative_id,))
+    query = adapt_query('DELETE FROM initiatives WHERE id = ?')
+    cursor.execute(query, (initiative_id,))
     conn.commit()
     conn.close()
     
@@ -2522,10 +2598,11 @@ def admin_add_about_section():
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO about_content (section_name, title, content, image_url, sort_order)
             VALUES (?, ?, ?, ?, ?)
-        ''', (section_name, title, content, image_url, sort_order))
+        ''')
+        cursor.execute(query, (section_name, title, content, image_url, sort_order))
         conn.commit()
         conn.close()
         
@@ -2550,11 +2627,12 @@ def admin_edit_about_section(section_id):
         sort_order = request.form.get('sort_order', 0)
         is_active = 1 if request.form.get('is_active') else 0
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE about_content 
             SET section_name = ?, title = ?, content = ?, image_url = ?, sort_order = ?, is_active = ?
             WHERE id = ?
-        ''', (section_name, title, content, image_url, sort_order, is_active, section_id))
+        ''')
+        cursor.execute(query, (section_name, title, content, image_url, sort_order, is_active, section_id))
         conn.commit()
         conn.close()
         
@@ -2562,7 +2640,8 @@ def admin_edit_about_section(section_id):
         return redirect(url_for('admin_about'))
     
     # GET request - fetch section data
-    cursor.execute('SELECT id, section_name, title, content, image_url, sort_order, is_active FROM about_content WHERE id = ?', (section_id,))
+    query = adapt_query('SELECT id, section_name, title, content, image_url, sort_order, is_active FROM about_content WHERE id = ?')
+    cursor.execute(query, (section_id,))
     section = cursor.fetchone()
     conn.close()
     
@@ -2579,7 +2658,8 @@ def admin_delete_about_section(section_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM about_content WHERE id = ?', (section_id,))
+    query = adapt_query('DELETE FROM about_content WHERE id = ?')
+    cursor.execute(query, (section_id,))
     conn.commit()
     conn.close()
     
@@ -2618,11 +2698,12 @@ def admin_edit_home_content(content_id):
         sort_order = request.form.get('sort_order')
         is_active = 1 if request.form.get('is_active') else 0
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE home_content 
             SET section_name = ?, title = ?, content = ?, image_url = ?, link_url = ?, icon_class = ?, sort_order = ?, is_active = ?
             WHERE id = ?
-        ''', (section_name, title, content, image_url, link_url, icon_class, sort_order, is_active, content_id))
+        ''')
+        cursor.execute(query, (section_name, title, content, image_url, link_url, icon_class, sort_order, is_active, content_id))
         
         conn.commit()
         conn.close()
@@ -2631,7 +2712,8 @@ def admin_edit_home_content(content_id):
         return redirect(url_for('admin_home'))
     
     # GET request - fetch content data
-    cursor.execute('SELECT id, section_name, title, content, image_url, link_url, icon_class, sort_order, is_active FROM home_content WHERE id = ?', (content_id,))
+    query = adapt_query('SELECT id, section_name, title, content, image_url, link_url, icon_class, sort_order, is_active FROM home_content WHERE id = ?')
+    cursor.execute(query, (content_id,))
     home_content = cursor.fetchone()
     conn.close()
     
@@ -2649,7 +2731,8 @@ def admin_delete_home_content(content_id):
     conn = get_db_connection('main')
     cursor = conn.cursor()
     
-    cursor.execute('DELETE FROM home_content WHERE id = ?', (content_id,))
+    query = adapt_query('DELETE FROM home_content WHERE id = ?')
+    cursor.execute(query, (content_id,))
     conn.commit()
     conn.close()
     
@@ -2672,10 +2755,11 @@ def admin_add_home_content(section):
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO home_content (section_name, title, content, image_url, link_url, sort_order, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (section_name, title, content, image_url, extra_info, sort_order, is_active))
+        ''')
+        cursor.execute(query, (section_name, title, content, image_url, extra_info, sort_order, is_active))
         conn.commit()
         conn.close()
         
@@ -2712,10 +2796,11 @@ def admin_add_contact_info():
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO contact_info (contact_type, title, value, description, is_active)
             VALUES (?, ?, ?, ?, ?)
-        ''', (contact_type, title, value, description, is_active))
+        ''')
+        cursor.execute(query, (contact_type, title, value, description, is_active))
         conn.commit()
         conn.close()
         
@@ -2773,13 +2858,14 @@ def admin_edit_contact_info(contact_id):
         is_primary = 1 if request.form.get('is_primary') else 0
         is_active = 1 if request.form.get('is_active') else 0
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE contact_info 
             SET contact_type = ?, title = ?, value = ?, description = ?, 
                 icon_class = ?, is_primary = ?, is_active = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        ''', (contact_type, title, value, description, icon_class, is_primary, is_active, contact_id))
+        ''')
+        cursor.execute(query, (contact_type, title, value, description, icon_class, is_primary, is_active, contact_id))
         conn.commit()
         conn.close()
         
@@ -2787,11 +2873,12 @@ def admin_edit_contact_info(contact_id):
         return redirect(url_for('admin_contact'))
     
     # GET request - fetch contact data
-    cursor.execute('''
+    query = adapt_query('''
         SELECT id, contact_type, title, value, description, 
                icon_class, is_primary, is_active
         FROM contact_info WHERE id = ?
-    ''', (contact_id,))
+    ''')
+    cursor.execute(query, (contact_id,))
     contact = cursor.fetchone()
     conn.close()
     
@@ -2808,7 +2895,8 @@ def admin_delete_contact_info(contact_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM contact_info WHERE id = ?', (contact_id,))
+    query = adapt_query('DELETE FROM contact_info WHERE id = ?')
+    cursor.execute(query, (contact_id,))
     conn.commit()
     conn.close()
     
@@ -2976,56 +3064,35 @@ def admin_volunteers():
     conn = get_db_connection('main')
     cursor = conn.cursor()
     
-    # Check table structure and get volunteers with their scores
-    try:
-        # Try new structure first
-        cursor.execute('''
-            SELECT v.id, v.name, v.email, v.phone, v.age, v.address, v.education, v.occupation, 
-                   v.motivation, v.skills, datetime(v.created_at, 'localtime') as created_at,
-                   vs.age_score, vs.education_score, vs.motivation_score, vs.skills_score, 
-                   vs.total_score, vs.status, vs.admin_notes
-            FROM volunteers v
-            LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id
-            ORDER BY vs.total_score DESC, v.created_at DESC
-        ''')
-        volunteers = cursor.fetchall()
-    except sqlite3.OperationalError:
-        # Fall back to old structure if new structure doesn't exist
-        try:
-            cursor.execute('''
-                SELECT v.id, COALESCE(v.full_name, v.name, '') as name, v.email, v.phone, 
-                       COALESCE(v.age, '') as age, COALESCE(v.district, v.address, '') as address, 
-                       COALESCE(v.education, '') as education, COALESCE(v.occupation, '') as occupation, 
-                       COALESCE(v.interests, v.motivation, '') as motivation, 
-                       COALESCE(v.interests, v.skills, '') as skills, 
-                       COALESCE(v.registration_date, v.created_at, '') as created_at,
-                       vs.age_score, vs.education_score, vs.motivation_score, vs.skills_score, 
-                       vs.total_score, vs.status, vs.admin_notes
-                FROM volunteers v
-                LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id
-                ORDER BY vs.total_score DESC, v.id DESC
-            ''')
-            volunteers = cursor.fetchall()
-        except sqlite3.OperationalError:
-            # If all else fails, get basic volunteer info without scores
-            cursor.execute('SELECT * FROM volunteers ORDER BY id DESC')
-            volunteers_raw = cursor.fetchall()
-            # Convert to expected format with empty score fields
-            volunteers = []
-            for v in volunteers_raw:
-                volunteers.append(v + (None,) * 7)  # Add 7 empty fields for scores
+    # Get volunteers with their scores
+    query = adapt_query('''
+        SELECT v.id, v.name, v.email, v.phone, v.age, v.address, v.education, v.occupation, 
+               v.motivation, v.skills, v.created_at,
+               vs.age_score, vs.education_score, vs.motivation_score, vs.skills_score, 
+               vs.total_score, vs.status, vs.admin_notes
+        FROM volunteers v
+        LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id
+        ORDER BY v.created_at DESC
+    ''')
+    cursor.execute(query)
+    volunteers = cursor.fetchall()
     
     # Get email notifications count for each volunteer
     volunteer_emails = {}
     for volunteer in volunteers:
         volunteer_id = volunteer[0]
-        cursor.execute('SELECT COUNT(*) FROM email_notifications WHERE volunteer_id = ?', (volunteer_id,))
+        query = adapt_query('SELECT COUNT(*) FROM email_notifications WHERE volunteer_id = ?')
+        cursor.execute(query, (volunteer_id,))
         email_count = cursor.fetchone()[0]
         volunteer_emails[volunteer_id] = email_count
     
     conn.close()
     
-    return render_template('admin_volunteers.html', volunteers=volunteers, volunteer_emails=volunteer_emails)
+    response = make_response(render_template('admin_volunteers.html', volunteers=volunteers, volunteer_emails=volunteer_emails))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/admin/volunteers/detail/<int:volunteer_id>')
 def admin_volunteer_detail(volunteer_id):
@@ -3037,17 +3104,19 @@ def admin_volunteer_detail(volunteer_id):
     
     # Get volunteer details with scores (robust query)
     try:
-        cursor.execute('''
+        query = adapt_query('''
             SELECT v.*, vs.age_score, vs.education_score, vs.motivation_score, vs.skills_score, 
                    vs.total_score, vs.status, vs.admin_notes
             FROM volunteers v
             LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id
             WHERE v.id = ?
-        ''', (volunteer_id,))
+        ''')
+        cursor.execute(query, (volunteer_id,))
         volunteer = cursor.fetchone()
     except sqlite3.OperationalError:
         # Fall back to basic volunteer info if table structure is different
-        cursor.execute('SELECT * FROM volunteers WHERE id = ?', (volunteer_id,))
+        query = adapt_query('SELECT * FROM volunteers WHERE id = ?')
+        cursor.execute(query, (volunteer_id,))
         volunteer_basic = cursor.fetchone()
         if volunteer_basic:
             # Add empty score fields
@@ -3060,12 +3129,13 @@ def admin_volunteer_detail(volunteer_id):
         return redirect(url_for('admin_volunteers'))
     
     # Get email history
-    cursor.execute('''
+    query = adapt_query('''
         SELECT email_type, subject, body, sent_at, status
         FROM email_notifications
         WHERE volunteer_id = ?
         ORDER BY sent_at DESC
-    ''', (volunteer_id,))
+    ''')
+    cursor.execute(query, (volunteer_id,))
     email_history = cursor.fetchall()
     
     conn.close()
@@ -3089,7 +3159,8 @@ def admin_send_volunteer_email(volunteer_id):
         cursor = conn.cursor()
         
         # Get volunteer email
-        cursor.execute('SELECT name, email FROM volunteers WHERE id = ?', (volunteer_id,))
+        query = adapt_query('SELECT name, email FROM volunteers WHERE id = ?')
+        cursor.execute(query, (volunteer_id,))
         volunteer = cursor.fetchone()
         
         if not volunteer:
@@ -3103,10 +3174,11 @@ def admin_send_volunteer_email(volunteer_id):
         mail.send(msg)
         
         # Log email
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO email_notifications (volunteer_id, email_type, subject, body, status)
             VALUES (?, ?, ?, ?, ?)
-        ''', (volunteer_id, 'admin_reply', subject, message, 'sent'))
+        ''')
+        cursor.execute(query, (volunteer_id, 'admin_reply', subject, message, 'sent'))
         
         conn.commit()
         conn.close()
@@ -3131,17 +3203,54 @@ def admin_update_volunteer_notes(volunteer_id):
     cursor = conn.cursor()
     
     # Update volunteer scores table
-    cursor.execute('''
+    query = adapt_query('''
         UPDATE volunteer_scores 
         SET admin_notes = ?, status = ?
         WHERE volunteer_id = ?
-    ''', (admin_notes, status, volunteer_id))
+    ''')
+    cursor.execute(query, (admin_notes, status, volunteer_id))
     
     conn.commit()
     conn.close()
     
     flash('Volunteer notes updated successfully!', 'success')
     return redirect(url_for('admin_volunteer_detail', volunteer_id=volunteer_id))
+
+@app.route('/admin/volunteers/hold/<int:volunteer_id>', methods=['POST'])
+def admin_hold_volunteer(volunteer_id):
+    """Put volunteer application on hold"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    try:
+        conn = get_db_connection('main')
+        cursor = conn.cursor()
+        
+        # Update volunteer status to high_priority (hold)
+        query = adapt_query('''
+            UPDATE volunteer_scores 
+            SET status = ?
+            WHERE volunteer_id = ?
+        ''')
+        cursor.execute(query, ('high_priority', volunteer_id))
+        
+        # If no record exists, create one
+        if cursor.rowcount == 0:
+            query = adapt_query('''
+                INSERT INTO volunteer_scores (volunteer_id, status, admin_notes)
+                VALUES (?, ?, ?)
+            ''')
+            cursor.execute(query, (volunteer_id, 'high_priority', 'Application put on hold'))
+        
+        conn.commit()
+        conn.close()
+        
+        flash('Volunteer application put on hold!', 'success')
+    except Exception as e:
+        print(f"Hold error: {str(e)}")
+        flash('An error occurred. Please try again.', 'error')
+    
+    return redirect(url_for('admin_volunteers', t=str(int(time.time()))))
 
 @app.route('/admin/volunteers/approve/<int:volunteer_id>', methods=['POST'])
 def admin_approve_volunteer(volunteer_id):
@@ -3154,7 +3263,8 @@ def admin_approve_volunteer(volunteer_id):
         cursor = conn.cursor()
         
         # Get volunteer details
-        cursor.execute('SELECT * FROM volunteers WHERE id = ?', (volunteer_id,))
+        query = adapt_query('SELECT * FROM volunteers WHERE id = ?')
+        cursor.execute(query, (volunteer_id,))
         volunteer = cursor.fetchone()
         
         if not volunteer:
@@ -3162,7 +3272,8 @@ def admin_approve_volunteer(volunteer_id):
             return redirect(url_for('admin_volunteers'))
         
         # Get volunteer scores
-        cursor.execute('SELECT total_score FROM volunteer_scores WHERE volunteer_id = ?', (volunteer_id,))
+        query = adapt_query('SELECT total_score FROM volunteer_scores WHERE volunteer_id = ?')
+        cursor.execute(query, (volunteer_id,))
         score_result = cursor.fetchone()
         total_score = score_result[0] if score_result else 0
         
@@ -3172,13 +3283,34 @@ def admin_approve_volunteer(volunteer_id):
             'name': volunteer[1],
             'email': volunteer[2]
         }
+        
+        # Update status to approved
+        query = adapt_query('''
+            UPDATE volunteer_scores 
+            SET status = ?
+            WHERE volunteer_id = ?
+        ''')
+        cursor.execute(query, ('approved', volunteer_id))
+        
+        # If no record exists, create one
+        if cursor.rowcount == 0:
+            query = adapt_query('''
+                INSERT INTO volunteer_scores (volunteer_id, status, admin_notes)
+                VALUES (?, ?, ?)
+            ''')
+            cursor.execute(query, (volunteer_id, 'approved', 'Application approved by admin'))
+        
+        conn.commit()
         conn.close()
         
+        flash('Volunteer approved successfully!', 'success')
     except Exception as e:
         print(f"Approval error: {str(e)}")
         flash('An error occurred while approving volunteer. Please try again.', 'error')
     
-    return redirect(url_for('admin_volunteer_detail', volunteer_id=volunteer_id))
+    # Force browser to reload with no cache
+    return redirect(url_for('admin_volunteers', _method='GET', t=str(int(time.time()))))
+
 
 @app.route('/admin/volunteers/reject/<int:volunteer_id>', methods=['POST'])
 def admin_reject_volunteer(volunteer_id):
@@ -3194,7 +3326,8 @@ def admin_reject_volunteer(volunteer_id):
         cursor = conn.cursor()
         
         # Get volunteer details
-        cursor.execute('SELECT name, email FROM volunteers WHERE id = ?', (volunteer_id,))
+        query = adapt_query('SELECT name, email FROM volunteers WHERE id = ?')
+        cursor.execute(query, (volunteer_id,))
         volunteer = cursor.fetchone()
         
         if not volunteer:
@@ -3202,11 +3335,20 @@ def admin_reject_volunteer(volunteer_id):
             return redirect(url_for('admin_volunteers'))
         
         # Update status
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE volunteer_scores 
             SET status = 'rejected', admin_notes = COALESCE(admin_notes, '') || ' [REJECTED by admin on ' || datetime('now') || ': ' || ?]'
             WHERE volunteer_id = ?
-        ''', (rejection_reason, volunteer_id))
+        ''')
+        cursor.execute(query, (rejection_reason, volunteer_id))
+        
+        # If no score record exists, create one
+        if cursor.rowcount == 0:
+            query = adapt_query('''
+                INSERT INTO volunteer_scores (volunteer_id, status, admin_notes)
+                VALUES (?, 'rejected', ?)
+            ''')
+            cursor.execute(query, (volunteer_id, f'Rejected: {rejection_reason}'))
         
         # Send rejection email if requested
         if send_email:
@@ -3234,10 +3376,11 @@ Email: womensafety@appolice.gov.in"""
                 mail.send(msg)
                 
                 # Log email notification
-                cursor.execute('''
+                query = adapt_query('''
                     INSERT INTO email_notifications (volunteer_id, email_type, subject, body, status)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (volunteer_id, 'admin_rejection', subject, body, 'sent'))
+                ''')
+                cursor.execute(query, (volunteer_id, 'admin_rejection', subject, body, 'sent'))
                 
                 flash(f'Volunteer rejected and notification email sent to {volunteer[1]}.', 'success')
                 
@@ -3254,7 +3397,7 @@ Email: womensafety@appolice.gov.in"""
         print(f"Rejection error: {str(e)}")
         flash('An error occurred while rejecting volunteer. Please try again.', 'error')
     
-    return redirect(url_for('admin_volunteer_detail', volunteer_id=volunteer_id))
+    return redirect(url_for('admin_volunteers', t=str(int(time.time()))))
 
 @app.route('/admin/volunteers/update/<int:volunteer_id>', methods=['POST'])
 def admin_update_volunteer_status(volunteer_id):
@@ -3265,7 +3408,8 @@ def admin_update_volunteer_status(volunteer_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('UPDATE volunteers SET status = ? WHERE id = ?', (status, volunteer_id))
+    query = adapt_query('UPDATE volunteers SET status = ? WHERE id = ?')
+    cursor.execute(query, (status, volunteer_id))
     conn.commit()
     conn.close()
     
@@ -3279,7 +3423,8 @@ def admin_delete_volunteer(volunteer_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM volunteers WHERE id = ?', (volunteer_id,))
+    query = adapt_query('DELETE FROM volunteers WHERE id = ?')
+    cursor.execute(query, (volunteer_id,))
     conn.commit()
     conn.close()
     
@@ -3361,10 +3506,11 @@ def admin_add_officer():
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO officers (name, designation, department, phone, email, image_url, bio, position_order)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (name, designation, department, phone, email, image_url, bio, position_order))
+        ''')
+        cursor.execute(query, (name, designation, department, phone, email, image_url, bio, position_order))
         conn.commit()
         conn.close()
         
@@ -3391,7 +3537,8 @@ def admin_edit_officer(officer_id):
         is_active = 1 if request.form.get('is_active') else 0
         
         # Get current image URL
-        cursor.execute('SELECT image_url FROM officers WHERE id=?', (officer_id,))
+        query = adapt_query('SELECT image_url FROM officers WHERE id=?')
+        cursor.execute(query, (officer_id,))
         current_image = cursor.fetchone()
         image_url = current_image[0] if current_image else None
         
@@ -3416,17 +3563,19 @@ def admin_edit_officer(officer_id):
                     except Exception as e:
                         print(f"Error updating image: {e}")  # Debug print
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE officers 
             SET name=?, designation=?, department=?, phone=?, email=?, image_url=?, bio=?, position_order=?, is_active=?
             WHERE id=?
-        ''', (name, designation, department, phone, email, image_url, bio, position_order, is_active, officer_id))
+        ''')
+        cursor.execute(query, (name, designation, department, phone, email, image_url, bio, position_order, is_active, officer_id))
         conn.commit()
         conn.close()
         
         return redirect(url_for('admin_officers'))
     
-    cursor.execute('SELECT * FROM officers WHERE id=?', (officer_id,))
+    query = adapt_query('SELECT * FROM officers WHERE id=?')
+    cursor.execute(query, (officer_id,))
     officer = cursor.fetchone()
     conn.close()
     
@@ -3439,7 +3588,8 @@ def admin_delete_officer(officer_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM officers WHERE id=?', (officer_id,))
+    query = adapt_query('DELETE FROM officers WHERE id=?')
+    cursor.execute(query, (officer_id,))
     conn.commit()
     conn.close()
     
@@ -3491,10 +3641,11 @@ def admin_add_success_story():
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO success_stories (title, description, date, image_url, sort_order, is_active)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (title, description, date, image_url, sort_order, 1))
+        ''')
+        cursor.execute(query, (title, description, date, image_url, sort_order, 1))
         conn.commit()
         conn.close()
         
@@ -3521,7 +3672,8 @@ def admin_edit_success_story(story_id):
         # Validate required fields
         if not title or not description:
             flash('Title and description are required!', 'error')
-            cursor.execute('SELECT * FROM success_stories WHERE id=?', (story_id,))
+            query = adapt_query('SELECT * FROM success_stories WHERE id=?')
+            cursor.execute(query, (story_id,))
             story = cursor.fetchone()
             conn.close()
             return render_template('admin_edit_success_story.html', story=story)
@@ -3532,7 +3684,8 @@ def admin_edit_success_story(story_id):
         print(f"DEBUG: New date: {date}")
         
         # Get current image URL from database first
-        cursor.execute('SELECT image_url FROM success_stories WHERE id=?', (story_id,))
+        query = adapt_query('SELECT image_url FROM success_stories WHERE id=?')
+        cursor.execute(query, (story_id,))
         current_story = cursor.fetchone()
         image_url = current_story[0] if current_story else None
         
@@ -3555,17 +3708,19 @@ def admin_edit_success_story(story_id):
                         print(f"Error saving success story image: {e}")
                         flash(f'Error uploading image: {e}', 'error')
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE success_stories 
             SET title=?, description=?, date=?, image_url=?, sort_order=?, is_active=?
             WHERE id=?
-        ''', (title, description, date, image_url, sort_order, is_active, story_id))
+        ''')
+        cursor.execute(query, (title, description, date, image_url, sort_order, is_active, story_id))
         conn.commit()
         
         print(f"DEBUG: Database updated for story {story_id}")
         
         # Verify the update immediately
-        cursor.execute('SELECT title, description FROM success_stories WHERE id=?', (story_id,))
+        query = adapt_query('SELECT title, description FROM success_stories WHERE id=?')
+        cursor.execute(query, (story_id,))
         verify_story = cursor.fetchone()
         if verify_story:
             print(f"DEBUG: Verified title: {verify_story[0]}")
@@ -3577,7 +3732,8 @@ def admin_edit_success_story(story_id):
         return redirect(url_for('admin_success_stories'))
     
     # GET request - fetch story data in correct order for template
-    cursor.execute('SELECT id, title, description, date, stat1_number, stat1_label, stat2_number, stat2_label, stat3_number, stat3_label, image_url, sort_order, is_active FROM success_stories WHERE id=?', (story_id,))
+    query = adapt_query('SELECT id, title, description, date, stat1_number, stat1_label, stat2_number, stat2_label, stat3_number, stat3_label, image_url, sort_order, is_active FROM success_stories WHERE id=?')
+    cursor.execute(query, (story_id,))
     story = cursor.fetchone()
     conn.close()
     
@@ -3594,7 +3750,8 @@ def admin_delete_success_story(story_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM success_stories WHERE id=?', (story_id,))
+    query = adapt_query('DELETE FROM success_stories WHERE id=?')
+    cursor.execute(query, (story_id,))
     conn.commit()
     conn.close()
     
@@ -3660,16 +3817,20 @@ def admin_district_contacts():
         
         # Count contacts for each type
         try:
-            cursor.execute('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             district_data['sp_count'] = cursor.fetchone()[0]
             
-            cursor.execute('SELECT COUNT(*) FROM shakthi_teams WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT COUNT(*) FROM shakthi_teams WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             district_data['teams_count'] = cursor.fetchone()[0]
             
-            cursor.execute('SELECT COUNT(*) FROM women_police_stations WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT COUNT(*) FROM women_police_stations WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             district_data['ps_count'] = cursor.fetchone()[0]
             
-            cursor.execute('SELECT COUNT(*) FROM one_stop_centers WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT COUNT(*) FROM one_stop_centers WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             district_data['center_count'] = cursor.fetchone()[0]
         except sqlite3.OperationalError:
             # If tables don't exist, set counts to 0
@@ -3728,16 +3889,20 @@ def admin_district_contacts():
         
         # Count contacts for each type
         try:
-            cursor.execute('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             district_data['sp_count'] = cursor.fetchone()[0]
             
-            cursor.execute('SELECT COUNT(*) FROM shakthi_teams WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT COUNT(*) FROM shakthi_teams WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             district_data['teams_count'] = cursor.fetchone()[0]
             
-            cursor.execute('SELECT COUNT(*) FROM women_police_stations WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT COUNT(*) FROM women_police_stations WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             district_data['ps_count'] = cursor.fetchone()[0]
             
-            cursor.execute('SELECT COUNT(*) FROM one_stop_centers WHERE district_id = ? AND is_active = 1', (district_id,))
+            query = adapt_query('SELECT COUNT(*) FROM one_stop_centers WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (district_id,))
             district_data['center_count'] = cursor.fetchone()[0]
         except sqlite3.OperationalError:
             # If tables don't exist, set counts to 0
@@ -3761,7 +3926,8 @@ def admin_manage_district_contacts(district_id):
     cursor = conn.cursor()
     
     # Get district info
-    cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
+    query = adapt_query('SELECT district_name FROM districts WHERE id = ?')
+    cursor.execute(query, (district_id,))
     district = cursor.fetchone()
     if not district:
         flash('District not found', 'error')
@@ -3770,16 +3936,20 @@ def admin_manage_district_contacts(district_id):
     district_name = district[0]
     
     # Get all contacts for this district
-    cursor.execute('SELECT id, name, contact_number, email FROM district_sps WHERE district_id = ? AND is_active = 1', (district_id,))
+    query = adapt_query('SELECT id, name, contact_number, email FROM district_sps WHERE district_id = ? AND is_active = 1')
+    cursor.execute(query, (district_id,))
     sps = cursor.fetchall()
     
-    cursor.execute('SELECT id, team_name, leader_name, contact_number, area_covered FROM shakthi_teams WHERE district_id = ? AND is_active = 1', (district_id,))
+    query = adapt_query('SELECT id, team_name, leader_name, contact_number, area_covered FROM shakthi_teams WHERE district_id = ? AND is_active = 1')
+    cursor.execute(query, (district_id,))
     teams = cursor.fetchall()
     
-    cursor.execute('SELECT id, station_name, incharge_name, contact_number, address FROM women_police_stations WHERE district_id = ? AND is_active = 1', (district_id,))
+    query = adapt_query('SELECT id, station_name, incharge_name, contact_number, address FROM women_police_stations WHERE district_id = ? AND is_active = 1')
+    cursor.execute(query, (district_id,))
     stations = cursor.fetchall()
     
-    cursor.execute('SELECT id, center_name, address, incharge_name, contact_number, services_offered FROM one_stop_centers WHERE district_id = ? AND is_active = 1', (district_id,))
+    query = adapt_query('SELECT id, center_name, address, incharge_name, contact_number, services_offered FROM one_stop_centers WHERE district_id = ? AND is_active = 1')
+    cursor.execute(query, (district_id,))
     centers = cursor.fetchall()
     
     conn.close()
@@ -3805,10 +3975,11 @@ def admin_add_district_sp(district_id):
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO district_sps (district_id, name, contact_number, email)
             VALUES (?, ?, ?, ?)
-        ''', (district_id, name, contact_number, email))
+        ''')
+        cursor.execute(query, (district_id, name, contact_number, email))
         conn.commit()
         conn.close()
         
@@ -3818,7 +3989,8 @@ def admin_add_district_sp(district_id):
     # Get district name
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
+    query = adapt_query('SELECT district_name FROM districts WHERE id = ?')
+    cursor.execute(query, (district_id,))
     district = cursor.fetchone()
     conn.close()
     
@@ -3840,15 +4012,17 @@ def admin_edit_district_sp(sp_id):
         contact_number = request.form.get('contact_number')
         email = request.form.get('email')
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE district_sps 
             SET name = ?, contact_number = ?, email = ?
             WHERE id = ?
-        ''', (name, contact_number, email, sp_id))
+        ''')
+        cursor.execute(query, (name, contact_number, email, sp_id))
         conn.commit()
         
         # Get district_id for redirect
-        cursor.execute('SELECT district_id FROM district_sps WHERE id = ?', (sp_id,))
+        query = adapt_query('SELECT district_id FROM district_sps WHERE id = ?')
+        cursor.execute(query, (sp_id,))
         district_id = cursor.fetchone()[0]
         conn.close()
         
@@ -3856,12 +4030,13 @@ def admin_edit_district_sp(sp_id):
         return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
     
     # GET request
-    cursor.execute('''
+    query = adapt_query('''
         SELECT ds.id, ds.name, ds.contact_number, ds.email, ds.district_id, d.district_name 
         FROM district_sps ds 
         JOIN districts d ON ds.district_id = d.id 
         WHERE ds.id = ?
-    ''', (sp_id,))
+    ''')
+    cursor.execute(query, (sp_id,))
     sp_data = cursor.fetchone()
     
     if not sp_data:
@@ -3871,7 +4046,8 @@ def admin_edit_district_sp(sp_id):
     
     # Get district name separately to ensure correctness
     district_id = sp_data[4]
-    cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
+    query = adapt_query('SELECT district_name FROM districts WHERE id = ?')
+    cursor.execute(query, (district_id,))
     district_result = cursor.fetchone()
     district_name = district_result[0] if district_result else 'Unknown District'
     
@@ -3893,7 +4069,8 @@ def admin_delete_district_sp(sp_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM district_sps WHERE id = ?', (sp_id,))
+    query = adapt_query('DELETE FROM district_sps WHERE id = ?')
+    cursor.execute(query, (sp_id,))
     conn.commit()
     conn.close()
     
@@ -3913,10 +4090,11 @@ def admin_add_shakthi_team(district_id):
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered)
             VALUES (?, ?, ?, ?, ?)
-        ''', (district_id, team_name, leader_name, contact_number, area_covered))
+        ''')
+        cursor.execute(query, (district_id, team_name, leader_name, contact_number, area_covered))
         conn.commit()
         conn.close()
         
@@ -3926,7 +4104,8 @@ def admin_add_shakthi_team(district_id):
     # Get district name
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
+    query = adapt_query('SELECT district_name FROM districts WHERE id = ?')
+    cursor.execute(query, (district_id,))
     district = cursor.fetchone()
     conn.close()
     
@@ -3949,15 +4128,17 @@ def admin_edit_shakthi_team(team_id):
         contact_number = request.form.get('contact_number')
         area_covered = request.form.get('area_covered')
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE shakthi_teams 
             SET team_name = ?, leader_name = ?, contact_number = ?, area_covered = ?
             WHERE id = ?
-        ''', (team_name, leader_name, contact_number, area_covered, team_id))
+        ''')
+        cursor.execute(query, (team_name, leader_name, contact_number, area_covered, team_id))
         conn.commit()
         
         # Get district_id for redirect
-        cursor.execute('SELECT district_id FROM shakthi_teams WHERE id = ?', (team_id,))
+        query = adapt_query('SELECT district_id FROM shakthi_teams WHERE id = ?')
+        cursor.execute(query, (team_id,))
         district_id = cursor.fetchone()[0]
         conn.close()
         
@@ -3965,12 +4146,13 @@ def admin_edit_shakthi_team(team_id):
         return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
     
     # GET request
-    cursor.execute('''
+    query = adapt_query('''
         SELECT st.id, st.team_name, st.leader_name, st.contact_number, st.area_covered, st.district_id, d.district_name 
         FROM shakthi_teams st 
         JOIN districts d ON st.district_id = d.id 
         WHERE st.id = ?
-    ''', (team_id,))
+    ''')
+    cursor.execute(query, (team_id,))
     team_data = cursor.fetchone()
     
     if not team_data:
@@ -3980,7 +4162,8 @@ def admin_edit_shakthi_team(team_id):
     
     # Get district name separately to ensure correctness
     district_id = team_data[5]
-    cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
+    query = adapt_query('SELECT district_name FROM districts WHERE id = ?')
+    cursor.execute(query, (district_id,))
     district_result = cursor.fetchone()
     district_name = district_result[0] if district_result else 'Unknown District'
     
@@ -3998,7 +4181,8 @@ def admin_delete_shakthi_team(team_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM shakthi_teams WHERE id = ?', (team_id,))
+    query = adapt_query('DELETE FROM shakthi_teams WHERE id = ?')
+    cursor.execute(query, (team_id,))
     conn.commit()
     conn.close()
     
@@ -4018,10 +4202,11 @@ def admin_add_women_station(district_id):
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
             VALUES (?, ?, ?, ?, ?)
-        ''', (district_id, station_name, incharge_name, contact_number, address))
+        ''')
+        cursor.execute(query, (district_id, station_name, incharge_name, contact_number, address))
         conn.commit()
         conn.close()
         
@@ -4031,7 +4216,8 @@ def admin_add_women_station(district_id):
     # Get district name
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
+    query = adapt_query('SELECT district_name FROM districts WHERE id = ?')
+    cursor.execute(query, (district_id,))
     district = cursor.fetchone()
     conn.close()
     
@@ -4054,15 +4240,17 @@ def admin_edit_women_station(station_id):
         contact_number = request.form.get('contact_number')
         address = request.form.get('address')
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE women_police_stations 
             SET station_name = ?, incharge_name = ?, contact_number = ?, address = ?
             WHERE id = ?
-        ''', (station_name, incharge_name, contact_number, address, station_id))
+        ''')
+        cursor.execute(query, (station_name, incharge_name, contact_number, address, station_id))
         conn.commit()
         
         # Get district_id for redirect
-        cursor.execute('SELECT district_id FROM women_police_stations WHERE id = ?', (station_id,))
+        query = adapt_query('SELECT district_id FROM women_police_stations WHERE id = ?')
+        cursor.execute(query, (station_id,))
         district_id = cursor.fetchone()[0]
         conn.close()
         
@@ -4070,12 +4258,13 @@ def admin_edit_women_station(station_id):
         return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
     
     # GET request
-    cursor.execute('''
+    query = adapt_query('''
         SELECT wps.id, wps.station_name, wps.incharge_name, wps.contact_number, wps.address, wps.district_id, d.district_name 
         FROM women_police_stations wps 
         JOIN districts d ON wps.district_id = d.id 
         WHERE wps.id = ?
-    ''', (station_id,))
+    ''')
+    cursor.execute(query, (station_id,))
     station_data = cursor.fetchone()
     
     if not station_data:
@@ -4085,7 +4274,8 @@ def admin_edit_women_station(station_id):
     
     # Get district name separately to ensure correctness
     district_id = station_data[5]
-    cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
+    query = adapt_query('SELECT district_name FROM districts WHERE id = ?')
+    cursor.execute(query, (district_id,))
     district_result = cursor.fetchone()
     district_name = district_result[0] if district_result else 'Unknown District'
     
@@ -4103,7 +4293,8 @@ def admin_delete_women_station(station_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM women_police_stations WHERE id = ?', (station_id,))
+    query = adapt_query('DELETE FROM women_police_stations WHERE id = ?')
+    cursor.execute(query, (station_id,))
     conn.commit()
     conn.close()
     
@@ -4124,10 +4315,11 @@ def admin_add_one_stop_center(district_id):
         
         conn = get_db_connection('main')
         cursor = conn.cursor()
-        cursor.execute('''
+        query = adapt_query('''
             INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (district_id, center_name, address, incharge_name, contact_number, services_offered))
+        ''')
+        cursor.execute(query, (district_id, center_name, address, incharge_name, contact_number, services_offered))
         conn.commit()
         conn.close()
         
@@ -4137,7 +4329,8 @@ def admin_add_one_stop_center(district_id):
     # Get district name
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
+    query = adapt_query('SELECT district_name FROM districts WHERE id = ?')
+    cursor.execute(query, (district_id,))
     district = cursor.fetchone()
     conn.close()
     
@@ -4161,15 +4354,17 @@ def admin_edit_one_stop_center(center_id):
         contact_number = request.form.get('contact_number')
         services_offered = request.form.get('services_offered')
         
-        cursor.execute('''
+        query = adapt_query('''
             UPDATE one_stop_centers 
             SET center_name = ?, address = ?, incharge_name = ?, contact_number = ?, services_offered = ?
             WHERE id = ?
-        ''', (center_name, address, incharge_name, contact_number, services_offered, center_id))
+        ''')
+        cursor.execute(query, (center_name, address, incharge_name, contact_number, services_offered, center_id))
         conn.commit()
         
         # Get district_id for redirect
-        cursor.execute('SELECT district_id FROM one_stop_centers WHERE id = ?', (center_id,))
+        query = adapt_query('SELECT district_id FROM one_stop_centers WHERE id = ?')
+        cursor.execute(query, (center_id,))
         district_id = cursor.fetchone()[0]
         conn.close()
         
@@ -4177,12 +4372,13 @@ def admin_edit_one_stop_center(center_id):
         return redirect(url_for('admin_manage_district_contacts', district_id=district_id))
     
     # GET request
-    cursor.execute('''
+    query = adapt_query('''
         SELECT osc.id, osc.center_name, osc.address, osc.incharge_name, osc.contact_number, osc.services_offered, osc.district_id, d.district_name 
         FROM one_stop_centers osc 
         JOIN districts d ON osc.district_id = d.id 
         WHERE osc.id = ?
-    ''', (center_id,))
+    ''')
+    cursor.execute(query, (center_id,))
     center_data = cursor.fetchone()
     
     if not center_data:
@@ -4192,7 +4388,8 @@ def admin_edit_one_stop_center(center_id):
     
     # Get district name separately to ensure correctness
     district_id = center_data[6]
-    cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
+    query = adapt_query('SELECT district_name FROM districts WHERE id = ?')
+    cursor.execute(query, (district_id,))
     district_result = cursor.fetchone()
     district_name = district_result[0] if district_result else 'Unknown District'
     
@@ -4210,7 +4407,8 @@ def admin_delete_one_stop_center(center_id):
     
     conn = get_db_connection('main')
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM one_stop_centers WHERE id = ?', (center_id,))
+    query = adapt_query('DELETE FROM one_stop_centers WHERE id = ?')
+    cursor.execute(query, (center_id,))
     conn.commit()
     conn.close()
     
@@ -4325,10 +4523,11 @@ def setup_districts():
         ]
         
         for district_name, district_code in districts_data:
-            cursor.execute('''
+            query = adapt_query('''
                 INSERT OR IGNORE INTO districts (name, district_code) 
                 VALUES (?, ?)
-            ''', (district_name, district_code))
+            ''')
+            cursor.execute(query, (district_name, district_code))
         
         # Insert sample District SPs
         cursor.execute('''
@@ -4536,7 +4735,8 @@ def force_setup():
         ]
         
         for name, code in districts:
-            cursor.execute('INSERT INTO districts (name, district_code) VALUES (?, ?)', (name, code))
+            query = adapt_query('INSERT INTO districts (name, district_code) VALUES (?, ?)')
+            cursor.execute(query, (name, code))
         
         # Insert sample data for each district
         cursor.execute('SELECT id, district_name FROM districts')
@@ -4709,10 +4909,14 @@ def fix_all_data_mapping():
         
         for district_id, district_name in districts:
             # Remove all existing contacts for this district
-            cursor.execute('DELETE FROM district_sps WHERE district_id = ?', (district_id,))
-            cursor.execute('DELETE FROM shakthi_teams WHERE district_id = ?', (district_id,))
-            cursor.execute('DELETE FROM women_police_stations WHERE district_id = ?', (district_id,))
-            cursor.execute('DELETE FROM one_stop_centers WHERE district_id = ?', (district_id,))
+            query = adapt_query('DELETE FROM district_sps WHERE district_id = ?')
+            cursor.execute(query, (district_id,))
+            query = adapt_query('DELETE FROM shakthi_teams WHERE district_id = ?')
+            cursor.execute(query, (district_id,))
+            query = adapt_query('DELETE FROM women_police_stations WHERE district_id = ?')
+            cursor.execute(query, (district_id,))
+            query = adapt_query('DELETE FROM one_stop_centers WHERE district_id = ?')
+            cursor.execute(query, (district_id,))
             
             # Create proper SP for each district
             sp_name = f"SP {district_name}"
@@ -4720,10 +4924,11 @@ def fix_all_data_mapping():
             sp_email_suffix = district_name.lower().replace(' ', '').replace('(', '').replace(')', '').replace('.', '')
             sp_email = f"sp.{sp_email_suffix}@appolice.gov.in"
             
-            cursor.execute('''
+            query = adapt_query('''
                 INSERT INTO district_sps (district_id, name, contact_number, email, is_active)
                 VALUES (?, ?, ?, ?, 1)
-            ''', (district_id, sp_name, sp_phone, sp_email))
+            ''')
+            cursor.execute(query, (district_id, sp_name, sp_phone, sp_email))
             
             # Create 2-3 Shakthi Teams per district
             district_prefix = district_name[:3].upper()
@@ -4737,10 +4942,11 @@ def fix_all_data_mapping():
                 teams.append(('Highway Patrol Team', f'Inspector {district_prefix}-3', f'+91-900032{district_id:04d}', f'Highways in {district_name}'))
             
             for team_name, leader_name, phone, area in teams:
-                cursor.execute('''
+                query = adapt_query('''
                     INSERT INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered, is_active)
                     VALUES (?, ?, ?, ?, ?, 1)
-                ''', (district_id, team_name, leader_name, phone, area))
+                ''')
+                cursor.execute(query, (district_id, team_name, leader_name, phone, area))
             
             # Create Women Police Station
             station_name = f"Women Police Station {district_name}"
@@ -4748,10 +4954,11 @@ def fix_all_data_mapping():
             station_phone = f"+91-700000{district_id:04d}"
             station_address = f"{district_name} District, Andhra Pradesh"
             
-            cursor.execute('''
+            query = adapt_query('''
                 INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address, is_active)
                 VALUES (?, ?, ?, ?, ?, 1)
-            ''', (district_id, station_name, incharge_name, station_phone, station_address))
+            ''')
+            cursor.execute(query, (district_id, station_name, incharge_name, station_phone, station_address))
             
             # Create One Stop Center for major districts
             if district_id <= 20:
@@ -4761,10 +4968,11 @@ def fix_all_data_mapping():
                 center_phone = f"+91-600000{district_id:04d}"
                 services = "Counseling, Legal Aid, Medical Support, Shelter"
                 
-                cursor.execute('''
+                query = adapt_query('''
                     INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered, is_active)
                     VALUES (?, ?, ?, ?, ?, ?, 1)
-                ''', (district_id, center_name, center_address, center_incharge, center_phone, services))
+                ''')
+                cursor.execute(query, (district_id, center_name, center_address, center_incharge, center_phone, services))
             
             result += f"<li style='color:green'>✓ Fixed {district_name}</li>"
         
@@ -4810,16 +5018,18 @@ def debug_edit_sp(sp_id):
     cursor = conn.cursor()
     
     # Get SP data
-    cursor.execute('''
+    query = adapt_query('''
         SELECT ds.id, ds.name, ds.contact_number, ds.email, ds.district_id 
         FROM district_sps ds 
         WHERE ds.id = ?
-    ''', (sp_id,))
+    ''')
+    cursor.execute(query, (sp_id,))
     sp_data = cursor.fetchone()
     
     if sp_data:
         district_id = sp_data[4]
-        cursor.execute('SELECT district_name FROM districts WHERE id = ?', (district_id,))
+        query = adapt_query('SELECT district_name FROM districts WHERE id = ?')
+        cursor.execute(query, (district_id,))
         district_result = cursor.fetchone()
         district_name = district_result[0] if district_result else 'Unknown'
         
@@ -4890,29 +5100,33 @@ def fix_district_mapping():
                 result += f"<p>Found SP: '{sp_name}' in district {current_district_id}</p>"
                 
                 if current_district_id != krishna_id:
-                    cursor.execute('UPDATE district_sps SET district_id = ? WHERE id = ?', (krishna_id, sp_id))
+                    query = adapt_query('UPDATE district_sps SET district_id = ? WHERE id = ?')
+                    cursor.execute(query, (krishna_id, sp_id))
                     result += f"<p style='color:green'>✓ Moved '{sp_name}' to Krishna district</p>"
             
             # Check if Anakapalli has any SP
-            cursor.execute('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1', (anakapalli_id,))
+            query = adapt_query('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1')
+            cursor.execute(query, (anakapalli_id,))
             sp_count = cursor.fetchone()[0]
             
             if sp_count == 0:
                 # Add proper SP for Anakapalli
-                cursor.execute('''
+                query = adapt_query('''
                     INSERT INTO district_sps (district_id, name, contact_number, email, is_active) 
                     VALUES (?, ?, ?, ?, 1)
-                ''', (anakapalli_id, 'SP Anakapalli', '+91-8942000000', 'sp.anakapalli@appolice.gov.in'))
+                ''')
+                cursor.execute(query, (anakapalli_id, 'SP Anakapalli', '+91-8942000000', 'sp.anakapalli@appolice.gov.in'))
                 result += f"<p style='color:green'>✓ Added proper SP for Anakapalli</p>"
             
             # Verify the fix
-            cursor.execute('''
+            query = adapt_query('''
                 SELECT d.district_name, ds.name 
                 FROM districts d 
                 JOIN district_sps ds ON d.id = ds.district_id 
                 WHERE d.id IN (?, ?) AND ds.is_active = 1
                 ORDER BY d.district_name
-            ''', (anakapalli_id, krishna_id))
+            ''')
+            cursor.execute(query, (anakapalli_id, krishna_id))
             
             mappings = cursor.fetchall()
             result += "<h3>Current Mappings:</h3><ul>"
@@ -4958,7 +5172,8 @@ def debug_district_data():
         result += f"<h3>Anakapalli Found:</h3><p>ID: {anakapalli[0]}, Name: {anakapalli[1]}</p>"
         
         # Check SPs for Anakapalli
-        cursor.execute('SELECT id, name, district_id FROM district_sps WHERE district_id = ? AND is_active = 1', (anakapalli[0],))
+        query = adapt_query('SELECT id, name, district_id FROM district_sps WHERE district_id = ? AND is_active = 1')
+        cursor.execute(query, (anakapalli[0],))
         sps = cursor.fetchall()
         result += f"<h3>SPs in Anakapalli: {len(sps)}</h3>"
         
@@ -4967,12 +5182,13 @@ def debug_district_data():
             result += f"<p>Testing SP ID: {sp_id}</p>"
             
             # Test edit query
-            cursor.execute('''
+            query = adapt_query('''
                 SELECT ds.id, ds.name, ds.contact_number, ds.email, ds.district_id, d.district_name 
                 FROM district_sps ds 
                 JOIN districts d ON ds.district_id = d.id 
                 WHERE ds.id = ?
-            ''', (sp_id,))
+            ''')
+            cursor.execute(query, (sp_id,))
             sp_data = cursor.fetchone()
             
             if sp_data:
@@ -4995,12 +5211,13 @@ def debug_test_edit(sp_id):
     cursor = conn.cursor()
     
     # Simulate the exact edit query
-    cursor.execute('''
+    query = adapt_query('''
         SELECT ds.id, ds.name, ds.contact_number, ds.email, ds.district_id, d.district_name 
         FROM district_sps ds 
         JOIN districts d ON ds.district_id = d.id 
         WHERE ds.id = ?
-    ''', (sp_id,))
+    ''')
+    cursor.execute(query, (sp_id,))
     contact = cursor.fetchone()
     conn.close()
     

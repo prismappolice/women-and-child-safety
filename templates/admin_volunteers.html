@@ -63,6 +63,7 @@
         .status-pending { background: #ffc107; color: #212529; }
         .status-approved { background: #28a745; color: white; }
         .status-rejected { background: #dc3545; color: white; }
+        .status-high_priority { background: #fd7e14; color: white; }
     </style>
 </head>
 <body>
@@ -96,11 +97,11 @@
                 <div class="stat-label">Total Volunteers</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">{{ volunteers|selectattr(17, 'equalto', 'approved')|list|length }}</div>
+                <div class="stat-number">{{ volunteers|selectattr(16, 'equalto', 'approved')|list|length }}</div>
                 <div class="stat-label">Approved</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">{{ volunteers|selectattr(17, 'equalto', 'pending')|list|length }}</div>
+                <div class="stat-number">{{ volunteers|rejectattr(16, 'defined')|list|length + volunteers|selectattr(16, 'equalto', 'pending')|list|length }}</div>
                 <div class="stat-label">Pending Review</div>
             </div>
         </div>
@@ -131,9 +132,17 @@
                         <td class="text-truncate">{{ volunteer[2] }}</td>
                         <td>{{ volunteer[3] }}</td>
                         <td>
-                            {% if volunteer[17] %}
-                                <span class="status-badge status-{{ 'approved' if volunteer[17] == 'approved' else 'pending' }}">
-                                    {{ 'Approved' if volunteer[17] == 'approved' else 'Pending' }}
+                            {% if volunteer[16] %}
+                                <span class="status-badge status-{{ 'approved' if volunteer[16] == 'approved' else ('rejected' if volunteer[16] == 'rejected' else 'pending') }}">
+                                    {% if volunteer[16] == 'approved' %}
+                                        Approved
+                                    {% elif volunteer[16] == 'rejected' %}
+                                        Rejected
+                                    {% elif volunteer[16] == 'high_priority' %}
+                                        On Hold
+                                    {% else %}
+                                        {{ volunteer[16].title() }}
+                                    {% endif %}
                                 </span>
                             {% else %}
                                 <span class="status-badge status-pending">Pending</span>
@@ -145,11 +154,25 @@
                             <div style="font-size: 0.85em; color: #666;">{{ volunteer[10].split()[1] if volunteer[10] and ' ' in volunteer[10] else '' }}</div>
                         </td>
                         <td class="action-btns">
+                            {% if volunteer[16] == 'pending' or volunteer[16] == 'high_priority' or not volunteer[16] %}
+                            <form method="POST" action="{{ url_for('admin_hold_volunteer', volunteer_id=volunteer[0]) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn" style="background: #ffc107; color: #212529;">
+                                    <i class="fas fa-pause"></i> Hold
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin_approve_volunteer', volunteer_id=volunteer[0]) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn" style="background: #28a745; color: white;">
+                                    <i class="fas fa-check"></i> Accept
+                                </button>
+                            </form>
+                            <button type="button" class="btn" style="background: #dc3545; color: white;" onclick="showRejectModal({{ volunteer[0] }})">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                            {% endif %}
                             <a href="{{ url_for('admin_volunteer_detail', volunteer_id=volunteer[0]) }}" class="btn btn-view">
-                                <i class="fas fa-eye"></i> View Details
-                            </a>
-                            <a href="mailto:{{ volunteer[2] }}" class="btn btn-contact">
-                                <i class="fas fa-envelope"></i> Email
+                                <i class="fas fa-eye"></i> View
                             </a>
                         </td>
                     </tr>
@@ -260,6 +283,15 @@
             }
         }
         
+        // Rejection modal functions
+        function showRejectModal(volunteerId) {
+            document.getElementById('rejectModal' + volunteerId).style.display = 'block';
+        }
+        
+        function closeRejectModal(volunteerId) {
+            document.getElementById('rejectModal' + volunteerId).style.display = 'none';
+        }
+        
         // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('volunteerModal');
@@ -268,6 +300,33 @@
             }
         }
     </script>
+    
+    <!-- Rejection Modals for each volunteer -->
+    {% for volunteer in volunteers %}
+    <div id="rejectModal{{ volunteer[0] }}" style="display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
+        <div style="position: relative; margin: 10% auto; padding: 30px; background: white; width: 500px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+            <h2 style="color: #dc3545; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle"></i> Reject Volunteer - {{ volunteer[1] }}</h2>
+            <form action="{{ url_for('admin_reject_volunteer', volunteer_id=volunteer[0]) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div style="margin-bottom: 20px;">
+                    <label for="rejection_reason" style="display: block; margin-bottom: 8px; font-weight: bold;">Rejection Reason:</label>
+                    <textarea name="rejection_reason" class="form-control" required placeholder="Please provide a reason for rejection..." style="width: 100%; min-height: 100px; padding: 10px; border: 2px solid #ecf0f1; border-radius: 8px;"></textarea>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" name="send_email" style="margin-right: 8px;">
+                        Send rejection email to volunteer
+                    </label>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button type="submit" class="btn" style="background: #dc3545; color: white;"><i class="fas fa-times"></i> Confirm Rejection</button>
+                    <button type="button" class="btn" onclick="closeRejectModal({{ volunteer[0] }})" style="background: #6c757d; color: white;"><i class="fas fa-arrow-left"></i> Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+    
     <script src="/static/js/admin-security.js"></script>
 </body>
 </html>

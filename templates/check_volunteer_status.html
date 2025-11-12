@@ -38,6 +38,7 @@
                         {% endwith %}
                         
                         <form method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <div class="mb-3">
                                 <label for="identifier" class="form-label">
                                     <i class="fas fa-id-card"></i> Registration ID or Phone Number
@@ -86,9 +87,24 @@
                                                 
                                                 <dt class="col-sm-5">Current Status:</dt>
                                                 <dd class="col-sm-7">
-                                                    <span class="status-{{ application.status.lower() if application.status else 'pending' }}">
+                                                    {% set status_display = 'Pending' %}
+                                                    {% set status_class = 'pending' %}
+                                                    {% if application.status == 'approved' %}
+                                                        {% set status_display = 'Accepted' %}
+                                                        {% set status_class = 'accepted' %}
+                                                    {% elif application.status == 'high_priority' %}
+                                                        {% set status_display = 'On Hold' %}
+                                                        {% set status_class = 'hold' %}
+                                                    {% elif application.status == 'rejected' %}
+                                                        {% set status_display = 'Rejected' %}
+                                                        {% set status_class = 'rejected' %}
+                                                    {% elif application.status %}
+                                                        {% set status_display = application.status.title() %}
+                                                        {% set status_class = application.status.lower() %}
+                                                    {% endif %}
+                                                    <span class="status-{{ status_class }}">
                                                         <i class="fas fa-circle"></i>
-                                                        <strong>{{ application.status.title() if application.status else 'Pending' }}</strong>
+                                                        <strong>{{ status_display }}</strong>
                                                     </span>
                                                 </dd>
                                                 
@@ -103,12 +119,18 @@
                                             <h6><i class="fas fa-info-circle"></i> Status Information:</h6>
                                             {% if application.status == 'pending' or not application.status %}
                                                 <p class="mb-0">Your application is under review. We will update the status once it's processed.</p>
-                                            {% elif application.status == 'hold' %}
+                                            {% elif application.status == 'high_priority' or application.status == 'hold' %}
                                                 <p class="mb-0">Your application is on hold. We may need additional information from you.</p>
-                                            {% elif application.status == 'accepted' %}
+                                            {% elif application.status == 'approved' or application.status == 'accepted' %}
                                                 <p class="mb-0">Congratulations! Your application has been accepted. You will be contacted soon for further steps.</p>
                                             {% elif application.status == 'rejected' %}
                                                 <p class="mb-0">We regret to inform you that your application could not be accepted at this time.</p>
+                                            {% endif %}
+                                            
+                                            {% if application.admin_notes %}
+                                            <hr style="margin: 15px 0;">
+                                            <h6><i class="fas fa-comment"></i> Admin Message:</h6>
+                                            <p class="mb-0" style="background: #f8f9fa; padding: 10px; border-radius: 5px; white-space: pre-wrap;">{{ application.admin_notes }}</p>
                                             {% endif %}
                                         </div>
                                     </div>

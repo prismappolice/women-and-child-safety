@@ -6,7 +6,6 @@
     <title>Media & Events - AP Police Women & Child Safety Wing</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/chatbot.css">
-    <link rel="stylesheet" href="/static/tablet-navigation.css">
     <style>
         /* ---------------------------------
             GENERAL STYLES
@@ -464,6 +463,10 @@
                                     <i class="fas fa-play"></i> Play Video
                                 </button>
                             {% endif %}
+                        {% elif item[3] %}
+                            <button onclick="viewEventImage('{{ item[3] }}', '{{ item[1] }}')" class="view-btn" style="border: none; cursor: pointer;">
+                                <i class="fas fa-eye"></i> View Details
+                            </button>
                         {% endif %}
                     </div>
                 </div>
@@ -499,6 +502,10 @@
                                     <i class="fas fa-play"></i> Play Video
                                 </button>
                             {% endif %}
+                        {% elif item[3] %}
+                            <button onclick="viewEventImage('{{ item[3] }}', '{{ item[1] }}')" class="view-btn" style="border: none; cursor: pointer;">
+                                <i class="fas fa-eye"></i> View Details
+                            </button>
                         {% endif %}
                     </div>
                 </div>
@@ -582,6 +589,28 @@ s0.parentNode.insertBefore(s1,s0);
         document.getElementById('localVideo').load();
         document.getElementById('videoModal').style.display = 'flex';
         document.body.style.overflow = 'hidden'; // Prevent main body scrolling
+    }
+    
+    function viewEventImage(imageUrl, title) {
+        // Create modal for event image
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 9999; cursor: pointer;';
+        
+        const content = document.createElement('div');
+        content.style.cssText = 'max-width: 90%; max-height: 90%; text-align: center;';
+        content.innerHTML = `
+            <h2 style="color: white; margin-bottom: 20px;">${title}</h2>
+            <img src="${imageUrl}" alt="${title}" style="max-width: 100%; max-height: 80vh; border-radius: 8px;">
+        `;
+        
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden';
+        
+        modal.addEventListener('click', function() {
+            document.body.removeChild(modal);
+            document.body.style.overflow = 'auto';
+        });
     }
     
     function closeVideoModal() {
