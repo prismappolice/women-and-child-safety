@@ -1649,7 +1649,7 @@ def contact():
             district_data = {'name': district_name}
             
             # Get real SP data
-            query = adapt_query('SELECT name, contact_number, email FROM district_sps WHERE district_id = ? AND is_active = 1 LIMIT 1')
+            query = adapt_query('SELECT name, contact_number, email FROM district_sps WHERE district_id = ? AND is_active::integer = 1 LIMIT 1')
             cursor.execute(query, (district_id,))
             sp_data = cursor.fetchone()
             if sp_data:
@@ -1667,7 +1667,7 @@ def contact():
                 }
             
             # Get real Shakthi Teams data
-            query = adapt_query('SELECT team_name, leader_name, contact_number, area_covered FROM shakthi_teams WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT team_name, leader_name, contact_number, area_covered FROM shakthi_teams WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
             teams_data = cursor.fetchall()
             if teams_data:
@@ -1691,16 +1691,18 @@ def contact():
                 ]
             
             # Get real Women Police Station data
-            query = adapt_query('SELECT station_name, incharge_name, contact_number, address FROM women_police_stations WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT station_name, incharge_name, contact_number, address FROM women_police_stations WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
-            station_data = cursor.fetchone()
-            if station_data:
-                district_data['women_ps'] = [{
-                    'station_name': station_data[0],
-                    'incharge_name': station_data[1],
-                    'contact_number': station_data[2],
-                    'address': station_data[3]
-                }]
+            stations_data = cursor.fetchall()
+            if stations_data:
+                district_data['women_ps'] = []
+                for station_name, incharge_name, contact_number, address in stations_data:
+                    district_data['women_ps'].append({
+                        'station_name': station_name,
+                        'incharge_name': incharge_name,
+                        'contact_number': contact_number,
+                        'address': address
+                    })
             else:
                 # Fallback if no station data
                 district_data['women_ps'] = [{
@@ -1711,17 +1713,19 @@ def contact():
                 }]
             
             # Get real One Stop Center data
-            query = adapt_query('SELECT center_name, address, incharge_name, contact_number, services_offered FROM one_stop_centers WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT center_name, address, incharge_name, contact_number, services_offered FROM one_stop_centers WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
-            center_data = cursor.fetchone()
-            if center_data:
-                district_data['one_stop_centers'] = [{
-                    'center_name': center_data[0],
-                    'address': center_data[1],
-                    'incharge_name': center_data[2],
-                    'contact_number': center_data[3],
-                    'services': center_data[4] if center_data[4] else 'Legal Aid, Counseling, Medical Support, Shelter Services'
-                }]
+            centers_data = cursor.fetchall()
+            if centers_data:
+                district_data['one_stop_centers'] = []
+                for center_name, address, incharge_name, contact_number, services_offered in centers_data:
+                    district_data['one_stop_centers'].append({
+                        'center_name': center_name,
+                        'address': address,
+                        'incharge_name': incharge_name,
+                        'contact_number': contact_number,
+                        'services': services_offered if services_offered else 'Legal Aid, Counseling, Medical Support, Shelter Services'
+                    })
             else:
                 # Fallback if no center data
                 district_data['one_stop_centers'] = [{
@@ -2223,10 +2227,10 @@ def admin_add_safety_tip():
         conn = get_db_connection('main')
         cursor = conn.cursor()
         query = adapt_query('''
-            INSERT INTO safety_tips (category, title, icon, tips)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO safety_tips (category, title, icon, tips, is_active)
+            VALUES (?, ?, ?, ?, ?)
         ''')
-        cursor.execute(query, (category, title, icon, tips))
+        cursor.execute(query, (category, title, icon, tips, '1'))
         conn.commit()
         conn.close()
         
@@ -2324,10 +2328,10 @@ def admin_add_pdf_resource():
                 conn = get_db_connection('main')
                 cursor = conn.cursor()
                 query = adapt_query('''
-                    INSERT INTO pdf_resources (title, description, file_name, file_path, icon)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO pdf_resources (title, description, file_name, file_path, icon, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 ''')
-                cursor.execute(query, (title, description, filename, f'/static/pdfs/{filename}', icon))
+                cursor.execute(query, (title, description, filename, f'/static/pdfs/{filename}', icon, '1'))
                 conn.commit()
                 conn.close()
                 
@@ -2482,10 +2486,10 @@ def admin_add_initiative():
         conn = get_db_connection('main')
         cursor = conn.cursor()
         query = adapt_query('''
-            INSERT INTO initiatives (title, description, image_url, is_featured)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO initiatives (title, description, image_url, is_featured, is_active)
+            VALUES (?, ?, ?, ?, ?)
         ''')
-        cursor.execute(query, (title, description, image_url, is_featured))
+        cursor.execute(query, (title, description, image_url, is_featured, '1'))
         conn.commit()
         conn.close()
         
@@ -3113,7 +3117,8 @@ def admin_volunteer_detail(volunteer_id):
         ''')
         cursor.execute(query, (volunteer_id,))
         volunteer = cursor.fetchone()
-    except sqlite3.OperationalError:
+    except Exception:
+        conn.rollback()
         # Fall back to basic volunteer info if table structure is different
         query = adapt_query('SELECT * FROM volunteers WHERE id = ?')
         cursor.execute(query, (volunteer_id,))
@@ -3507,10 +3512,10 @@ def admin_add_officer():
         conn = get_db_connection('main')
         cursor = conn.cursor()
         query = adapt_query('''
-            INSERT INTO officers (name, designation, department, phone, email, image_url, bio, position_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO officers (name, designation, department, phone, email, image_url, bio, position_order, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''')
-        cursor.execute(query, (name, designation, department, phone, email, image_url, bio, position_order))
+        cursor.execute(query, (name, designation, department, phone, email, image_url, bio, position_order, '1'))
         conn.commit()
         conn.close()
         
@@ -3776,6 +3781,7 @@ def admin_district_contacts():
         create_district_tables(cursor)
         conn.commit()
     except Exception as e:
+        conn.rollback()
         print(f"Error creating tables: {e}")
     
     # Ensure districts are populated
@@ -3793,11 +3799,15 @@ def admin_district_contacts():
         ]
         
         for i, district in enumerate(districts_list, 1):
-            cursor.execute('''
-                INSERT OR REPLACE INTO districts 
-                (id, district_name, district_code, is_active, created_at) 
-                VALUES (?, ?, ?, 1, datetime('now'))
-            ''', (i, district, district.upper().replace(' ', '_').replace('(', '').replace(')', '')))
+            query = adapt_query('''
+                INSERT INTO districts 
+                (id, district_name, district_code, is_active) 
+                VALUES (?, ?, ?, 1)
+                ON CONFLICT (id) DO UPDATE SET 
+                district_name = EXCLUDED.district_name,
+                district_code = EXCLUDED.district_code
+            ''')
+            cursor.execute(query, (i, district, district.upper().replace(' ', '_').replace('(', '').replace(')', '')))
         conn.commit()
     
     # Get all districts with their contacts
@@ -3806,7 +3816,8 @@ def admin_district_contacts():
         cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name')
         districts = cursor.fetchall()
         print(f"DEBUG: Found {len(districts)} districts")  # Debug output
-    except sqlite3.OperationalError as e:
+    except Exception as e:
+        conn.rollback()
         print(f"DEBUG: Error querying districts: {e}")  # Debug output
         # If tables don't exist, return empty list
         districts = []
@@ -3817,22 +3828,23 @@ def admin_district_contacts():
         
         # Count contacts for each type
         try:
-            query = adapt_query('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
             district_data['sp_count'] = cursor.fetchone()[0]
             
-            query = adapt_query('SELECT COUNT(*) FROM shakthi_teams WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT COUNT(*) FROM shakthi_teams WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
             district_data['teams_count'] = cursor.fetchone()[0]
             
-            query = adapt_query('SELECT COUNT(*) FROM women_police_stations WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT COUNT(*) FROM women_police_stations WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
             district_data['ps_count'] = cursor.fetchone()[0]
             
-            query = adapt_query('SELECT COUNT(*) FROM one_stop_centers WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT COUNT(*) FROM one_stop_centers WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
             district_data['center_count'] = cursor.fetchone()[0]
-        except sqlite3.OperationalError:
+        except Exception:
+            conn.rollback()
             # If tables don't exist, set counts to 0
             district_data['sp_count'] = 0
             district_data['teams_count'] = 0
@@ -3878,7 +3890,8 @@ def admin_district_contacts():
         cursor.execute('SELECT id, district_name FROM districts WHERE is_active::integer = 1 ORDER BY district_name')
         districts = cursor.fetchall()
         print(f"DEBUG: Found {len(districts)} districts")  # Debug output
-    except sqlite3.OperationalError as e:
+    except Exception as e:
+        conn.rollback()
         print(f"DEBUG: Error querying districts: {e}")  # Debug output
         # If tables don't exist, return empty list
         districts = []
@@ -3889,22 +3902,23 @@ def admin_district_contacts():
         
         # Count contacts for each type
         try:
-            query = adapt_query('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
             district_data['sp_count'] = cursor.fetchone()[0]
             
-            query = adapt_query('SELECT COUNT(*) FROM shakthi_teams WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT COUNT(*) FROM shakthi_teams WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
             district_data['teams_count'] = cursor.fetchone()[0]
             
-            query = adapt_query('SELECT COUNT(*) FROM women_police_stations WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT COUNT(*) FROM women_police_stations WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
             district_data['ps_count'] = cursor.fetchone()[0]
             
-            query = adapt_query('SELECT COUNT(*) FROM one_stop_centers WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT COUNT(*) FROM one_stop_centers WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (district_id,))
             district_data['center_count'] = cursor.fetchone()[0]
-        except sqlite3.OperationalError:
+        except Exception:
+            conn.rollback()
             # If tables don't exist, set counts to 0
             district_data['sp_count'] = 0
             district_data['teams_count'] = 0
@@ -3936,19 +3950,19 @@ def admin_manage_district_contacts(district_id):
     district_name = district[0]
     
     # Get all contacts for this district
-    query = adapt_query('SELECT id, name, contact_number, email FROM district_sps WHERE district_id = ? AND is_active = 1')
+    query = adapt_query('SELECT id, name, contact_number, email FROM district_sps WHERE district_id = ? AND is_active::integer = 1')
     cursor.execute(query, (district_id,))
     sps = cursor.fetchall()
     
-    query = adapt_query('SELECT id, team_name, leader_name, contact_number, area_covered FROM shakthi_teams WHERE district_id = ? AND is_active = 1')
+    query = adapt_query('SELECT id, team_name, leader_name, contact_number, area_covered FROM shakthi_teams WHERE district_id = ? AND is_active::integer = 1')
     cursor.execute(query, (district_id,))
     teams = cursor.fetchall()
     
-    query = adapt_query('SELECT id, station_name, incharge_name, contact_number, address FROM women_police_stations WHERE district_id = ? AND is_active = 1')
+    query = adapt_query('SELECT id, station_name, incharge_name, contact_number, address FROM women_police_stations WHERE district_id = ? AND is_active::integer = 1')
     cursor.execute(query, (district_id,))
     stations = cursor.fetchall()
     
-    query = adapt_query('SELECT id, center_name, address, incharge_name, contact_number, services_offered FROM one_stop_centers WHERE district_id = ? AND is_active = 1')
+    query = adapt_query('SELECT id, center_name, address, incharge_name, contact_number, services_offered FROM one_stop_centers WHERE district_id = ? AND is_active::integer = 1')
     cursor.execute(query, (district_id,))
     centers = cursor.fetchall()
     
@@ -3976,8 +3990,8 @@ def admin_add_district_sp(district_id):
         conn = get_db_connection('main')
         cursor = conn.cursor()
         query = adapt_query('''
-            INSERT INTO district_sps (district_id, name, contact_number, email)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO district_sps (district_id, name, contact_number, email, is_active)
+            VALUES (?, ?, ?, ?, '1')
         ''')
         cursor.execute(query, (district_id, name, contact_number, email))
         conn.commit()
@@ -4067,14 +4081,21 @@ def admin_delete_district_sp(sp_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = get_db_connection('main')
-    cursor = conn.cursor()
-    query = adapt_query('DELETE FROM district_sps WHERE id = ?')
-    cursor.execute(query, (sp_id,))
-    conn.commit()
-    conn.close()
-    
-    return '', 200
+    conn = None
+    try:
+        conn = get_db_connection('main')
+        cursor = conn.cursor()
+        query = adapt_query('DELETE FROM district_sps WHERE id = ?')
+        cursor.execute(query, (sp_id,))
+        conn.commit()
+        conn.close()
+        return '', 200
+    except Exception as e:
+        print(f"Error deleting SP: {e}")
+        if conn:
+            conn.rollback()
+            conn.close()
+        return str(e), 500
 
 # Shakthi Team Routes
 @app.route('/admin/district-contacts/add-team/<int:district_id>', methods=['GET', 'POST'])
@@ -4091,8 +4112,8 @@ def admin_add_shakthi_team(district_id):
         conn = get_db_connection('main')
         cursor = conn.cursor()
         query = adapt_query('''
-            INSERT INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered, is_active)
+            VALUES (?, ?, ?, ?, ?, '1')
         ''')
         cursor.execute(query, (district_id, team_name, leader_name, contact_number, area_covered))
         conn.commit()
@@ -4179,14 +4200,21 @@ def admin_delete_shakthi_team(team_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = get_db_connection('main')
-    cursor = conn.cursor()
-    query = adapt_query('DELETE FROM shakthi_teams WHERE id = ?')
-    cursor.execute(query, (team_id,))
-    conn.commit()
-    conn.close()
-    
-    return '', 200
+    conn = None
+    try:
+        conn = get_db_connection('main')
+        cursor = conn.cursor()
+        query = adapt_query('DELETE FROM shakthi_teams WHERE id = ?')
+        cursor.execute(query, (team_id,))
+        conn.commit()
+        conn.close()
+        return '', 200
+    except Exception as e:
+        print(f"Error deleting team: {e}")
+        if conn:
+            conn.rollback()
+            conn.close()
+        return str(e), 500
 
 # Women Police Station Routes
 @app.route('/admin/district-contacts/add-station/<int:district_id>', methods=['GET', 'POST'])
@@ -4203,8 +4231,8 @@ def admin_add_women_station(district_id):
         conn = get_db_connection('main')
         cursor = conn.cursor()
         query = adapt_query('''
-            INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address, is_active)
+            VALUES (?, ?, ?, ?, ?, '1')
         ''')
         cursor.execute(query, (district_id, station_name, incharge_name, contact_number, address))
         conn.commit()
@@ -4291,14 +4319,21 @@ def admin_delete_women_station(station_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = get_db_connection('main')
-    cursor = conn.cursor()
-    query = adapt_query('DELETE FROM women_police_stations WHERE id = ?')
-    cursor.execute(query, (station_id,))
-    conn.commit()
-    conn.close()
-    
-    return '', 200
+    conn = None
+    try:
+        conn = get_db_connection('main')
+        cursor = conn.cursor()
+        query = adapt_query('DELETE FROM women_police_stations WHERE id = ?')
+        cursor.execute(query, (station_id,))
+        conn.commit()
+        conn.close()
+        return '', 200
+    except Exception as e:
+        print(f"Error deleting station: {e}")
+        if conn:
+            conn.rollback()
+            conn.close()
+        return str(e), 500
 
 # One Stop Center Routes
 @app.route('/admin/district-contacts/add-center/<int:district_id>', methods=['GET', 'POST'])
@@ -4316,8 +4351,8 @@ def admin_add_one_stop_center(district_id):
         conn = get_db_connection('main')
         cursor = conn.cursor()
         query = adapt_query('''
-            INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, '1')
         ''')
         cursor.execute(query, (district_id, center_name, address, incharge_name, contact_number, services_offered))
         conn.commit()
@@ -4405,14 +4440,21 @@ def admin_delete_one_stop_center(center_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
     
-    conn = get_db_connection('main')
-    cursor = conn.cursor()
-    query = adapt_query('DELETE FROM one_stop_centers WHERE id = ?')
-    cursor.execute(query, (center_id,))
-    conn.commit()
-    conn.close()
-    
-    return '', 200
+    conn = None
+    try:
+        conn = get_db_connection('main')
+        cursor = conn.cursor()
+        query = adapt_query('DELETE FROM one_stop_centers WHERE id = ?')
+        cursor.execute(query, (center_id,))
+        conn.commit()
+        conn.close()
+        return '', 200
+    except Exception as e:
+        print(f"Error deleting center: {e}")
+        if conn:
+            conn.rollback()
+            conn.close()
+        return str(e), 500
 
 # Database setup route for district contacts
 @app.route('/setup-districts')
@@ -4986,10 +5028,10 @@ def fix_all_data_mapping():
         
         cursor.execute('''
             SELECT d.district_name, 
-                   (SELECT COUNT(*) FROM district_sps WHERE district_id = d.id AND is_active = 1) as sps,
-                   (SELECT COUNT(*) FROM shakthi_teams WHERE district_id = d.id AND is_active = 1) as teams,
-                   (SELECT COUNT(*) FROM women_police_stations WHERE district_id = d.id AND is_active = 1) as stations,
-                   (SELECT COUNT(*) FROM one_stop_centers WHERE district_id = d.id AND is_active = 1) as centers
+                   (SELECT COUNT(*) FROM district_sps WHERE district_id = d.id AND is_active::integer = 1) as sps,
+                   (SELECT COUNT(*) FROM shakthi_teams WHERE district_id = d.id AND is_active::integer = 1) as teams,
+                   (SELECT COUNT(*) FROM women_police_stations WHERE district_id = d.id AND is_active::integer = 1) as stations,
+                   (SELECT COUNT(*) FROM one_stop_centers WHERE district_id = d.id AND is_active::integer = 1) as centers
             FROM districts d 
             WHERE d.is_active = 1 
             ORDER BY d.district_name
@@ -5092,7 +5134,7 @@ def fix_district_mapping():
             result += f"<p>Krishna District: ID={krishna_id}</p>"
             
             # Find and move SP Vijayawada to Krishna district
-            cursor.execute('SELECT id, name, district_id FROM district_sps WHERE name LIKE "%Vijayawada%" AND is_active = 1')
+            cursor.execute('SELECT id, name, district_id FROM district_sps WHERE name LIKE "%Vijayawada%" AND is_active::integer = 1')
             vijayawada_sp = cursor.fetchone()
             
             if vijayawada_sp:
@@ -5105,7 +5147,7 @@ def fix_district_mapping():
                     result += f"<p style='color:green'>✓ Moved '{sp_name}' to Krishna district</p>"
             
             # Check if Anakapalli has any SP
-            query = adapt_query('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active = 1')
+            query = adapt_query('SELECT COUNT(*) FROM district_sps WHERE district_id = ? AND is_active::integer = 1')
             cursor.execute(query, (anakapalli_id,))
             sp_count = cursor.fetchone()[0]
             
@@ -5172,7 +5214,7 @@ def debug_district_data():
         result += f"<h3>Anakapalli Found:</h3><p>ID: {anakapalli[0]}, Name: {anakapalli[1]}</p>"
         
         # Check SPs for Anakapalli
-        query = adapt_query('SELECT id, name, district_id FROM district_sps WHERE district_id = ? AND is_active = 1')
+        query = adapt_query('SELECT id, name, district_id FROM district_sps WHERE district_id = ? AND is_active::integer = 1')
         cursor.execute(query, (anakapalli[0],))
         sps = cursor.fetchall()
         result += f"<h3>SPs in Anakapalli: {len(sps)}</h3>"
