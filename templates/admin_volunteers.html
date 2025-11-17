@@ -170,7 +170,7 @@
                                     <i class="fas fa-check"></i> Accept
                                 </button>
                             </form>
-                            <button type="button" class="btn" style="background: #dc3545; color: white;" onclick="showRejectModal({{ volunteer[0] }})">
+                            <button type="button" class="btn" style="background: #dc3545; color: white;" onclick="showRejectModal('{{ volunteer[0] }}')">
                                 <i class="fas fa-times"></i> Reject
                             </button>
                             {% endif %}
@@ -198,9 +198,12 @@
         </div>
     </div>
     
+    <!-- Volunteer data injection -->
+    <script type="application/json" id="volunteers-data">{{ volunteers|tojson|safe }}</script>
+    
     <script>
         // Store volunteer data in JavaScript
-        const volunteers = { volunteerstojson };
+        const volunteers = JSON.parse(document.getElementById('volunteers-data').textContent || '[]');
         
         function viewVolunteer(index) {
             const volunteer = volunteers[index];
@@ -323,7 +326,7 @@
                 </div>
                 <div style="margin-top: 20px;">
                     <button type="submit" class="btn" style="background: #dc3545; color: white;"><i class="fas fa-times"></i> Confirm Rejection</button>
-                    <button type="button" class="btn" onclick="closeRejectModal({{ volunteer[0] }})" style="background: #6c757d; color: white;"><i class="fas fa-arrow-left"></i> Cancel</button>
+                    <button type="button" class="btn" onclick="closeRejectModal('{{ volunteer[0] }}')" style="background: #6c757d; color: white;"><i class="fas fa-arrow-left"></i> Cancel</button>
                 </div>
             </form>
         </div>
