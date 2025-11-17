@@ -7,7 +7,6 @@ from admin_security import (init_admin_security_db, set_security_questions,
 
 csrf = CSRFProtect()
 from flask_mail import Mail, Message
-import sqlite3
 import os
 import time
 from werkzeug.utils import secure_filename
@@ -33,25 +32,26 @@ csrf.init_app(app)
 
 # Initialize database tables
 def init_db():
-    conn = sqlite3.connect('database.db')
+    conn = get_db_connection('main')
     c = conn.cursor()
     
     # Create admin credentials table
     c.execute('''CREATE TABLE IF NOT EXISTS admin_credentials (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         username TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
     # Check if default admin exists
-    c.execute('SELECT * FROM admin_credentials WHERE username = ?', ('admin',))
+    query = adapt_query('SELECT * FROM admin_credentials WHERE username = ?')
+    c.execute(query, ('admin',))
     if not c.fetchone():
         # Insert default admin with password hash
         from werkzeug.security import generate_password_hash
         default_password_hash = generate_password_hash('admin123')
-        c.execute('INSERT INTO admin_credentials (username, password_hash) VALUES (?, ?)',
-                 ('admin', default_password_hash))
+        query = adapt_query('INSERT INTO admin_credentials (username, password_hash) VALUES (?, ?)')
+        c.execute(query, ('admin', default_password_hash))
     
     conn.commit()
     conn.close()
@@ -503,7 +503,7 @@ def init_volunteer_db():
     # Create volunteers table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS volunteers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             registration_id TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
             email TEXT NOT NULL,
@@ -523,7 +523,7 @@ def init_volunteer_db():
     # Old volunteer_status table - deprecated (using volunteer_scores now)
     # cursor.execute('''
     #     CREATE TABLE IF NOT EXISTS volunteer_status (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #         id SERIAL PRIMARY KEY,
     #         volunteer_id INTEGER UNIQUE,
     #         status TEXT DEFAULT 'pending',
     #         admin_notes TEXT,
@@ -794,13 +794,13 @@ def home():
 
 # Initialize volunteer database tables
 def init_volunteer_db():
-    conn = sqlite3.connect('volunteer_system.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Create volunteers table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS volunteers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             registration_id TEXT UNIQUE,
             name TEXT NOT NULL,
             email TEXT,
@@ -820,7 +820,7 @@ def init_volunteer_db():
     # Old volunteer status table - deprecated (using volunteer_scores now)
     # cursor.execute('''
     #     CREATE TABLE IF NOT EXISTS volunteer_status (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #         id SERIAL PRIMARY KEY,
     #         volunteer_id INTEGER,
     #         status TEXT DEFAULT 'pending',
     #         notes TEXT,
@@ -836,7 +836,7 @@ def init_volunteer_db():
 init_volunteer_db()
 
 def generate_volunteer_id():
-    conn = sqlite3.connect('volunteer_system.db')
+    conn = get_db_connection('main')
     cursor = conn.cursor()
     
     # Get the current year
@@ -928,7 +928,7 @@ def update_districts_db():
     # Create districts table if not exists
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS districts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             district_name TEXT NOT NULL UNIQUE,
             district_code TEXT,
             is_active BOOLEAN DEFAULT 1,
@@ -986,7 +986,7 @@ def test_districts_check():
     
     # Check if districts table exists and has data
     try:
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='districts'")
+        cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts')")
         table_exists = cursor.fetchone()
         
         if table_exists:
@@ -1368,7 +1368,7 @@ def check_districts_table():
     
     try:
         # Check if table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='districts'")
+        cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts')")
         table_exists = cursor.fetchone()
         output += f"<p>Table exists: {table_exists is not None}</p>"
         
@@ -1426,7 +1426,7 @@ def db_status():
         cursor = conn.cursor()
         
         # Check if districts table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='districts'")
+        cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts')")
         table_exists = cursor.fetchone()
         output += f"<p>Districts table exists: {table_exists is not None}</p>"
         
@@ -1793,7 +1793,7 @@ def create_district_tables(cursor):
     # Create Districts table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS districts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             district_name TEXT NOT NULL UNIQUE,
             district_code TEXT,
             is_active BOOLEAN DEFAULT 1,
@@ -1804,7 +1804,7 @@ def create_district_tables(cursor):
     # Create District SPs table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS district_sps (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             district_id INTEGER,
             sp_name TEXT NOT NULL,
             contact_number TEXT,
@@ -1818,7 +1818,7 @@ def create_district_tables(cursor):
     # Create Shakthi Teams table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS shakthi_teams (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             district_id INTEGER,
             team_name TEXT NOT NULL,
             incharge_name TEXT,
@@ -1833,7 +1833,7 @@ def create_district_tables(cursor):
     # Create Women Police Stations table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS women_police_stations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             district_id INTEGER,
             station_name TEXT NOT NULL,
             incharge_name TEXT,
@@ -1848,7 +1848,7 @@ def create_district_tables(cursor):
     # Create One Stop Centers table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS one_stop_centers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             district_id INTEGER,
             center_name TEXT NOT NULL,
             address TEXT,
@@ -1892,14 +1892,14 @@ def create_district_tables(cursor):
     ]
     
     cursor.executemany('''
-        INSERT OR IGNORE INTO districts (district_name, district_code) 
+        INSERT INTO districts (district_name, district_code) 
         VALUES (?, ?)
     ''', districts_data)
     
     # Insert sample data
     # Sample District SPs
     cursor.execute('''
-        INSERT OR IGNORE INTO district_sps (district_id, sp_name, contact_number, email)
+        INSERT INTO district_sps (district_id, sp_name, contact_number, email)
         SELECT id, 'SP ' || district_name, '+91-' || CAST((8000000000 + (id * 1000000)) AS TEXT), 
                LOWER(district_name) || '.sp@appolice.gov.in'
         FROM districts WHERE is_active::integer = 1
@@ -1909,7 +1909,7 @@ def create_district_tables(cursor):
     sample_teams = ['Team Alpha', 'Team Beta', 'Team Gamma']
     for i, team in enumerate(sample_teams):
         cursor.execute('''
-            INSERT OR IGNORE INTO shakthi_teams (district_id, team_name, incharge_name, contact_number, area_coverage)
+            INSERT INTO shakthi_teams (district_id, team_name, incharge_name, contact_number, area_coverage)
             SELECT id, ?, 'Inspector ' || ?, '+91-' || CAST((9000000000 + (id * 100000) + ?) AS TEXT), 
                    'Zone ' || CAST(? AS TEXT)
             FROM districts WHERE is_active::integer = 1
@@ -1917,7 +1917,7 @@ def create_district_tables(cursor):
     
     # Sample Women Police Stations
     cursor.execute('''
-        INSERT OR IGNORE INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
+        INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
         SELECT id, district_name || ' Women PS', 'CI ' || district_name, 
                '+91-' || CAST((7000000000 + (id * 1000000)) AS TEXT),
                'Women Police Station, ' || district_name
@@ -1926,7 +1926,7 @@ def create_district_tables(cursor):
     
     # Sample One Stop Centers
     cursor.execute('''
-        INSERT OR IGNORE INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
+        INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
         SELECT id, district_name || ' One Stop Center', 
                'One Stop Center, Collectorate Complex, ' || district_name,
                'Coordinator ' || district_name,
@@ -1977,9 +1977,10 @@ def admin_login():
                 return render_template('admin_login.html')
             
             # Get admin credentials from database
-            conn = sqlite3.connect('database.db')
+            conn = get_db_connection('main')
             c = conn.cursor()
-            c.execute('SELECT id, password_hash FROM admin_credentials WHERE username = ?', (username,))
+            query = adapt_query('SELECT id, password_hash FROM admin_credentials WHERE username = ?')
+            c.execute(query, (username,))
             admin = c.fetchone()
             conn.close()
 
@@ -2055,11 +2056,12 @@ def change_admin_password():
         # Update password in database
         conn = None
         try:
-            conn = sqlite3.connect('database.db')
+            conn = get_db_connection('main')
             c = conn.cursor()
             
             # First verify current password
-            c.execute('SELECT password_hash FROM admin_credentials WHERE id = ?', (session['admin_id'],))
+            query = adapt_query('SELECT password_hash FROM admin_credentials WHERE id = ?')
+            c.execute(query, (session['admin_id'],))
             current_hash = c.fetchone()
             
             if not current_hash:
@@ -2076,8 +2078,8 @@ def change_admin_password():
             
             # Update with new password
             new_password_hash = generate_password_hash(new_password)
-            c.execute('UPDATE admin_credentials SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                     (new_password_hash, session['admin_id']))
+            query = adapt_query('UPDATE admin_credentials SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+            c.execute(query, (new_password_hash, session['admin_id']))
             conn.commit()
             
             print("Password updated successfully")
@@ -4470,7 +4472,7 @@ def setup_districts():
         # Create Districts table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS districts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
                 district_code TEXT,
                 is_active BOOLEAN DEFAULT 1,
@@ -4481,7 +4483,7 @@ def setup_districts():
         # Create District SPs table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS district_sps (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 district_id INTEGER,
                 name TEXT NOT NULL,
                 contact_number TEXT,
@@ -4495,7 +4497,7 @@ def setup_districts():
         # Create Shakthi Teams table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS shakthi_teams (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 district_id INTEGER,
                 team_name TEXT NOT NULL,
                 leader_name TEXT,
@@ -4510,7 +4512,7 @@ def setup_districts():
         # Create Women Police Stations table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS women_police_stations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 district_id INTEGER,
                 station_name TEXT NOT NULL,
                 incharge_name TEXT,
@@ -4525,7 +4527,7 @@ def setup_districts():
         # Create One Stop Centers table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS one_stop_centers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 district_id INTEGER,
                 center_name TEXT NOT NULL,
                 address TEXT,
@@ -4570,14 +4572,14 @@ def setup_districts():
         
         for district_name, district_code in districts_data:
             query = adapt_query('''
-                INSERT OR IGNORE INTO districts (name, district_code) 
+                INSERT INTO districts (name, district_code) 
                 VALUES (?, ?)
             ''')
             cursor.execute(query, (district_name, district_code))
         
         # Insert sample District SPs
         cursor.execute('''
-            INSERT OR IGNORE INTO district_sps (district_id, name, contact_number, email)
+            INSERT INTO district_sps (district_id, name, contact_number, email)
             SELECT id, 'SP ' || name, '+91-' || CAST((8000000000 + (id * 1000000)) AS TEXT), 
                    LOWER(REPLACE(name, ' ', '')) || '.sp@appolice.gov.in'
             FROM districts WHERE is_active::integer = 1
@@ -4587,7 +4589,7 @@ def setup_districts():
         team_names = ['Urban Protection Team', 'Rural Safety Team', 'Highway Patrol Team']
         for i, team_name in enumerate(team_names):
             cursor.execute('''
-                INSERT OR IGNORE INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered)
+                INSERT INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered)
                 SELECT id, ?, 'Inspector ' || SUBSTR(name, 1, 3) || '-' || ?, 
                        '+91-' || CAST((9000000000 + (id * 100000) + ?) AS TEXT), 
                        CASE ? 
@@ -4600,7 +4602,7 @@ def setup_districts():
         
         # Insert sample Women Police Stations
         cursor.execute('''
-            INSERT OR IGNORE INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
+            INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
             SELECT id, name || ' Women Police Station', 'CI ' || name, 
                    '+91-' || CAST((7000000000 + (id * 1000000)) AS TEXT),
                    'Women Police Station, ' || name || ' District'
@@ -4609,7 +4611,7 @@ def setup_districts():
         
         # Insert sample One Stop Centers
         cursor.execute('''
-            INSERT OR IGNORE INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
+            INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
             SELECT id, name || ' One Stop Center', 
                    'One Stop Center, Collectorate Complex, ' || name,
                    'Coordinator ' || name,
@@ -4634,7 +4636,7 @@ def debug_districts():
         cursor = conn.cursor()
         
         # Check if tables exist
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%district%'")
+        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%district%'")
         tables = cursor.fetchall()
         
         result = '<h1>Database Debug Info</h1>'
@@ -4682,7 +4684,7 @@ def force_setup():
         # Create Districts table
         cursor.execute('''
             CREATE TABLE districts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
                 district_code TEXT,
                 is_active BOOLEAN DEFAULT 1,
@@ -4693,7 +4695,7 @@ def force_setup():
         # Create District SPs table
         cursor.execute('''
             CREATE TABLE district_sps (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 district_id INTEGER,
                 name TEXT NOT NULL,
                 contact_number TEXT,
@@ -4707,7 +4709,7 @@ def force_setup():
         # Create Shakthi Teams table
         cursor.execute('''
             CREATE TABLE shakthi_teams (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 district_id INTEGER,
                 team_name TEXT NOT NULL,
                 leader_name TEXT,
@@ -4722,7 +4724,7 @@ def force_setup():
         # Create Women Police Stations table
         cursor.execute('''
             CREATE TABLE women_police_stations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 district_id INTEGER,
                 station_name TEXT NOT NULL,
                 incharge_name TEXT,
@@ -4737,7 +4739,7 @@ def force_setup():
         # Create One Stop Centers table
         cursor.execute('''
             CREATE TABLE one_stop_centers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 district_id INTEGER,
                 center_name TEXT NOT NULL,
                 address TEXT,
