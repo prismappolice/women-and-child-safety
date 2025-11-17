@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Admin - Volunteers Management</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css?v={{ timestamp if timestamp else '1' }}">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f5f5f5; }
@@ -133,9 +136,9 @@
                         <td>{{ volunteer[3] }}</td>
                         <td>
                             {% if volunteer[16] %}
-                                <span class="status-badge status-{{ 'approved' if volunteer[16] == 'approved' else ('rejected' if volunteer[16] == 'rejected' else 'pending') }}">
-                                    {% if volunteer[16] == 'approved' %}
-                                        Approved
+                                <span class="status-badge status-{{ 'approved' if volunteer[16] in ['approved', 'accepted'] else ('rejected' if volunteer[16] == 'rejected' else 'pending') }}">
+                                    {% if volunteer[16] in ['approved', 'accepted'] %}
+                                        Accepted
                                     {% elif volunteer[16] == 'rejected' %}
                                         Rejected
                                     {% elif volunteer[16] == 'high_priority' %}
@@ -154,7 +157,7 @@
                             <div style="font-size: 0.85em; color: #666;">{{ volunteer[10].split()[1] if volunteer[10] and ' ' in volunteer[10] else '' }}</div>
                         </td>
                         <td class="action-btns">
-                            {% if volunteer[16] == 'pending' or volunteer[16] == 'high_priority' or not volunteer[16] %}
+                            {% if volunteer[16] not in ['approved', 'accepted', 'rejected'] %}
                             <form method="POST" action="{{ url_for('admin_hold_volunteer', volunteer_id=volunteer[0]) }}" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <button type="submit" class="btn" style="background: #ffc107; color: #212529;">
@@ -328,5 +331,35 @@
     {% endfor %}
     
     <script src="/static/js/admin-security.js"></script>
+    
+    <script>
+        // Force refresh on page load to prevent caching
+        window.onload = function() {
+            // Check if we just came from an action (look for success/error messages)
+            if (document.querySelector('.alert') || window.location.search.includes('t=')) {
+                // Clear cache and reload if necessary
+                setTimeout(function() {
+                    if (performance.navigation.type !== performance.navigation.TYPE_RELOAD) {
+                        window.location.href = window.location.pathname + '?t=' + new Date().getTime();
+                    }
+                }, 100);
+            }
+        };
+        
+        // Add timestamp to all form submissions to prevent cache issues
+        document.addEventListener('DOMContentLoaded', function() {
+            const forms = document.querySelectorAll('form');
+            forms.forEach(function(form) {
+                form.addEventListener('submit', function() {
+                    // Add timestamp to prevent cache
+                    const timestampField = document.createElement('input');
+                    timestampField.type = 'hidden';
+                    timestampField.name = '_t';
+                    timestampField.value = new Date().getTime();
+                    form.appendChild(timestampField);
+                });
+            });
+        });
+    </script>
 </body>
 </html>

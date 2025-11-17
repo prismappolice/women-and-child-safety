@@ -170,17 +170,17 @@ def init_volunteer_tables():
             )
         ''')
 
-        # Create volunteer_status table only if it doesn't exist (preserves existing data)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS volunteer_status (
-                id SERIAL PRIMARY KEY,
-                volunteer_id INTEGER UNIQUE,
-                status TEXT DEFAULT 'pending',
-                admin_notes TEXT,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
-            )
-        ''')
+        # Old volunteer_status table deprecated - using volunteer_scores instead
+        # cursor.execute('''
+        #     CREATE TABLE IF NOT EXISTS volunteer_status (
+        #         id SERIAL PRIMARY KEY,
+        #         volunteer_id INTEGER UNIQUE,
+        #         status TEXT DEFAULT 'pending',
+        #         admin_notes TEXT,
+        #         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        #         FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
+        #     )
+        # ''')
         
         conn.commit()
         print("Volunteer tables initialized successfully - data preserved")
@@ -206,7 +206,7 @@ def manage_volunteers():
         cursor = conn.cursor()
         
         # Get all columns with proper aliases
-        cursor.execute('''
+        query = adapt_query('''
             SELECT 
                 v.id,
                 v.registration_id,
@@ -222,12 +222,13 @@ def manage_volunteers():
                 v.availability,
                 v.skills,
                 v.created_at,
-                vs.status,
-                vs.updated_at
+                COALESCE(vs.status, 'pending') as status,
+                COALESCE(vs.created_at, v.created_at) as updated_at
             FROM volunteers v 
-            LEFT JOIN volunteer_status vs ON v.id = vs.volunteer_id 
+            LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id 
             ORDER BY v.created_at DESC
         ''')
+        cursor.execute(query)
         
         columns = ['id', 'registration_id', 'name', 'email', 'phone', 'age', 'address', 
                   'occupation', 'education', 'experience', 'motivation', 'availability', 
@@ -376,10 +377,10 @@ def volunteer_registration():
                 cursor.execute('SELECT currval(pg_get_serial_sequence(%s, %s))', ('volunteers', 'id'))
                 volunteer_id = cursor.fetchone()[0]
             
-            # Insert status record
+            # Insert initial score record (status will be 'pending' by default if null)
             query = adapt_query('''
-                INSERT INTO volunteer_status (volunteer_id, status)
-                VALUES (?, 'pending')
+                INSERT INTO volunteer_scores (volunteer_id, status, admin_notes)
+                VALUES (?, 'pending', 'New volunteer application')
             ''')
             cursor.execute(query, (volunteer_id,))
 
@@ -519,17 +520,17 @@ def init_volunteer_db():
         )
     ''')
     
-    # Create volunteer_status table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS volunteer_status (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            volunteer_id INTEGER UNIQUE,
-            status TEXT DEFAULT 'pending',
-            admin_notes TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
-        )
-    ''')
+    # Old volunteer_status table - deprecated (using volunteer_scores now)
+    # cursor.execute('''
+    #     CREATE TABLE IF NOT EXISTS volunteer_status (
+    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #         volunteer_id INTEGER UNIQUE,
+    #         status TEXT DEFAULT 'pending',
+    #         admin_notes TEXT,
+    #         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    #         FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
+    #     )
+    # ''')
     
     conn.commit()
     conn.close()
@@ -731,17 +732,17 @@ def init_db():
         )
     ''')
     
-    # Create volunteer status table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS volunteer_status (
-            id SERIAL PRIMARY KEY,
-            volunteer_id INTEGER UNIQUE,
-            status TEXT DEFAULT 'pending',
-            admin_notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
-        )
-    ''')
+    # Old volunteer status table - deprecated (using volunteer_scores now)
+    # cursor.execute('''
+    #     CREATE TABLE IF NOT EXISTS volunteer_status (
+    #         id SERIAL PRIMARY KEY,
+    #         volunteer_id INTEGER UNIQUE,
+    #         status TEXT DEFAULT 'pending',
+    #         admin_notes TEXT,
+    #         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    #         FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
+    #     )
+    # ''')
     
     # Create admin_settings table for email configuration
     cursor.execute('''
@@ -816,17 +817,17 @@ def init_volunteer_db():
         )
     ''')
     
-    # Create volunteer status table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS volunteer_status (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            volunteer_id INTEGER,
-            status TEXT DEFAULT 'pending',
-            notes TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (volunteer_id) REFERENCES volunteers(id)
-        )
-    ''')
+    # Old volunteer status table - deprecated (using volunteer_scores now)
+    # cursor.execute('''
+    #     CREATE TABLE IF NOT EXISTS volunteer_status (
+    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #         volunteer_id INTEGER,
+    #         status TEXT DEFAULT 'pending',
+    #         notes TEXT,
+    #         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    #         FOREIGN KEY (volunteer_id) REFERENCES volunteers(id)
+    #     )
+    # ''')
     
     conn.commit()
     conn.close()
@@ -2156,14 +2157,14 @@ def admin_dashboard():
     # Count volunteers with pending status (including those without status records)
     query = adapt_query('''
         SELECT COUNT(*) FROM volunteers v 
-        LEFT JOIN volunteer_status vs ON v.id = vs.volunteer_id 
+        LEFT JOIN volunteer_scores vs ON v.id = vs.volunteer_id 
         WHERE vs.status = ? OR vs.status IS NULL
     ''')
     cursor.execute(query, ('pending',))
     pending_volunteers = cursor.fetchone()[0] or 0
     
-    query = adapt_query('SELECT COUNT(*) FROM volunteer_status WHERE status = ?')
-    cursor.execute(query, ('accepted',))
+    query = adapt_query('SELECT COUNT(*) FROM volunteer_scores WHERE status IN (?, ?)')
+    cursor.execute(query, ('accepted', 'approved'))
     accepted_volunteers = cursor.fetchone()[0] or 0
     
     query = adapt_query('SELECT COUNT(*) FROM gallery_items WHERE category = ? AND is_active = 1')
@@ -3092,10 +3093,13 @@ def admin_volunteers():
     
     conn.close()
     
-    response = make_response(render_template('admin_volunteers.html', volunteers=volunteers, volunteer_emails=volunteer_emails))
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    import time
+    timestamp = int(time.time())
+    response = make_response(render_template('admin_volunteers.html', volunteers=volunteers, volunteer_emails=volunteer_emails, timestamp=timestamp))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
+    response.headers['Last-Modified'] = 'Thu, 01 Jan 1970 00:00:00 GMT'
     return response
 
 @app.route('/admin/volunteers/detail/<int:volunteer_id>')
