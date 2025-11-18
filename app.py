@@ -4,13 +4,17 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from admin_security import (init_admin_security_db, set_security_questions, 
                          get_security_questions, verify_security_questions, 
                          check_session_timeout, verify_answer)
+import secrets
+from urllib.parse import quote
 
 csrf = CSRFProtect()
 from flask_mail import Mail, Message
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import os
 import time
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 from db_config import get_db_connection, adapt_query
 
@@ -32,29 +36,53 @@ csrf.init_app(app)
 
 # Initialize database tables
 def init_db():
-    conn = get_db_connection('main')
-    c = conn.cursor()
-    
-    # Create admin credentials table
-    c.execute('''CREATE TABLE IF NOT EXISTS admin_credentials (
-        id SERIAL PRIMARY KEY,
-        username TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Check if default admin exists
-    query = adapt_query('SELECT * FROM admin_credentials WHERE username = ?')
-    c.execute(query, ('admin',))
-    if not c.fetchone():
-        # Insert default admin with password hash
-        from werkzeug.security import generate_password_hash
-        default_password_hash = generate_password_hash('admin123')
-        query = adapt_query('INSERT INTO admin_credentials (username, password_hash) VALUES (?, ?)')
-        c.execute(query, ('admin', default_password_hash))
-    
-    conn.commit()
-    conn.close()
+    conn = None
+    try:
+        conn = get_db_connection('admin')
+        cursor = conn.cursor()
+        
+        # Create admin credentials table
+        cursor.execute('''CREATE TABLE IF NOT EXISTS admin_credentials (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Create password reset tokens table
+        cursor.execute('''CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id SERIAL PRIMARY KEY,
+            admin_id INTEGER NOT NULL,
+            token TEXT UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NOT NULL,
+            used INTEGER DEFAULT 0,
+            FOREIGN KEY (admin_id) REFERENCES admin_credentials (id)
+        )''')
+        
+        # Check if default admin exists
+        cursor.execute('SELECT * FROM admin_credentials WHERE username = %s', ('admin',))
+        if not cursor.fetchone():
+            # Insert default admin with password hash
+            from werkzeug.security import generate_password_hash
+            default_password_hash = generate_password_hash('admin123')
+            cursor.execute('INSERT INTO admin_credentials (username, password_hash) VALUES (%s, %s)',
+                         ('admin', default_password_hash))
+        
+        conn.commit()
+        conn.close()
+        print("✅ Admin database initialized successfully")
+    except psycopg2.Error as e:
+        print(f"⚠️ PostgreSQL error initializing admin database: {e}")
+        print("💡 Make sure PostgreSQL is running and databases are created")
+        print("💡 Run: python test_postgres_connection.py")
+        if conn:
+            conn.close()
+    except Exception as e:
+        print(f"⚠️ Error initializing admin database: {e}")
+        if conn:
+            conn.close()
+        # Don't crash if DB init fails - may be on first run
 
 # Initialize databases
 init_db()
@@ -102,35 +130,44 @@ def add_security_headers(response):
 # Validate admin session before each request to admin routes
 @app.before_request
 def check_admin_authorization():
-    # Skip auth check for static files and login routes
+    # Public routes that don't require login
+    public_routes = [
+        '/admin-login',
+        '/admin-forgot-password',
+        '/admin-forgot-password/',
+        '/forgot-password',
+        '/admin/logout'
+    ]
+    # Debug: print the current request path for troubleshooting
+    print(f"[DEBUG] Incoming request.path: {request.path}")
+    
+    # Skip auth check for static files, public routes, and non-admin paths
     if (request.path.startswith('/static/') or
-        request.path == '/admin-login' or
-        request.path == '/admin/logout' or
+        request.path in public_routes or
         not request.path.startswith('/admin')):
         return
     
-    # Check if trying to access admin area
-    if request.path.startswith('/admin') or 'admin' in request.path:
-        # Verify admin is properly logged in with all required session data
-        if not all([
-            session.get('admin_logged_in'),
-            session.get('login_time'),
-            session.get('admin_id')
-        ]):
-            # Clear any partial session data for security
-            session.clear()
-            flash('Please login to access admin area', 'error')
-            return redirect(url_for('admin_login'))
-        
-        # Check session age (auto-logout after 2 hours of inactivity)
-        login_time = datetime.strptime(session['login_time'], '%Y-%m-%d %H:%M:%S')
-        if (datetime.now() - login_time).total_seconds() > 7200:  # 2 hours
-            session.clear()
-            flash('Session expired. Please login again.', 'warning')
-            return redirect(url_for('admin_login'))
+    # At this point, it's a protected admin route — enforce login
+    if not all([
+        session.get('admin_logged_in'),
+        session.get('login_time'),
+        session.get('admin_id')
+    ]):
+        # Clear any partial session data for security
+        session.clear()
+        flash('Please login to access admin area', 'error')
+        return redirect(url_for('admin_login'))
+    
+    # Check session age (auto-logout after 2 hours of inactivity)
+    login_time = datetime.strptime(session['login_time'], '%Y-%m-%d %H:%M:%S')
+    if (datetime.now() - login_time).total_seconds() > 7200:  # 2 hours
+        session.clear()
+        flash('Session expired. Please login again.', 'warning')
+        return redirect(url_for('admin_login'))
 
 # Initialize volunteer tables on app startup
 def init_volunteer_tables():
+    conn = None
     try:
         conn = get_db_connection('main')
         cursor = conn.cursor()
@@ -138,7 +175,7 @@ def init_volunteer_tables():
         # Check if volunteers table exists (PostgreSQL syntax)
         cursor.execute("""
             SELECT EXISTS (
-                SELECT FROM information_schema.tables 
+                SELECT 1 FROM information_schema.tables 
                 WHERE table_schema = 'public' 
                 AND table_name = 'volunteers'
             )
@@ -146,9 +183,9 @@ def init_volunteer_tables():
         volunteers_table_exists = cursor.fetchone()[0]
         
         if volunteers_table_exists:
-            print("Volunteers table already exists - preserving data")
+            print("✅ Volunteers table already exists - preserving data")
         else:
-            print("Creating volunteers table for first time")
+            print("📝 Creating volunteers table for first time")
         
         # Create volunteers table only if it doesn't exist (preserves existing data)
         cursor.execute('''
@@ -156,10 +193,10 @@ def init_volunteer_tables():
                 id SERIAL PRIMARY KEY,
                 registration_id TEXT UNIQUE NOT NULL,
                 name TEXT NOT NULL,
-                email TEXT NOT NULL,
-                phone TEXT NOT NULL UNIQUE,
+                email TEXT,
+                phone TEXT UNIQUE,
                 age INTEGER,
-                address TEXT NOT NULL,
+                address TEXT,
                 occupation TEXT,
                 education TEXT,
                 experience TEXT,
@@ -170,22 +207,10 @@ def init_volunteer_tables():
             )
         ''')
 
-        # Old volunteer_status table deprecated - using volunteer_scores instead
-        # cursor.execute('''
-        #     CREATE TABLE IF NOT EXISTS volunteer_status (
-        #         id SERIAL PRIMARY KEY,
-        #         volunteer_id INTEGER UNIQUE,
-        #         status TEXT DEFAULT 'pending',
-        #         admin_notes TEXT,
-        #         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        #         FOREIGN KEY (volunteer_id) REFERENCES volunteers (id)
-        #     )
-        # ''')
-        
         conn.commit()
-        print("Volunteer tables initialized successfully - data preserved")
+        print("✅ Volunteer tables initialized successfully - data preserved")
     except Exception as e:
-        print(f"Error initializing volunteer tables: {e}")
+        print(f"⚠️ Error initializing volunteer tables: {e}")
         import traceback
         traceback.print_exc()
     finally:
@@ -503,7 +528,7 @@ def init_volunteer_db():
     # Create volunteers table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS volunteers (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             registration_id TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
             email TEXT NOT NULL,
@@ -523,7 +548,7 @@ def init_volunteer_db():
     # Old volunteer_status table - deprecated (using volunteer_scores now)
     # cursor.execute('''
     #     CREATE TABLE IF NOT EXISTS volunteer_status (
-    #         id SERIAL PRIMARY KEY,
+    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
     #         volunteer_id INTEGER UNIQUE,
     #         status TEXT DEFAULT 'pending',
     #         admin_notes TEXT,
@@ -794,43 +819,35 @@ def home():
 
 # Initialize volunteer database tables
 def init_volunteer_db():
-    conn = get_db_connection('main')
-    cursor = conn.cursor()
-    
-    # Create volunteers table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS volunteers (
-            id SERIAL PRIMARY KEY,
-            registration_id TEXT UNIQUE,
-            name TEXT NOT NULL,
-            email TEXT,
-            phone TEXT UNIQUE,
-            age INTEGER,
-            address TEXT,
-            occupation TEXT,
-            education TEXT,
-            experience TEXT,
-            motivation TEXT,
-            availability TEXT,
-            skills TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Old volunteer status table - deprecated (using volunteer_scores now)
-    # cursor.execute('''
-    #     CREATE TABLE IF NOT EXISTS volunteer_status (
-    #         id SERIAL PRIMARY KEY,
-    #         volunteer_id INTEGER,
-    #         status TEXT DEFAULT 'pending',
-    #         notes TEXT,
-    #         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    #         FOREIGN KEY (volunteer_id) REFERENCES volunteers(id)
-    #     )
-    # ''')
-    
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db_connection('main')
+        cursor = conn.cursor()
+        
+        # Create volunteers table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS volunteers (
+                id SERIAL PRIMARY KEY,
+                registration_id TEXT UNIQUE,
+                name TEXT NOT NULL,
+                email TEXT,
+                phone TEXT UNIQUE,
+                age INTEGER,
+                address TEXT,
+                occupation TEXT,
+                education TEXT,
+                experience TEXT,
+                motivation TEXT,
+                availability TEXT,
+                skills TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        print("✅ Volunteer database initialized successfully")
+    except psycopg2.Error as e:
+        print(f"❌ Error initializing volunteer database: {e}")
 
 # Initialize volunteer database
 init_volunteer_db()
@@ -843,7 +860,7 @@ def generate_volunteer_id():
     year = datetime.now().year
     
     # Get the last registration number for this year
-    query = adapt_query('SELECT registration_id FROM volunteers WHERE registration_id LIKE ? ORDER BY id DESC LIMIT 1')
+    query = f'SELECT registration_id FROM volunteers WHERE registration_id LIKE %s ORDER BY id DESC LIMIT 1'
     cursor.execute(query, (f'VOL-{year}-%',))
     last_reg = cursor.fetchone()
     
@@ -928,7 +945,7 @@ def update_districts_db():
     # Create districts table if not exists
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS districts (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             district_name TEXT NOT NULL UNIQUE,
             district_code TEXT,
             is_active BOOLEAN DEFAULT 1,
@@ -986,7 +1003,7 @@ def test_districts_check():
     
     # Check if districts table exists and has data
     try:
-        cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts')")
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='districts'")
         table_exists = cursor.fetchone()
         
         if table_exists:
@@ -1368,7 +1385,7 @@ def check_districts_table():
     
     try:
         # Check if table exists
-        cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts')")
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='districts'")
         table_exists = cursor.fetchone()
         output += f"<p>Table exists: {table_exists is not None}</p>"
         
@@ -1426,7 +1443,7 @@ def db_status():
         cursor = conn.cursor()
         
         # Check if districts table exists
-        cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'districts')")
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='districts'")
         table_exists = cursor.fetchone()
         output += f"<p>Districts table exists: {table_exists is not None}</p>"
         
@@ -1793,7 +1810,7 @@ def create_district_tables(cursor):
     # Create Districts table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS districts (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             district_name TEXT NOT NULL UNIQUE,
             district_code TEXT,
             is_active BOOLEAN DEFAULT 1,
@@ -1804,7 +1821,7 @@ def create_district_tables(cursor):
     # Create District SPs table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS district_sps (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             district_id INTEGER,
             sp_name TEXT NOT NULL,
             contact_number TEXT,
@@ -1818,7 +1835,7 @@ def create_district_tables(cursor):
     # Create Shakthi Teams table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS shakthi_teams (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             district_id INTEGER,
             team_name TEXT NOT NULL,
             incharge_name TEXT,
@@ -1833,7 +1850,7 @@ def create_district_tables(cursor):
     # Create Women Police Stations table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS women_police_stations (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             district_id INTEGER,
             station_name TEXT NOT NULL,
             incharge_name TEXT,
@@ -1848,7 +1865,7 @@ def create_district_tables(cursor):
     # Create One Stop Centers table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS one_stop_centers (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             district_id INTEGER,
             center_name TEXT NOT NULL,
             address TEXT,
@@ -1892,14 +1909,14 @@ def create_district_tables(cursor):
     ]
     
     cursor.executemany('''
-        INSERT INTO districts (district_name, district_code) 
+        INSERT OR IGNORE INTO districts (district_name, district_code) 
         VALUES (?, ?)
     ''', districts_data)
     
     # Insert sample data
     # Sample District SPs
     cursor.execute('''
-        INSERT INTO district_sps (district_id, sp_name, contact_number, email)
+        INSERT OR IGNORE INTO district_sps (district_id, sp_name, contact_number, email)
         SELECT id, 'SP ' || district_name, '+91-' || CAST((8000000000 + (id * 1000000)) AS TEXT), 
                LOWER(district_name) || '.sp@appolice.gov.in'
         FROM districts WHERE is_active::integer = 1
@@ -1909,7 +1926,7 @@ def create_district_tables(cursor):
     sample_teams = ['Team Alpha', 'Team Beta', 'Team Gamma']
     for i, team in enumerate(sample_teams):
         cursor.execute('''
-            INSERT INTO shakthi_teams (district_id, team_name, incharge_name, contact_number, area_coverage)
+            INSERT OR IGNORE INTO shakthi_teams (district_id, team_name, incharge_name, contact_number, area_coverage)
             SELECT id, ?, 'Inspector ' || ?, '+91-' || CAST((9000000000 + (id * 100000) + ?) AS TEXT), 
                    'Zone ' || CAST(? AS TEXT)
             FROM districts WHERE is_active::integer = 1
@@ -1917,7 +1934,7 @@ def create_district_tables(cursor):
     
     # Sample Women Police Stations
     cursor.execute('''
-        INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
+        INSERT OR IGNORE INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
         SELECT id, district_name || ' Women PS', 'CI ' || district_name, 
                '+91-' || CAST((7000000000 + (id * 1000000)) AS TEXT),
                'Women Police Station, ' || district_name
@@ -1926,7 +1943,7 @@ def create_district_tables(cursor):
     
     # Sample One Stop Centers
     cursor.execute('''
-        INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
+        INSERT OR IGNORE INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
         SELECT id, district_name || ' One Stop Center', 
                'One Stop Center, Collectorate Complex, ' || district_name,
                'Coordinator ' || district_name,
@@ -1977,11 +1994,10 @@ def admin_login():
                 return render_template('admin_login.html')
             
             # Get admin credentials from database
-            conn = get_db_connection('main')
-            c = conn.cursor()
-            query = adapt_query('SELECT id, password_hash FROM admin_credentials WHERE username = ?')
-            c.execute(query, (username,))
-            admin = c.fetchone()
+            conn = get_db_connection('admin')
+            cursor = conn.cursor()
+            cursor.execute('SELECT id, password_hash FROM admin_credentials WHERE username = %s', (username,))
+            admin = cursor.fetchone()
             conn.close()
 
             if admin and check_password_hash(admin[1], password):
@@ -2024,6 +2040,162 @@ def admin_login():
         flash('An error occurred during login. Please try again.', 'error')
         return render_template('admin_login.html')
 
+
+@app.route('/admin-forgot-password', methods=['GET', 'POST'])
+def admin_forgot_password():
+    """Email-based password reset: enter username -> email sent with reset link"""
+    try:
+        if request.method == 'POST':
+            username = request.form.get('username', '').strip()
+            print(f"[FORGOT-PASSWORD] Username submitted: {username}")
+            
+            if not username:
+                flash('Username is required', 'danger')
+                return render_template('admin_forgot_password.html', step=1)
+            
+            # Check user exists
+            conn = get_db_connection('admin')
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM admin_credentials WHERE username = %s', (username,))
+            user = cursor.fetchone()
+            
+            if not user:
+                print(f"[FORGOT-PASSWORD] User '{username}' not found")
+                flash('No admin user found with that username', 'danger')
+                conn.close()
+                return render_template('admin_forgot_password.html', step=1)
+            
+            admin_id = user[0]
+            print(f"[FORGOT-PASSWORD] User found with ID: {admin_id}")
+            
+            # Generate secure token (valid for 1 hour)
+            token = secrets.token_urlsafe(32)
+            expires_at = datetime.now() + timedelta(hours=1)
+            
+            # Store token in database
+            cursor.execute('''INSERT INTO password_reset_tokens (admin_id, token, expires_at) 
+                        VALUES (%s, %s, %s)''', (admin_id, token, expires_at))
+            conn.commit()
+            conn.close()
+            print(f"[FORGOT-PASSWORD] Reset token generated and stored for user ID {admin_id}")
+            
+            # Create reset link
+            reset_link = url_for('reset_password_with_token', token=token, _external=True)
+            print(f"[FORGOT-PASSWORD] Reset link: {reset_link}")
+            
+            # Send email with reset link
+            try:
+                msg = Message(
+                    subject='Password Reset Request - AP Police Women Safety Wing',
+                    recipients=['admin@appolice.gov.in'],
+                    body=f"""Hello {username},
+
+You requested to reset your admin password. Click the link below to proceed (valid for 1 hour):
+
+{reset_link}
+
+If you did not request this, please ignore this email and contact the administrator.
+
+Link expires at: {expires_at.strftime('%Y-%m-%d %H:%M:%S')}
+
+Best regards,
+AP Police Women and Child Safety Wing
+"""
+                )
+                mail.send(msg)
+                print(f"[FORGOT-PASSWORD] Reset email sent successfully")
+                flash('Reset link sent to admin email. Check your inbox (valid for 1 hour).', 'success')
+            except Exception as e:
+                print(f"[FORGOT-PASSWORD] Email send failed: {e}")
+                flash('Error sending email. Please contact the administrator.', 'danger')
+                return render_template('admin_forgot_password.html', step=1)
+            
+            return render_template('admin_forgot_password.html', step=1)
+        
+        # GET request
+        return render_template('admin_forgot_password.html', step=1)
+        
+    except Exception as e:
+        print(f"[FORGOT-PASSWORD] Error: {e}")
+        flash('An error occurred. Please try again.', 'error')
+        return render_template('admin_forgot_password.html', step=1)
+
+
+@app.route('/admin-reset-password/<token>', methods=['GET', 'POST'])
+def reset_password_with_token(token):
+    """Reset password using email token"""
+    try:
+        conn = get_db_connection('admin')
+        cursor = conn.cursor()
+        
+        # Find valid token
+        cursor.execute('''SELECT admin_id, expires_at, used FROM password_reset_tokens 
+                    WHERE token = %s LIMIT 1''', (token,))
+        token_data = cursor.fetchone()
+        
+        if not token_data:
+            print(f"[PASSWORD-RESET] Token not found: {token[:10]}...")
+            flash('Invalid reset link', 'danger')
+            conn.close()
+            return redirect(url_for('admin_login'))
+        
+        admin_id, expires_at, used = token_data
+        
+        # Check if token is expired
+        if datetime.now() > expires_at:
+            print(f"[PASSWORD-RESET] Token expired for admin ID {admin_id}")
+            flash('Reset link has expired. Please request a new one.', 'danger')
+            conn.close()
+            return redirect(url_for('admin_forgot_password'))
+        
+        # Check if token already used
+        if used:
+            print(f"[PASSWORD-RESET] Token already used for admin ID {admin_id}")
+            flash('This reset link has already been used.', 'danger')
+            conn.close()
+            return redirect(url_for('admin_forgot_password'))
+        
+        print(f"[PASSWORD-RESET] Valid token for admin ID {admin_id}")
+        
+        if request.method == 'POST':
+            new_password = request.form.get('new_password', '').strip()
+            confirm_password = request.form.get('confirm_password', '').strip()
+            
+            # Validate password
+            if not new_password or not confirm_password:
+                flash('Both password fields are required', 'danger')
+                return render_template('admin_reset_password.html')
+            
+            if new_password != confirm_password:
+                flash('Passwords do not match', 'danger')
+                return render_template('admin_reset_password.html')
+            
+            if len(new_password) < 8:
+                flash('Password must be at least 8 characters long', 'danger')
+                return render_template('admin_reset_password.html')
+            
+            # Update password
+            new_hash = generate_password_hash(new_password)
+            cursor.execute('UPDATE admin_credentials SET password_hash = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s', 
+                     (new_hash, admin_id))
+            
+            # Mark token as used
+            cursor.execute('UPDATE password_reset_tokens SET used = 1 WHERE token = %s', (token,))
+            conn.commit()
+            conn.close()
+            
+            print(f"[PASSWORD-RESET] Password updated for admin ID {admin_id}, token marked used")
+            flash('Password reset successful! Please login with your new password.', 'success')
+            return redirect(url_for('admin_login'))
+        
+        conn.close()
+        return render_template('admin_reset_password.html')
+        
+    except Exception as e:
+        print(f"[PASSWORD-RESET] Error: {e}")
+        flash('An error occurred. Please try again.', 'error')
+        return redirect(url_for('admin_forgot_password'))
+
 @app.route('/admin/change-password', methods=['GET', 'POST'])
 def change_admin_password():
     if 'admin_logged_in' not in session:
@@ -2056,13 +2228,12 @@ def change_admin_password():
         # Update password in database
         conn = None
         try:
-            conn = get_db_connection('main')
-            c = conn.cursor()
+            conn = get_db_connection('admin')
+            cursor = conn.cursor()
             
             # First verify current password
-            query = adapt_query('SELECT password_hash FROM admin_credentials WHERE id = ?')
-            c.execute(query, (session['admin_id'],))
-            current_hash = c.fetchone()
+            cursor.execute('SELECT password_hash FROM admin_credentials WHERE id = %s', (session['admin_id'],))
+            current_hash = cursor.fetchone()
             
             if not current_hash:
                 flash('Admin account not found', 'danger')
@@ -2078,8 +2249,8 @@ def change_admin_password():
             
             # Update with new password
             new_password_hash = generate_password_hash(new_password)
-            query = adapt_query('UPDATE admin_credentials SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-            c.execute(query, (new_password_hash, session['admin_id']))
+            cursor.execute('UPDATE admin_credentials SET password_hash = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
+                     (new_password_hash, session['admin_id']))
             conn.commit()
             
             print("Password updated successfully")
@@ -4472,7 +4643,7 @@ def setup_districts():
         # Create Districts table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS districts (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
                 district_code TEXT,
                 is_active BOOLEAN DEFAULT 1,
@@ -4483,7 +4654,7 @@ def setup_districts():
         # Create District SPs table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS district_sps (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 district_id INTEGER,
                 name TEXT NOT NULL,
                 contact_number TEXT,
@@ -4497,7 +4668,7 @@ def setup_districts():
         # Create Shakthi Teams table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS shakthi_teams (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 district_id INTEGER,
                 team_name TEXT NOT NULL,
                 leader_name TEXT,
@@ -4512,7 +4683,7 @@ def setup_districts():
         # Create Women Police Stations table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS women_police_stations (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 district_id INTEGER,
                 station_name TEXT NOT NULL,
                 incharge_name TEXT,
@@ -4527,7 +4698,7 @@ def setup_districts():
         # Create One Stop Centers table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS one_stop_centers (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 district_id INTEGER,
                 center_name TEXT NOT NULL,
                 address TEXT,
@@ -4572,14 +4743,14 @@ def setup_districts():
         
         for district_name, district_code in districts_data:
             query = adapt_query('''
-                INSERT INTO districts (name, district_code) 
+                INSERT OR IGNORE INTO districts (name, district_code) 
                 VALUES (?, ?)
             ''')
             cursor.execute(query, (district_name, district_code))
         
         # Insert sample District SPs
         cursor.execute('''
-            INSERT INTO district_sps (district_id, name, contact_number, email)
+            INSERT OR IGNORE INTO district_sps (district_id, name, contact_number, email)
             SELECT id, 'SP ' || name, '+91-' || CAST((8000000000 + (id * 1000000)) AS TEXT), 
                    LOWER(REPLACE(name, ' ', '')) || '.sp@appolice.gov.in'
             FROM districts WHERE is_active::integer = 1
@@ -4589,7 +4760,7 @@ def setup_districts():
         team_names = ['Urban Protection Team', 'Rural Safety Team', 'Highway Patrol Team']
         for i, team_name in enumerate(team_names):
             cursor.execute('''
-                INSERT INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered)
+                INSERT OR IGNORE INTO shakthi_teams (district_id, team_name, leader_name, contact_number, area_covered)
                 SELECT id, ?, 'Inspector ' || SUBSTR(name, 1, 3) || '-' || ?, 
                        '+91-' || CAST((9000000000 + (id * 100000) + ?) AS TEXT), 
                        CASE ? 
@@ -4602,7 +4773,7 @@ def setup_districts():
         
         # Insert sample Women Police Stations
         cursor.execute('''
-            INSERT INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
+            INSERT OR IGNORE INTO women_police_stations (district_id, station_name, incharge_name, contact_number, address)
             SELECT id, name || ' Women Police Station', 'CI ' || name, 
                    '+91-' || CAST((7000000000 + (id * 1000000)) AS TEXT),
                    'Women Police Station, ' || name || ' District'
@@ -4611,7 +4782,7 @@ def setup_districts():
         
         # Insert sample One Stop Centers
         cursor.execute('''
-            INSERT INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
+            INSERT OR IGNORE INTO one_stop_centers (district_id, center_name, address, incharge_name, contact_number, services_offered)
             SELECT id, name || ' One Stop Center', 
                    'One Stop Center, Collectorate Complex, ' || name,
                    'Coordinator ' || name,
@@ -4636,7 +4807,7 @@ def debug_districts():
         cursor = conn.cursor()
         
         # Check if tables exist
-        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%district%'")
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%district%'")
         tables = cursor.fetchall()
         
         result = '<h1>Database Debug Info</h1>'
@@ -4684,7 +4855,7 @@ def force_setup():
         # Create Districts table
         cursor.execute('''
             CREATE TABLE districts (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
                 district_code TEXT,
                 is_active BOOLEAN DEFAULT 1,
@@ -4695,7 +4866,7 @@ def force_setup():
         # Create District SPs table
         cursor.execute('''
             CREATE TABLE district_sps (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 district_id INTEGER,
                 name TEXT NOT NULL,
                 contact_number TEXT,
@@ -4709,7 +4880,7 @@ def force_setup():
         # Create Shakthi Teams table
         cursor.execute('''
             CREATE TABLE shakthi_teams (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 district_id INTEGER,
                 team_name TEXT NOT NULL,
                 leader_name TEXT,
@@ -4724,7 +4895,7 @@ def force_setup():
         # Create Women Police Stations table
         cursor.execute('''
             CREATE TABLE women_police_stations (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 district_id INTEGER,
                 station_name TEXT NOT NULL,
                 incharge_name TEXT,
@@ -4739,7 +4910,7 @@ def force_setup():
         # Create One Stop Centers table
         cursor.execute('''
             CREATE TABLE one_stop_centers (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 district_id INTEGER,
                 center_name TEXT NOT NULL,
                 address TEXT,
