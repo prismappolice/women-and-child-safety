@@ -23,14 +23,29 @@ def send_email_with_fallback(mail, subject, recipient, body_html):
         tuple: (success: bool, error_message: str or None)
     """
     
-    # Try Flask-Mail (Gmail SMTP) first
+    # Try Flask-Mail (Gmail SMTP) first with timeout
     try:
+        import signal
+        
+        def timeout_handler(signum, frame):
+            raise TimeoutError("Email sending timeout")
+        
+        # Set 10 second timeout using alarm (Unix) or direct send (Windows)
+        try:
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(10)
+        except:
+            pass  # Windows doesn't support SIGALRM
+        
         msg = Message(subject, recipients=[recipient])
         msg.html = body_html
-        
-        # Set timeout to fail fast (5 seconds)
-        mail.connect(timeout=5)
         mail.send(msg)
+        
+        try:
+            signal.alarm(0)  # Cancel alarm
+        except:
+            pass
+            
         return (True, None)
     except Exception as smtp_error:
         print(f"⚠️ Gmail SMTP failed: {smtp_error}")
@@ -44,12 +59,15 @@ def send_email_with_fallback(mail, subject, recipient, body_html):
             # Get SendGrid API key from environment
             sendgrid_api_key = os.environ.get('SENDGRID_API_KEY')
             
-            if not sendgrid_api_key:
+            if not sendgrid_api_key or sendgrid_api_key.strip() == '':
                 return (False, "SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.")
+            
+            # Verify sender email is authenticated in SendGrid
+            sender_email = os.environ.get('MAIL_USERNAME', 'meta1.aihackathon@gmail.com')
             
             # Create SendGrid message
             sendgrid_msg = SendGridMail(
-                from_email=os.environ.get('MAIL_USERNAME', 'meta1.aihackathon@gmail.com'),
+                from_email=sender_email,
                 to_emails=recipient,
                 subject=subject,
                 html_content=body_html
@@ -59,13 +77,27 @@ def send_email_with_fallback(mail, subject, recipient, body_html):
             sg = SendGridAPIClient(sendgrid_api_key)
             response = sg.send(sendgrid_msg)
             
-            print(f"✅ SendGrid email sent! Status: {response.status_code}")
-            return (True, None)
+            if response.status_code in [200, 201, 202]:
+                print(f"✅ SendGrid email sent! Status: {response.status_code}")
+                return (True, None)
+            else:
+                error_msg = f"SendGrid returned status {response.status_code}"
+                print(f"⚠️ {error_msg}")
+                return (False, error_msg)
             
+        except ImportError:
+            return (False, "SendGrid library not installed. Run: pip install sendgrid")
         except Exception as sendgrid_error:
-            error_msg = f"Both Gmail and SendGrid failed. Gmail: {smtp_error}, SendGrid: {sendgrid_error}"
-            print(f"❌ {error_msg}")
-            return (False, error_msg)
+            # Check if it's authentication error
+            error_str = str(sendgrid_error)
+            if "401" in error_str or "Unauthorized" in error_str:
+                return (False, "SendGrid API key is invalid. Please verify your SENDGRID_API_KEY in Render environment variables.")
+            elif "403" in error_str or "Forbidden" in error_str:
+                return (False, "SendGrid sender email not verified. Please verify your sender email in SendGrid dashboard.")
+            else:
+                error_msg = f"Both Gmail and SendGrid failed. Gmail: {smtp_error}, SendGrid: {sendgrid_error}"
+                print(f"❌ {error_msg}")
+                return (False, error_msg)
 
 
 def send_otp_email_safe(mail, recipient_email, otp_code):
