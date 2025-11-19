@@ -1,0 +1,150 @@
+================================================
+🔧 EMAIL OTP SETUP GUIDE - AP Women Safety App
+================================================
+
+📝 QUICK START GUIDE:
+
+STEP 1: Setup Gmail App Password
+---------------------------------
+1. Go to: https://myaccount.google.com/security
+2. Enable "2-Step Verification" (if not already enabled)
+3. Search for "App passwords" in the search bar
+4. Click "App passwords"
+5. Select app: "Mail"
+6. Select device: "Other" → Type: "Flask App"
+7. Click "Generate"
+8. COPY the 16-character password (format: xxxx-xxxx-xxxx-xxxx)
+
+STEP 2: Update Email Configuration in app.py
+---------------------------------------------
+Open: app.py (around line 590)
+
+Replace these lines:
+```
+app.config['MAIL_USERNAME'] = 'your.email@gmail.com'
+app.config['MAIL_PASSWORD'] = 'xxxx-xxxx-xxxx-xxxx'
+app.config['MAIL_DEFAULT_SENDER'] = 'your.email@gmail.com'
+```
+
+With YOUR details:
+```
+app.config['MAIL_USERNAME'] = 'youremail@gmail.com'
+app.config['MAIL_PASSWORD'] = 'abcd-efgh-ijkl-mnop'  # Your app password
+app.config['MAIL_DEFAULT_SENDER'] = 'youremail@gmail.com'
+```
+
+STEP 3: Update Admin Email in Database
+--------------------------------------
+Run this command:
+```
+python update_admin_email.py
+```
+Enter the email address where you want to receive OTP
+
+OR manually run:
+```
+python -c "from db_config import get_db_connection; conn = get_db_connection('admin'); cursor = conn.cursor(); cursor.execute('UPDATE admin_credentials SET email = %s WHERE username = %s', ('youremail@gmail.com', 'admin')); conn.commit(); conn.close(); print('✅ Email updated!')"
+```
+
+STEP 4: Restart Application
+---------------------------
+1. Stop the running Flask app (Ctrl+C)
+2. Start again:
+   ```
+   python app.py
+   ```
+
+STEP 5: Test OTP Flow
+---------------------
+1. Open browser: http://127.0.0.1:5000/admin-login
+2. Click "Forgot Password?"
+3. Click "Use Email OTP" (blue card with "Recommended" badge)
+4. Enter:
+   - Username: admin
+   - Email: (the email you set in Step 3)
+5. Click "Send OTP"
+6. Check your email for 6-digit OTP
+7. Enter OTP on verification page
+8. Set new password
+9. Login with new password!
+
+================================================
+🔍 TROUBLESHOOTING:
+================================================
+
+❌ Problem: "Error sending OTP email"
+✅ Solution: 
+   - Check Gmail app password is correct
+   - Make sure 2-Step Verification is enabled
+   - Check email in app.py matches database email
+
+❌ Problem: "Invalid username or email"
+✅ Solution:
+   - Run: python update_admin_email.py
+   - Make sure username is "admin"
+   - Check email is correct
+
+❌ Problem: "Email does not match our records"
+✅ Solution:
+   - Database email != form email
+   - Update database: python update_admin_email.py
+
+❌ Problem: OTP email not received
+✅ Solution:
+   - Check spam/junk folder
+   - Wait 1-2 minutes
+   - Click "Resend OTP"
+   - Verify MAIL_USERNAME is correct
+
+================================================
+📧 EMAIL FORMAT:
+================================================
+
+Subject: Password Reset OTP - AP Police Women Safety Wing
+
+Body:
+Hello admin,
+
+Your One-Time Password (OTP) for password reset is:
+
+123456
+
+This OTP is valid for 10 minutes only.
+
+If you did not request this, please ignore this email.
+
+Expires at: 2025-11-18 16:45:30
+
+Best regards,
+AP Police Women and Child Safety Wing
+
+================================================
+🎯 TESTING CHECKLIST:
+================================================
+
+□ Gmail app password generated
+□ Email config updated in app.py
+□ Admin email updated in database
+□ App restarted
+□ Forgot password page loads
+□ Email OTP card visible (marked "Recommended")
+□ OTP sent successfully
+□ OTP received in email
+□ OTP verification works
+□ Password reset successful
+□ Login with new password works
+
+================================================
+✅ COMPLETE!
+================================================
+
+If everything works, your email OTP authentication
+is ready for production!
+
+For production, consider:
+- Using organization email (e.g., admin@appolice.gov.in)
+- Setting up dedicated SMTP server
+- Implementing rate limiting
+- Adding SMS OTP as backup
+
+================================================

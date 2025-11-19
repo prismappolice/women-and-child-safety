@@ -1,0 +1,104 @@
+{% extends "admin_base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card mt-5">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="text-center mb-0"><i class="fas fa-key"></i> Verify OTP</h3>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-envelope-open-text fa-2x mb-2"></i>
+                        <p class="mb-0">A 6-digit OTP has been sent to:</p>
+                        <strong>{{ email }}</strong>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('verify_otp') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="email" value="{{ email }}">
+                        
+                        <div class="form-group mb-4">
+                            <label for="otp" class="text-center d-block">Enter 6-Digit OTP</label>
+                            <input type="text" 
+                                   class="form-control form-control-lg text-center" 
+                                   id="otp" 
+                                   name="otp" 
+                                   maxlength="6" 
+                                   pattern="[0-9]{6}"
+                                   style="font-size: 2em; letter-spacing: 10px; font-weight: bold;"
+                                   required 
+                                   autocomplete="off">
+                            <small class="form-text text-muted text-center d-block mt-2">
+                                <i class="fas fa-clock"></i> Valid for 10 minutes
+                            </small>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg btn-block mb-3">
+                                <i class="fas fa-check-circle"></i> Verify OTP
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr>
+                    
+                    <div class="text-center">
+                        <p class="text-muted mb-2">Didn't receive the OTP?</p>
+                        <form method="POST" action="{{ url_for('resend_otp') }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="email" value="{{ email }}">
+                            <button type="submit" class="btn btn-link">
+                                <i class="fas fa-redo"></i> Resend OTP
+                            </button>
+                        </form>
+                        
+                        <a href="{{ url_for('admin_forgot_password') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <p class="text-muted">
+                    <i class="fas fa-shield-alt"></i> Your OTP is secure and will expire in 10 minutes
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+input#otp:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+</style>
+
+<script>
+// Auto-submit when 6 digits entered
+document.getElementById('otp').addEventListener('input', function(e) {
+    if (this.value.length === 6) {
+        // Optional: Auto-submit form
+        // this.form.submit();
+    }
+});
+
+// Only allow numbers
+document.getElementById('otp').addEventListener('keypress', function(e) {
+    if (e.which < 48 || e.which > 57) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}

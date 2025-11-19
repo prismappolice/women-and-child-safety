@@ -27,8 +27,10 @@
         .header-title { font-size: 2em; font-weight: bold; }
         .logout-btn { background: #e74c3c; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; margin-left: 10px; }
         .logout-btn:hover { background: #c0392b; }
-        .change-pwd-btn { background: #2980b9; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; }
+        .change-pwd-btn { background: #2980b9; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; margin-left: 10px; }
         .change-pwd-btn:hover { background: #2471a3; }
+        .profile-btn { background: #27ae60; color: #fff; padding: 10px 20px; border: none; border-radius: 5px; text-decoration: none; transition: all 0.3s; margin-left: 10px; }
+        .profile-btn:hover { background: #229954; }
         
         .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
         .dashboard-title { font-size: 2.5em; color: #2c3e50; text-align: center; margin-bottom: 40px; }
@@ -104,41 +106,19 @@
                  style="height: 100px; width: 100px; object-fit: contain; padding: 5px;">
         </div>
         <div class="header-title">Admin Dashboard</div>
-        <div style="display: flex; align-items: center; gap: 15px;">
-            {% if security_questions_set %}
-                <!-- <span class="security-status" style="background: #27ae60; color: white; padding: 8px 15px; border-radius: 20px; font-size: 0.9em;">
-                    <i class="fas fa-shield-alt"></i> Security Questions Set
-                </span> -->
-            {% else %}
-                <span class="security-status" style="background: #e74c3c; color: white; padding: 8px 15px; border-radius: 20px; font-size: 0.9em;">
-                    <i class="fas fa-exclamation-triangle"></i> Security Setup Required
-                </span>
-            {% endif %}
-            <a href="/admin/change-password" class="change-pwd-btn">
-                <i class="fas fa-key"></i> change Password & Security
-            </a>
-            <a href="{{ url_for('admin_logout') }}" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
+        <a href="{{ url_for('admin_profile_settings') }}" class="profile-btn" title="Profile Settings">
+            <i class="fas fa-user-cog"></i> Profile
+        </a>
+        <a href="/admin/change-password" class="change-pwd-btn">
+            <i class="fas fa-key"></i> Change Password
+        </a>
+        <a href="{{ url_for('admin_logout') }}" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
     </div>
     
     <div class="container">
         <h1 class="dashboard-title">Admin Dashboard - Gallery Management</h1>
-        
-        {% if not security_questions_set %}
-        <div class="alert alert-warning" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 10px; padding: 20px; margin-bottom: 30px; text-align: center;">
-            <h4 style="color: #856404; margin-bottom: 15px;">
-                <i class="fas fa-exclamation-triangle"></i> Security Setup Required
-            </h4>
-            <p style="color: #856404; margin-bottom: 20px;">
-                For your account security, please set up your security questions. These will be used for password recovery if you forget your password.
-            </p>
-            <a href="/admin/change-password" class="btn btn-warning" style="background: #f39c12; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: 600;">
-                <i class="fas fa-shield-alt"></i> Set Up Security Questions Now
-            </a>
-        </div>
-        {% endif %}
         
         <div class="stats-grid">
             <!-- Volunteer Statistics -->
@@ -281,7 +261,6 @@
                                     <a href="{{ url_for('admin_edit_gallery_item', item_id=item[0]) }}" class="btn btn-edit">Edit</a>
                                     <form style="display: inline;" method="POST" action="{{ url_for('admin_delete_gallery_item', item_id=item[0]) }}"
                                           onsubmit="return confirm('Are you sure?')">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <button type="submit" class="btn btn-delete">Delete</button>
                                     </form>
                                 </td>

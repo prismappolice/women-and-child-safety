@@ -41,24 +41,38 @@ def init_db():
         conn = get_db_connection('admin')
         cursor = conn.cursor()
         
-        # Create admin credentials table
+        # Create admin credentials table first
         cursor.execute('''CREATE TABLE IF NOT EXISTS admin_credentials (
             id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
+            email TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
+        conn.commit()
         
-        # Create password reset tokens table
+        # Create password reset tokens table with proper foreign key
         cursor.execute('''CREATE TABLE IF NOT EXISTS password_reset_tokens (
             id SERIAL PRIMARY KEY,
-            admin_id INTEGER NOT NULL,
+            admin_id INTEGER NOT NULL REFERENCES admin_credentials(id) ON DELETE CASCADE,
             token TEXT UNIQUE NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             expires_at TIMESTAMP NOT NULL,
-            used INTEGER DEFAULT 0,
-            FOREIGN KEY (admin_id) REFERENCES admin_credentials (id)
+            used INTEGER DEFAULT 0
         )''')
+        conn.commit()
+        
+        # Create email OTP table for email-based authentication
+        cursor.execute('''CREATE TABLE IF NOT EXISTS email_otp (
+            id SERIAL PRIMARY KEY,
+            admin_id INTEGER NOT NULL REFERENCES admin_credentials(id) ON DELETE CASCADE,
+            email TEXT NOT NULL,
+            otp TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NOT NULL,
+            verified INTEGER DEFAULT 0
+        )''')
+        conn.commit()
         
         # Check if default admin exists
         cursor.execute('SELECT * FROM admin_credentials WHERE username = %s', ('admin',))
@@ -134,17 +148,25 @@ def check_admin_authorization():
     public_routes = [
         '/admin-login',
         '/admin-forgot-password',
-        '/admin-forgot-password/',
-        '/forgot-password',
-        '/admin/logout'
+        '/admin/forgot-password',  # Also allow this variant
+        '/admin/logout',
+        '/admin/verify-security',  # Security questions for password reset
+        '/admin/reset-password-security',  # Reset password after security verification
+        '/send-otp-email',  # Send OTP via email
+        '/verify-otp-page',  # OTP verification page
+        '/verify-otp',  # Verify OTP
+        '/resend-otp',  # Resend OTP
+        '/reset-password-otp',  # Reset password after OTP verification
     ]
-    # Debug: print the current request path for troubleshooting
-    print(f"[DEBUG] Incoming request.path: {request.path}")
     
-    # Skip auth check for static files, public routes, and non-admin paths
+    # Skip auth check for static files, public routes, and reset password with token
     if (request.path.startswith('/static/') or
         request.path in public_routes or
-        not request.path.startswith('/admin')):
+        request.path.startswith('/admin-reset-password/')):
+        return
+    
+    # Check if this is an admin route  
+    if not request.path.startswith('/admin'):
         return
     
     # At this point, it's a protected admin route — enforce login
@@ -562,13 +584,15 @@ def init_volunteer_db():
 app.secret_key = 'your-secret-key-change-this'
 
 # Email Configuration - Using personal email for testing (change to department email later)
+# Email configuration for OTP
+# IMPORTANT: Update these with your Gmail credentials
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'your.personal@gmail.com'  # Replace with your personal Gmail
-app.config['MAIL_PASSWORD'] = 'your-app-password'        # Replace with your Gmail app password
-app.config['MAIL_DEFAULT_SENDER'] = 'your.personal@gmail.com'  # Same as MAIL_USERNAME
-ADMIN_EMAIL = 'your.personal@gmail.com'  # Admin email to receive notifications
+app.config['MAIL_USERNAME'] = 'meta1.aihackathon@gmail.com'     # ⚠️ Replace with your Gmail
+app.config['MAIL_PASSWORD'] = 'hgsqrgfhuvqczvaa'   # ⚠️ App Password without spaces
+app.config['MAIL_DEFAULT_SENDER'] = 'meta1.aihackathon@gmail.com'  # Same as MAIL_USERNAME
+ADMIN_EMAIL = 'meta1.aihackathon@gmail.com'  # Admin email to receive notifications
 
 mail = Mail(app)
 
@@ -1982,6 +2006,11 @@ def gallery_debug():
     
     return render_template('gallery_debug.html', gallery_items=gallery_items)
 
+@app.route('/test-forgot-link')
+def test_forgot_link():
+    """Test page for forgot password link"""
+    return render_template('test_forgot_link.html')
+
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
     try:
@@ -2041,7 +2070,280 @@ def admin_login():
         return render_template('admin_login.html')
 
 
+@app.route('/send-otp-email', methods=['POST'])
+def send_otp_email():
+    """Send OTP to admin email for password reset"""
+    try:
+        username = request.form.get('username', '').strip()
+        
+        if not username:
+            flash('Username is required', 'danger')
+            return redirect(url_for('admin_forgot_password'))
+        
+        # Verify admin exists and has email configured
+        conn = get_db_connection('admin')
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, email FROM admin_credentials WHERE username = %s', (username,))
+        admin = cursor.fetchone()
+        
+        if not admin:
+            flash('Invalid username', 'danger')
+            conn.close()
+            return redirect(url_for('admin_forgot_password'))
+        
+        admin_id = admin[0]
+        registered_email = admin[1]
+        
+        # Check if email is configured
+        if not registered_email:
+            flash('Email not configured for this admin. Please contact system administrator.', 'danger')
+            conn.close()
+            return redirect(url_for('admin_forgot_password'))
+        
+        # Generate 6-digit OTP
+        import random
+        otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        expires_at = datetime.now() + timedelta(minutes=10)
+        
+        # Store OTP in database
+        cursor.execute('''INSERT INTO email_otp (admin_id, email, otp, expires_at) 
+                          VALUES (%s, %s, %s, %s)''', 
+                      (admin_id, registered_email, otp, expires_at))
+        conn.commit()
+        conn.close()
+        
+        # Send OTP via email
+        try:
+            msg = Message(
+                subject='Password Reset OTP - AP Police Women Safety Wing',
+                recipients=[registered_email],
+                body=f"""Hello {username},
+
+Your One-Time Password (OTP) for password reset is:
+
+{otp}
+
+This OTP is valid for 10 minutes only.
+
+If you did not request this, please ignore this email and contact the administrator.
+
+Expires at: {expires_at.strftime('%Y-%m-%d %H:%M:%S')}
+
+Best regards,
+AP Police Women and Child Safety Wing
+"""
+            )
+            mail.send(msg)
+            
+            # Store email in session for verification page
+            session['reset_email'] = registered_email
+            session['reset_username'] = username
+            
+            flash('OTP sent successfully! Please check your email.', 'success')
+            return redirect(url_for('verify_otp_page'))
+            
+        except Exception as e:
+            print(f"[OTP-EMAIL] Email send failed: {e}")
+            flash('Error sending OTP email. Please check email configuration.', 'danger')
+            return redirect(url_for('admin_forgot_password'))
+        
+    except Exception as e:
+        print(f"[OTP-SEND] Error: {e}")
+        flash('An error occurred. Please try again.', 'error')
+        return redirect(url_for('admin_forgot_password'))
+
+
+@app.route('/verify-otp-page')
+def verify_otp_page():
+    """Show OTP verification page"""
+    if 'reset_email' not in session:
+        flash('Please request OTP first', 'warning')
+        return redirect(url_for('admin_forgot_password'))
+    
+    return render_template('verify_otp.html', email=session.get('reset_email'))
+
+
+@app.route('/verify-otp', methods=['POST'])
+def verify_otp():
+    """Verify OTP and allow password reset"""
+    try:
+        otp = request.form.get('otp', '').strip()
+        email = request.form.get('email', '').strip()
+        
+        if not otp or not email:
+            flash('OTP is required', 'danger')
+            return redirect(url_for('verify_otp_page'))
+        
+        # Verify OTP
+        conn = get_db_connection('admin')
+        cursor = conn.cursor()
+        cursor.execute('''SELECT admin_id, expires_at, verified FROM email_otp 
+                          WHERE email = %s AND otp = %s 
+                          ORDER BY created_at DESC LIMIT 1''', 
+                      (email, otp))
+        otp_record = cursor.fetchone()
+        
+        if not otp_record:
+            flash('Invalid OTP', 'danger')
+            conn.close()
+            return redirect(url_for('verify_otp_page'))
+        
+        admin_id, expires_at, verified = otp_record
+        
+        # Check if OTP is expired
+        if datetime.now() > expires_at:
+            flash('OTP has expired. Please request a new one.', 'danger')
+            conn.close()
+            return redirect(url_for('admin_forgot_password'))
+        
+        # Check if already verified
+        if verified:
+            flash('This OTP has already been used.', 'danger')
+            conn.close()
+            return redirect(url_for('admin_forgot_password'))
+        
+        # Mark OTP as verified
+        cursor.execute('UPDATE email_otp SET verified = 1 WHERE email = %s AND otp = %s', 
+                      (email, otp))
+        conn.commit()
+        conn.close()
+        
+        # Set session for password reset
+        session['reset_verified_otp'] = True
+        session['reset_user_id'] = admin_id
+        
+        flash('OTP verified successfully! Please set your new password.', 'success')
+        return redirect(url_for('reset_password_after_otp'))
+        
+    except Exception as e:
+        print(f"[OTP-VERIFY] Error: {e}")
+        flash('An error occurred. Please try again.', 'error')
+        return redirect(url_for('verify_otp_page'))
+
+
+@app.route('/resend-otp', methods=['POST'])
+def resend_otp():
+    """Resend OTP to email"""
+    email = request.form.get('email', '').strip()
+    username = session.get('reset_username')
+    
+    if not email or not username:
+        flash('Session expired. Please start again.', 'warning')
+        return redirect(url_for('admin_forgot_password'))
+    
+    # Get admin ID
+    conn = get_db_connection('admin')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id FROM admin_credentials WHERE username = %s AND email = %s', 
+                  (username, email))
+    admin = cursor.fetchone()
+    
+    if not admin:
+        flash('Invalid session. Please start again.', 'danger')
+        conn.close()
+        return redirect(url_for('admin_forgot_password'))
+    
+    admin_id = admin[0]
+    
+    # Generate new OTP
+    import random
+    otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    expires_at = datetime.now() + timedelta(minutes=10)
+    
+    # Store new OTP
+    cursor.execute('''INSERT INTO email_otp (admin_id, email, otp, expires_at) 
+                      VALUES (%s, %s, %s, %s)''', 
+                  (admin_id, email, otp, expires_at))
+    conn.commit()
+    conn.close()
+    
+    # Send OTP via email
+    try:
+        msg = Message(
+            subject='Password Reset OTP (Resent) - AP Police Women Safety Wing',
+            recipients=[email],
+            body=f"""Hello {username},
+
+Your new One-Time Password (OTP) for password reset is:
+
+{otp}
+
+This OTP is valid for 10 minutes only.
+
+Expires at: {expires_at.strftime('%Y-%m-%d %H:%M:%S')}
+
+Best regards,
+AP Police Women and Child Safety Wing
+"""
+        )
+        mail.send(msg)
+        flash('New OTP sent successfully!', 'success')
+        
+    except Exception as e:
+        print(f"[OTP-RESEND] Email send failed: {e}")
+        flash('Error sending OTP. Please try again.', 'danger')
+    
+    return redirect(url_for('verify_otp_page'))
+
+
+@app.route('/reset-password-otp', methods=['GET', 'POST'])
+def reset_password_after_otp():
+    """Reset password after OTP verification"""
+    # Check if OTP was verified
+    if not all([
+        session.get('reset_verified_otp'),
+        session.get('reset_user_id')
+    ]):
+        flash('Please verify OTP first', 'warning')
+        return redirect(url_for('admin_forgot_password'))
+    
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        
+        if not new_password or not confirm_password:
+            flash('Both password fields are required', 'danger')
+            return render_template('reset_password.html')
+        
+        if new_password != confirm_password:
+            flash('Passwords do not match', 'danger')
+            return render_template('reset_password.html')
+        
+        if len(new_password) < 8:
+            flash('Password must be at least 8 characters long', 'danger')
+            return render_template('reset_password.html')
+        
+        try:
+            # Update password
+            conn = get_db_connection('admin')
+            cursor = conn.cursor()
+            new_hash = generate_password_hash(new_password)
+            cursor.execute(
+                'UPDATE admin_credentials SET password_hash = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
+                (new_hash, session['reset_user_id'])
+            )
+            conn.commit()
+            conn.close()
+            
+            # Clear reset session
+            session.pop('reset_verified_otp', None)
+            session.pop('reset_user_id', None)
+            session.pop('reset_email', None)
+            session.pop('reset_username', None)
+            
+            flash('Password reset successful! Please login with your new password.', 'success')
+            return redirect(url_for('admin_login'))
+            
+        except Exception as e:
+            print(f"[PASSWORD-RESET-OTP] Error: {e}")
+            flash('An error occurred. Please try again.', 'error')
+            return render_template('reset_password.html')
+    
+    return render_template('reset_password.html', username=session.get('reset_username'))
+
+
 @app.route('/admin-forgot-password', methods=['GET', 'POST'])
+@app.route('/admin/forgot-password', methods=['GET', 'POST'])  # Also handle /admin/forgot-password
 def admin_forgot_password():
     """Email-based password reset: enter username -> email sent with reset link"""
     try:
@@ -2051,7 +2353,7 @@ def admin_forgot_password():
             
             if not username:
                 flash('Username is required', 'danger')
-                return render_template('admin_forgot_password.html', step=1)
+                return render_template('forgot_password.html', step=1)
             
             # Check user exists
             conn = get_db_connection('admin')
@@ -2063,7 +2365,7 @@ def admin_forgot_password():
                 print(f"[FORGOT-PASSWORD] User '{username}' not found")
                 flash('No admin user found with that username', 'danger')
                 conn.close()
-                return render_template('admin_forgot_password.html', step=1)
+                return render_template('forgot_password.html', step=1)
             
             admin_id = user[0]
             print(f"[FORGOT-PASSWORD] User found with ID: {admin_id}")
@@ -2108,17 +2410,17 @@ AP Police Women and Child Safety Wing
             except Exception as e:
                 print(f"[FORGOT-PASSWORD] Email send failed: {e}")
                 flash('Error sending email. Please contact the administrator.', 'danger')
-                return render_template('admin_forgot_password.html', step=1)
+                return render_template('forgot_password.html', step=1)
             
-            return render_template('admin_forgot_password.html', step=1)
+            return render_template('forgot_password.html', step=1)
         
         # GET request
-        return render_template('admin_forgot_password.html', step=1)
+        return render_template('forgot_password.html', step=1)
         
     except Exception as e:
         print(f"[FORGOT-PASSWORD] Error: {e}")
         flash('An error occurred. Please try again.', 'error')
-        return render_template('admin_forgot_password.html', step=1)
+        return render_template('forgot_password.html', step=1)
 
 
 @app.route('/admin-reset-password/<token>', methods=['GET', 'POST'])
@@ -2164,15 +2466,15 @@ def reset_password_with_token(token):
             # Validate password
             if not new_password or not confirm_password:
                 flash('Both password fields are required', 'danger')
-                return render_template('admin_reset_password.html')
+                return render_template('reset_password.html')
             
             if new_password != confirm_password:
                 flash('Passwords do not match', 'danger')
-                return render_template('admin_reset_password.html')
+                return render_template('reset_password.html')
             
             if len(new_password) < 8:
                 flash('Password must be at least 8 characters long', 'danger')
-                return render_template('admin_reset_password.html')
+                return render_template('reset_password.html')
             
             # Update password
             new_hash = generate_password_hash(new_password)
@@ -2189,86 +2491,195 @@ def reset_password_with_token(token):
             return redirect(url_for('admin_login'))
         
         conn.close()
-        return render_template('admin_reset_password.html')
+        return render_template('reset_password.html')
         
     except Exception as e:
         print(f"[PASSWORD-RESET] Error: {e}")
         flash('An error occurred. Please try again.', 'error')
         return redirect(url_for('admin_forgot_password'))
 
-@app.route('/admin/change-password', methods=['GET', 'POST'])
+@app.route('/admin/verify-security', methods=['GET', 'POST'])
+def verify_security_reset():
+    """Verify security questions for password reset"""
+    try:
+        if request.method == 'POST':
+            username = request.form.get('username', '').strip()
+            answer1 = request.form.get('answer1', '').strip()
+            answer2 = request.form.get('answer2', '').strip()
+            answer3 = request.form.get('answer3', '').strip()
+            
+            if not all([username, answer1, answer2, answer3]):
+                flash('All fields are required', 'danger')
+                return render_template('verify_security_questions.html')
+            
+            # Get admin user
+            conn = get_db_connection('admin')
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM admin_credentials WHERE username = %s', (username,))
+            admin = cursor.fetchone()
+            
+            if not admin:
+                flash('Invalid username or security answers', 'danger')
+                conn.close()
+                return render_template('verify_security_questions.html')
+            
+            # Verify security answers
+            if verify_security_questions(answer1, answer2, answer3):
+                # Answers correct - allow password reset
+                session['reset_user_id'] = admin[0]
+                session['reset_username'] = username
+                session['reset_verified'] = True
+                conn.close()
+                flash('Security verification successful! Please set your new password.', 'success')
+                return redirect(url_for('reset_password_after_security'))
+            else:
+                flash('Invalid security answers', 'danger')
+                conn.close()
+                return render_template('verify_security_questions.html')
+        
+        # GET request - show security questions form
+        questions = get_security_questions()
+        if not questions:
+            flash('Security questions not configured. Please use email reset.', 'warning')
+            return redirect(url_for('admin_forgot_password'))
+        
+        return render_template('verify_security_questions.html', questions=questions)
+        
+    except Exception as e:
+        print(f"[SECURITY-VERIFY] Error: {e}")
+        flash('An error occurred. Please try again.', 'error')
+        return redirect(url_for('admin_forgot_password'))
+
+@app.route('/admin/reset-password-security', methods=['GET', 'POST'])
+def reset_password_after_security():
+    """Reset password after security verification"""
+    # Check if security verification was successful
+    if not all([
+        session.get('reset_verified'),
+        session.get('reset_user_id'),
+        session.get('reset_username')
+    ]):
+        flash('Please verify your security questions first', 'warning')
+        return redirect(url_for('verify_security_reset'))
+    
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        
+        if not new_password or not confirm_password:
+            flash('Both password fields are required', 'danger')
+            return render_template('reset_password.html')
+        
+        if new_password != confirm_password:
+            flash('Passwords do not match', 'danger')
+            return render_template('reset_password.html')
+        
+        if len(new_password) < 8:
+            flash('Password must be at least 8 characters long', 'danger')
+            return render_template('reset_password.html')
+        
+        try:
+            # Update password
+            conn = get_db_connection('admin')
+            cursor = conn.cursor()
+            new_hash = generate_password_hash(new_password)
+            cursor.execute(
+                'UPDATE admin_credentials SET password_hash = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
+                (new_hash, session['reset_user_id'])
+            )
+            conn.commit()
+            conn.close()
+            
+            # Clear reset session
+            session.pop('reset_verified', None)
+            session.pop('reset_user_id', None)
+            session.pop('reset_username', None)
+            
+            flash('Password reset successful! Please login with your new password.', 'success')
+            return redirect(url_for('admin_login'))
+            
+        except Exception as e:
+            print(f"[PASSWORD-RESET-SECURITY] Error: {e}")
+            flash('An error occurred. Please try again.', 'error')
+            return render_template('reset_password.html')
+    
+    return render_template('reset_password.html', username=session.get('reset_username'))
+
+@app.route('/admin/change-password', methods=['GET'])
 def change_admin_password():
+    """Redirect to forgot password for OTP-based password change"""
     if 'admin_logged_in' not in session:
         flash('Please login to access this area', 'error')
         return redirect('/admin-login')
+    
+    # Clear session and redirect to forgot password
+    username = session.get('username', 'admin')
+    session.clear()
+    flash('Please verify your identity via OTP to change password', 'info')
+    return redirect(url_for('admin_forgot_password'))
 
+@app.route('/admin/profile-settings', methods=['GET', 'POST'])
+def admin_profile_settings():
+    """Admin can update profile settings including email"""
+    if 'admin_logged_in' not in session:
+        flash('Please login to access this area', 'error')
+        return redirect('/admin-login')
+    
     if request.method == 'POST':
-        current_password = request.form.get('current_password')
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
-
-        # Validate new password
-        if not all([current_password, new_password, confirm_password]):
-            flash('All password fields are required', 'danger')
-            return render_template('change_password.html')
-
-        if new_password != confirm_password:
-            flash('New passwords do not match', 'danger')
-            return render_template('change_password.html')
-
-        if len(new_password) < 8:
-            flash('New password must be at least 8 characters long', 'danger')
-            return render_template('change_password.html')
-
-        # Additional password strength check
-        if not any(c.isupper() for c in new_password) or not any(c.islower() for c in new_password) or not any(c.isdigit() for c in new_password):
-            flash('Password must contain at least one uppercase letter, one lowercase letter, and one number', 'danger')
-            return render_template('change_password.html')
-
-        # Update password in database
-        conn = None
+        new_email = request.form.get('email', '').strip()
+        
+        if not new_email:
+            flash('Email is required', 'danger')
+            return redirect(url_for('admin_profile_settings'))
+        
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, new_email):
+            flash('Please enter a valid email address', 'danger')
+            return redirect(url_for('admin_profile_settings'))
+        
         try:
             conn = get_db_connection('admin')
             cursor = conn.cursor()
             
-            # First verify current password
-            cursor.execute('SELECT password_hash FROM admin_credentials WHERE id = %s', (session['admin_id'],))
-            current_hash = cursor.fetchone()
-            
-            if not current_hash:
-                flash('Admin account not found', 'danger')
-                return render_template('change_password.html')
-            
-            # Verify current password using werkzeug's check_password_hash
-            if not check_password_hash(current_hash[0], current_password):
-                print("Current password verification failed")
-                flash('Current password is incorrect', 'danger')
-                return render_template('change_password.html')
-            
-            print("Current password verified successfully")
-            
-            # Update with new password
-            new_password_hash = generate_password_hash(new_password)
-            cursor.execute('UPDATE admin_credentials SET password_hash = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
-                     (new_password_hash, session['admin_id']))
+            # Update email
+            cursor.execute('UPDATE admin_credentials SET email = %s WHERE id = %s', 
+                         (new_email, session['admin_id']))
             conn.commit()
+            conn.close()
             
-            print("Password updated successfully")
-            flash('Password changed successfully! Please login with your new password', 'success')
-            session.clear()  # Force re-login with new password
-            return redirect(url_for('admin_login'))
+            flash('Email updated successfully!', 'success')
+            return redirect(url_for('admin_profile_settings'))
             
         except Exception as e:
-            print(f"Error in password change: {str(e)}")
-            if conn:
-                conn.rollback()
-            flash('An error occurred while updating password', 'danger')
-            return render_template('change_password.html')
-        finally:
-            if conn:
-                conn.close()
-
-    return render_template('change_password.html')
+            print(f"Error updating email: {e}")
+            flash('An error occurred while updating email', 'danger')
+            return redirect(url_for('admin_profile_settings'))
+    
+    # GET request - show current settings
+    try:
+        conn = get_db_connection('admin')
+        cursor = conn.cursor()
+        cursor.execute('SELECT username, email FROM admin_credentials WHERE id = %s', 
+                      (session['admin_id'],))
+        admin = cursor.fetchone()
+        conn.close()
+        
+        if admin:
+            admin_data = {
+                'username': admin[0],
+                'email': admin[1] or ''
+            }
+        else:
+            admin_data = {'username': 'Unknown', 'email': ''}
+            
+        return render_template('admin_profile_settings.html', admin=admin_data)
+        
+    except Exception as e:
+        print(f"Error fetching admin data: {e}")
+        flash('An error occurred', 'danger')
+        return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/setup-security', methods=['GET', 'POST'])
 def setup_security_questions():
