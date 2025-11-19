@@ -9,7 +9,6 @@ from urllib.parse import quote
 
 csrf = CSRFProtect()
 from flask_mail import Mail, Message
-from email_service import send_otp_email_safe
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
@@ -588,13 +587,11 @@ app.secret_key = 'your-secret-key-change-this'
 # Email configuration for OTP
 # IMPORTANT: Update these with your Gmail credentials
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465  # Changed from 587 to 465 for SSL
-app.config['MAIL_USE_TLS'] = False  # Disabled TLS
-app.config['MAIL_USE_SSL'] = True  # Enabled SSL for port 465
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'meta1.aihackathon@gmail.com'     # ⚠️ Replace with your Gmail
 app.config['MAIL_PASSWORD'] = 'hgsqrgfhuvqczvaa'   # ⚠️ App Password without spaces
 app.config['MAIL_DEFAULT_SENDER'] = 'meta1.aihackathon@gmail.com'  # Same as MAIL_USERNAME
-app.config['MAIL_TIMEOUT'] = 10  # 10 second connection timeout
 ADMIN_EMAIL = 'meta1.aihackathon@gmail.com'  # Admin email to receive notifications
 
 mail = Mail(app)
@@ -2115,19 +2112,39 @@ def send_otp_email():
         conn.commit()
         conn.close()
         
-        # Send OTP via email with automatic fallback (Gmail SMTP → SendGrid)
-        success, error = send_otp_email_safe(mail, registered_email, otp)
-        
-        if success:
+        # Send OTP via email (Gmail SMTP)
+        try:
+            msg = Message(
+                subject='Password Reset OTP - AP Police Women Safety Wing',
+                recipients=[registered_email],
+                body=f"""Hello {username},
+
+Your One-Time Password (OTP) for password reset is:
+
+{otp}
+
+This OTP is valid for 10 minutes only.
+
+If you did not request this, please ignore this email and contact the administrator.
+
+Expires at: {expires_at.strftime('%Y-%m-%d %H:%M:%S')}
+
+Best regards,
+AP Police Women and Child Safety Wing
+"""
+            )
+            mail.send(msg)
+            
             # Store email in session for verification page
             session['reset_email'] = registered_email
             session['reset_username'] = username
             
             flash('OTP sent successfully! Please check your email.', 'success')
             return redirect(url_for('verify_otp_page'))
-        else:
-            print(f"[OTP-EMAIL] Email send failed: {error}")
-            flash(f'Error sending OTP email: {error}', 'danger')
+            
+        except Exception as e:
+            print(f"[OTP-EMAIL] Email send failed: {e}")
+            flash('Error sending OTP email. Please check email configuration.', 'danger')
             return redirect(url_for('admin_forgot_password'))
         
     except Exception as e:
