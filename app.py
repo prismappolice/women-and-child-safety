@@ -9,6 +9,7 @@ from urllib.parse import quote
 
 csrf = CSRFProtect()
 from flask_mail import Mail, Message
+from email_service import send_otp_email_safe
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
@@ -2114,39 +2115,19 @@ def send_otp_email():
         conn.commit()
         conn.close()
         
-        # Send OTP via email
-        try:
-            msg = Message(
-                subject='Password Reset OTP - AP Police Women Safety Wing',
-                recipients=[registered_email],
-                body=f"""Hello {username},
-
-Your One-Time Password (OTP) for password reset is:
-
-{otp}
-
-This OTP is valid for 10 minutes only.
-
-If you did not request this, please ignore this email and contact the administrator.
-
-Expires at: {expires_at.strftime('%Y-%m-%d %H:%M:%S')}
-
-Best regards,
-AP Police Women and Child Safety Wing
-"""
-            )
-            mail.send(msg)
-            
+        # Send OTP via email with automatic fallback (Gmail SMTP → SendGrid)
+        success, error = send_otp_email_safe(mail, registered_email, otp)
+        
+        if success:
             # Store email in session for verification page
             session['reset_email'] = registered_email
             session['reset_username'] = username
             
             flash('OTP sent successfully! Please check your email.', 'success')
             return redirect(url_for('verify_otp_page'))
-            
-        except Exception as e:
-            print(f"[OTP-EMAIL] Email send failed: {e}")
-            flash('Error sending OTP email. Please check email configuration.', 'danger')
+        else:
+            print(f"[OTP-EMAIL] Email send failed: {error}")
+            flash(f'Error sending OTP email: {error}', 'danger')
             return redirect(url_for('admin_forgot_password'))
         
     except Exception as e:
