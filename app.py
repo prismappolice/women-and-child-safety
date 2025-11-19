@@ -6085,7 +6085,13 @@ if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
     
-    app.run(debug=True)
+    # Get port from environment variable (for deployment platforms like Render)
+    port = int(os.environ.get('PORT', 5000))
+    
+    # Run application
+    # debug=False for production, True for local development
+    debug_mode = os.environ.get('FLASK_ENV', 'development') != 'production'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
 
 @app.route('/final-commit-hash')
 def final_commit_hash():
