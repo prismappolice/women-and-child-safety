@@ -1,20 +1,15 @@
 """
-Email service with multiple providers (Gmail SMTP and SendGrid)
-Automatically falls back to SendGrid if Gmail fails on Render
+Email service with SendGrid API (Gmail SMTP blocked on Render)
 """
 import os
 from flask_mail import Message
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 def send_email_with_fallback(mail, subject, recipient, body_html):
     """
-    Try sending email with Flask-Mail (Gmail SMTP) first
-    If it fails (timeout on Render), fall back to SendGrid API
+    Send email using SendGrid API
     
     Args:
-        mail: Flask-Mail instance
+        mail: Flask-Mail instance (not used, kept for compatibility)
         subject: Email subject
         recipient: Recipient email address
         body_html: HTML body content
@@ -23,81 +18,54 @@ def send_email_with_fallback(mail, subject, recipient, body_html):
         tuple: (success: bool, error_message: str or None)
     """
     
-    # Try Flask-Mail (Gmail SMTP) first with timeout
+    print("📧 Sending email via SendGrid API...")
+    
     try:
-        import signal
+        from sendgrid import SendGridAPIClient
+        from sendgrid.helpers.mail import Mail as SendGridMail
         
-        def timeout_handler(signum, frame):
-            raise TimeoutError("Email sending timeout")
+        # Get SendGrid API key from environment
+        sendgrid_api_key = os.environ.get('SENDGRID_API_KEY')
         
-        # Set 10 second timeout using alarm (Unix) or direct send (Windows)
-        try:
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(10)
-        except:
-            pass  # Windows doesn't support SIGALRM
+        if not sendgrid_api_key or sendgrid_api_key.strip() == '':
+            return (False, "SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.")
         
-        msg = Message(subject, recipients=[recipient])
-        msg.html = body_html
-        mail.send(msg)
+        # Get sender email from environment
+        sender_email = os.environ.get('MAIL_USERNAME', 'meta1.aihackathon@gmail.com')
         
-        try:
-            signal.alarm(0)  # Cancel alarm
-        except:
-            pass
-            
-        return (True, None)
-    except Exception as smtp_error:
-        print(f"⚠️ Gmail SMTP failed: {smtp_error}")
-        print("🔄 Falling back to SendGrid...")
+        # Create SendGrid message
+        sendgrid_msg = SendGridMail(
+            from_email=sender_email,
+            to_emails=recipient,
+            subject=subject,
+            html_content=body_html
+        )
         
-        # Fall back to SendGrid
-        try:
-            from sendgrid import SendGridAPIClient
-            from sendgrid.helpers.mail import Mail as SendGridMail
-            
-            # Get SendGrid API key from environment
-            sendgrid_api_key = os.environ.get('SENDGRID_API_KEY')
-            
-            if not sendgrid_api_key or sendgrid_api_key.strip() == '':
-                return (False, "SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable.")
-            
-            # Verify sender email is authenticated in SendGrid
-            sender_email = os.environ.get('MAIL_USERNAME', 'meta1.aihackathon@gmail.com')
-            
-            # Create SendGrid message
-            sendgrid_msg = SendGridMail(
-                from_email=sender_email,
-                to_emails=recipient,
-                subject=subject,
-                html_content=body_html
-            )
-            
-            # Send via SendGrid API
-            sg = SendGridAPIClient(sendgrid_api_key)
-            response = sg.send(sendgrid_msg)
-            
-            if response.status_code in [200, 201, 202]:
-                print(f"✅ SendGrid email sent! Status: {response.status_code}")
-                return (True, None)
-            else:
-                error_msg = f"SendGrid returned status {response.status_code}"
-                print(f"⚠️ {error_msg}")
-                return (False, error_msg)
-            
-        except ImportError:
-            return (False, "SendGrid library not installed. Run: pip install sendgrid")
-        except Exception as sendgrid_error:
-            # Check if it's authentication error
-            error_str = str(sendgrid_error)
-            if "401" in error_str or "Unauthorized" in error_str:
-                return (False, "SendGrid API key is invalid. Please verify your SENDGRID_API_KEY in Render environment variables.")
-            elif "403" in error_str or "Forbidden" in error_str:
-                return (False, "SendGrid sender email not verified. Please verify your sender email in SendGrid dashboard.")
-            else:
-                error_msg = f"Both Gmail and SendGrid failed. Gmail: {smtp_error}, SendGrid: {sendgrid_error}"
-                print(f"❌ {error_msg}")
-                return (False, error_msg)
+        # Send via SendGrid API
+        sg = SendGridAPIClient(sendgrid_api_key)
+        response = sg.send(sendgrid_msg)
+        
+        if response.status_code in [200, 201, 202]:
+            print(f"✅ SendGrid email sent! Status: {response.status_code}")
+            return (True, None)
+        else:
+            error_msg = f"SendGrid returned status {response.status_code}"
+            print(f"⚠️ {error_msg}")
+            return (False, error_msg)
+        
+    except ImportError:
+        return (False, "SendGrid library not installed. Run: pip install sendgrid")
+    except Exception as sendgrid_error:
+        # Check if it's authentication error
+        error_str = str(sendgrid_error)
+        if "401" in error_str or "Unauthorized" in error_str:
+            return (False, "SendGrid API key is invalid. Please verify your SENDGRID_API_KEY in Render environment variables.")
+        elif "403" in error_str or "Forbidden" in error_str:
+            return (False, "SendGrid sender email not verified. Please verify your sender email in SendGrid dashboard.")
+        else:
+            error_msg = f"SendGrid error: {sendgrid_error}"
+            print(f"❌ {error_msg}")
+            return (False, error_msg)
 
 
 def send_otp_email_safe(mail, recipient_email, otp_code):
