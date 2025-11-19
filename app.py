@@ -587,11 +587,13 @@ app.secret_key = 'your-secret-key-change-this'
 # Email configuration for OTP
 # IMPORTANT: Update these with your Gmail credentials
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_PORT'] = 465  # Changed from 587 to 465 for SSL
+app.config['MAIL_USE_TLS'] = False  # Disabled TLS
+app.config['MAIL_USE_SSL'] = True  # Enabled SSL for port 465
 app.config['MAIL_USERNAME'] = 'meta1.aihackathon@gmail.com'     # ⚠️ Replace with your Gmail
 app.config['MAIL_PASSWORD'] = 'hgsqrgfhuvqczvaa'   # ⚠️ App Password without spaces
 app.config['MAIL_DEFAULT_SENDER'] = 'meta1.aihackathon@gmail.com'  # Same as MAIL_USERNAME
+app.config['MAIL_TIMEOUT'] = 10  # 10 second connection timeout
 ADMIN_EMAIL = 'meta1.aihackathon@gmail.com'  # Admin email to receive notifications
 
 mail = Mail(app)
