@@ -314,83 +314,6 @@
         }
 
         /* =========================
-           Tablet Media Query (iPad Pro, iPad Air, Surface Pro 7)
-           ========================= */
-        @media screen and (min-width: 769px) and (max-width: 1199px) {
-            /* Navigation fixes for tablets */
-            .nav-bar {
-                padding: 12px 20px;
-            }
-            
-            .nav-menu {
-                gap: 8px;
-                font-size: 0.95em;
-                flex-wrap: wrap;
-                justify-content: center;
-                max-width: 100%;
-            }
-            
-            .nav-menu a {
-                padding: 8px 10px;
-                font-size: 0.9em;
-                white-space: normal;
-                text-align: center;
-                min-width: auto;
-            }
-            
-            /* Content scaling for tablets */
-            .header {
-                padding: 15px 30px;
-            }
-            
-            .main-title {
-                font-size: 2.2em;
-            }
-            
-            .logo {
-                width: 100px;
-                height: 100px;
-            }
-            
-            .main-content {
-                padding: 25px 30px;
-                gap: 25px;
-                flex-direction: column;
-            }
-            
-            .welcome-section {
-                padding: 30px;
-            }
-            
-            .welcome-title {
-                font-size: 2.4em;
-            }
-            
-            .welcome-tagline {
-                font-size: 1.4em;
-            }
-            
-            .welcome-header {
-                font-size: 1.6em;
-            }
-            
-            .slideshow-container {
-                padding: 30px;
-                min-height: 400px;
-            }
-            
-            .emergency-buttons {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
-            }
-            
-            .emergency-btn {
-                padding: 12px 16px;
-                font-size: 0.95em;
-            }
-        }
-
-        /* =========================
            Media Queries (Mobile) 
            ========================= */
         @media screen and (max-width: 768px) {
@@ -433,7 +356,7 @@
                 display: none !important; 
                 flex-direction: column !important; 
                 position: fixed !important; 
-                top: 10px !important;
+                top: 0 !important;
                 right: 0 !important;
                 width: 50vw !important; 
                 max-width: 300px;
@@ -513,16 +436,25 @@
             }
         }
 
-        /* Large Desktop Media Query (Above tablet range) */
-        @media screen and (min-width: 1200px) and (max-width: 1400px) {
+        /* 1200px Media Query */
+        @media screen and (max-width: 1200px) {
             .nav-bar {
-                padding: 15px 40px;
+                padding: 15px 20px;
             }
             .nav-menu {
-                gap: 20px;
+                gap: 15px; 
+                overflow-x: auto;
+                justify-content: flex-start;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding: 0 5px;
             }
             .nav-menu a {
-                padding: 10px 12px;
+                padding: 10px 10px;
+            }
+            .main-content {
+                flex-direction: column;
+                padding: 20px;
             }
         }
         
@@ -624,11 +556,19 @@
         
         <div class="slideshow-section">
             <div class="slideshow-container" id="imageSlideshow">
-                <img src="/static/images/slide1.jpg" alt="Slide 1" class="slide-image active">
-                <img src="/static/images/slide2.jpg" alt="Slide 2" class="slide-image inactive">
-                <img src="/static/images/slide3.jpg" alt="Slide 3" class="slide-image inactive">
-                <img src="/static/images/slide4.jpg" alt="Slide 4" class="slide-image inactive">
-                <img src="/static/images/slide5.jpg" alt="Slide 5" class="slide-image inactive">
+                {% if slideshow_images %}
+                    <!-- Load slideshow from database (admin-managed) -->
+                    {% for slide in slideshow_images %}
+                        <img src="{{ slide[1] }}" alt="{{ slide[2] }}" class="slide-image {% if loop.first %}active{% else %}inactive{% endif %}" title="{{ slide[3] if slide[3] else slide[2] }}">
+                    {% endfor %}
+                {% else %}
+                    <!-- Fallback: Use hardcoded images if database is empty (100% safe) -->
+                    <img src="/static/images/slide1.jpg" alt="Slide 1" class="slide-image active">
+                    <img src="/static/images/slide2.jpg" alt="Slide 2" class="slide-image inactive">
+                    <img src="/static/images/slide3.jpg" alt="Slide 3" class="slide-image inactive">
+                    <img src="/static/images/slide4.jpg" alt="Slide 4" class="slide-image inactive">
+                    <img src="/static/images/slide5.jpg" alt="Slide 5" class="slide-image inactive">
+                {% endif %}
             </div>
         </div>
     </div>

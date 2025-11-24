@@ -837,9 +837,20 @@ def home():
     cursor = conn.cursor()
     cursor.execute('SELECT id, section_name, title, content, image_url, link_url, icon_class, sort_order, is_active FROM home_content WHERE is_active::integer = 1 ORDER BY section_name, sort_order')
     home_content = cursor.fetchall()
+    
+    # Get active slideshow images (100% safe - if table doesn't exist or empty, template will use hardcoded fallback)
+    slideshow_images = []
+    try:
+        query = adapt_query('SELECT id, image_url, title, caption FROM slideshow_images WHERE is_active = ? ORDER BY sort_order')
+        cursor.execute(query, (True,))
+        slideshow_images = cursor.fetchall()
+    except Exception as e:
+        # Safe fallback - if query fails, slideshow_images remains empty, template uses hardcoded images
+        print(f"Slideshow query skipped (will use hardcoded fallback): {e}")
+    
     conn.close()
     
-    return render_template('index.html', home_content=home_content)
+    return render_template('index.html', home_content=home_content, slideshow_images=slideshow_images)
 
 # Initialize volunteer database tables
 def init_volunteer_db():
@@ -3356,6 +3367,140 @@ def admin_add_home_content(section):
         return redirect(url_for('admin_home'))
     
     return render_template('admin_add_home_content.html', section=section)
+
+# ============================================================================
+# Admin Slideshow Management (NEW FEATURE - 100% SAFE ADDITION)
+# ============================================================================
+
+@app.route('/admin/slideshow')
+def admin_slideshow():
+    """View and manage homepage slideshow images"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = get_db_connection('main')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, image_url, title, caption, sort_order, is_active FROM slideshow_images ORDER BY sort_order')
+    slideshow_images = cursor.fetchall()
+    conn.close()
+    
+    return render_template('admin_slideshow.html', slideshow_images=slideshow_images)
+
+@app.route('/admin/slideshow/add', methods=['GET', 'POST'])
+def admin_add_slideshow():
+    """Add new slideshow image"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        caption = request.form.get('caption')
+        sort_order = request.form.get('sort_order', 0)
+        is_active = True if request.form.get('is_active') else False
+        
+        # Handle image upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"slideshow_{timestamp}_{filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                image_url = f'/static/uploads/{filename}'
+            else:
+                image_url = request.form.get('image_url', '')
+        else:
+            image_url = request.form.get('image_url', '')
+        
+        conn = get_db_connection('main')
+        cursor = conn.cursor()
+        query = adapt_query('''
+            INSERT INTO slideshow_images (image_url, title, caption, sort_order, is_active)
+            VALUES (?, ?, ?, ?, ?)
+        ''')
+        cursor.execute(query, (image_url, title, caption, sort_order, is_active))
+        conn.commit()
+        conn.close()
+        
+        flash('Slideshow image added successfully!', 'success')
+        return redirect(url_for('admin_slideshow'))
+    
+    return render_template('admin_add_slideshow.html')
+
+@app.route('/admin/slideshow/edit/<int:slide_id>', methods=['GET', 'POST'])
+def admin_edit_slideshow(slide_id):
+    """Edit existing slideshow image"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = get_db_connection('main')
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        caption = request.form.get('caption')
+        sort_order = request.form.get('sort_order', 0)
+        is_active = True if request.form.get('is_active') else False
+        
+        # Handle image upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"slideshow_{timestamp}_{filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                image_url = f'/static/uploads/{filename}'
+            else:
+                image_url = request.form.get('image_url', '')
+        else:
+            image_url = request.form.get('image_url', '')
+        
+        query = adapt_query('''
+            UPDATE slideshow_images 
+            SET image_url = ?, title = ?, caption = ?, sort_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''')
+        cursor.execute(query, (image_url, title, caption, sort_order, is_active, slide_id))
+        conn.commit()
+        conn.close()
+        
+        flash('Slideshow image updated successfully!', 'success')
+        return redirect(url_for('admin_slideshow'))
+    
+    # GET request - show edit form
+    query = adapt_query('SELECT id, image_url, title, caption, sort_order, is_active FROM slideshow_images WHERE id = ?')
+    cursor.execute(query, (slide_id,))
+    slide = cursor.fetchone()
+    conn.close()
+    
+    if not slide:
+        flash('Slideshow image not found', 'error')
+        return redirect(url_for('admin_slideshow'))
+    
+    return render_template('admin_edit_slideshow.html', slide=slide)
+
+@app.route('/admin/slideshow/delete/<int:slide_id>', methods=['POST'])
+def admin_delete_slideshow(slide_id):
+    """Delete slideshow image"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    conn = get_db_connection('main')
+    cursor = conn.cursor()
+    query = adapt_query('DELETE FROM slideshow_images WHERE id = ?')
+    cursor.execute(query, (slide_id,))
+    conn.commit()
+    conn.close()
+    
+    flash('Slideshow image deleted successfully!', 'success')
+    return redirect(url_for('admin_slideshow'))
+
+# ============================================================================
+# End of Slideshow Management Routes
+# ============================================================================
 
 # Admin Contact Management
 @app.route('/admin/contact')
