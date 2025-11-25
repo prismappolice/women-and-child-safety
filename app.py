@@ -1,11 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
-from admin_security import (init_admin_security_db, set_security_questions, 
-                         get_security_questions, verify_security_questions, 
-                         check_session_timeout, verify_answer)
+from functools import wraps
 import secrets
 from urllib.parse import quote
+import time
 
 csrf = CSRFProtect()
 from flask_mail import Mail, Message
@@ -100,8 +99,23 @@ def init_db():
 
 # Initialize databases
 init_db()
-init_admin_security_db()
 csrf.init_app(app)
+
+# Session timeout decorator
+def check_session_timeout(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin_last_activity' not in session:
+            return redirect(url_for('admin_login'))
+        
+        last_activity = session.get('admin_last_activity')
+        if time.time() - last_activity > 900:  # 15 minutes
+            session.clear()
+            return redirect(url_for('admin_login'))
+            
+        session['admin_last_activity'] = time.time()
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/event/<int:event_id>')
 def event_details(event_id):
@@ -2024,6 +2038,10 @@ def test_forgot_link():
 
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
+    # Regenerate CSRF token on GET to avoid stale tokens
+    if request.method == 'GET':
+        session.pop('_csrf_token', None)
+    
     try:
         if request.method == 'POST':
             username = request.form.get('username', '').strip()
@@ -2051,15 +2069,6 @@ def admin_login():
                 
                 # Log successful login
                 print(f"Admin login successful at {session['login_time']}")
-                
-                # Check security questions
-                questions = get_security_questions()
-                print("Security Questions Status:", "Set" if questions else "Not Set")
-                
-                if not questions:
-                    print("Redirecting to security setup")
-                    flash('Please set up your security questions', 'warning')
-                    return redirect('/admin/setup-security')
                 
                 print("Redirecting to dashboard")
                 flash('Logged in successfully!', 'success')
@@ -2357,6 +2366,10 @@ def reset_password_after_otp():
 @app.route('/admin/forgot-password', methods=['GET', 'POST'])  # Also handle /admin/forgot-password
 def admin_forgot_password():
     """Email-based password reset: enter username -> email sent with reset link"""
+    # Regenerate CSRF token for this form
+    if request.method == 'GET':
+        session.pop('_csrf_token', None)
+    
     try:
         if request.method == 'POST':
             username = request.form.get('username', '').strip()
@@ -2437,6 +2450,10 @@ AP Police Women and Child Safety Wing
 @app.route('/admin-reset-password/<token>', methods=['GET', 'POST'])
 def reset_password_with_token(token):
     """Reset password using email token"""
+    # Regenerate CSRF token for this form to avoid mismatch
+    if request.method == 'GET':
+        session.pop('_csrf_token', None)
+    
     try:
         conn = get_db_connection('admin')
         cursor = conn.cursor()
@@ -2509,112 +2526,7 @@ def reset_password_with_token(token):
         flash('An error occurred. Please try again.', 'error')
         return redirect(url_for('admin_forgot_password'))
 
-@app.route('/admin/verify-security', methods=['GET', 'POST'])
-def verify_security_reset():
-    """Verify security questions for password reset"""
-    try:
-        if request.method == 'POST':
-            username = request.form.get('username', '').strip()
-            answer1 = request.form.get('answer1', '').strip()
-            answer2 = request.form.get('answer2', '').strip()
-            answer3 = request.form.get('answer3', '').strip()
-            
-            if not all([username, answer1, answer2, answer3]):
-                flash('All fields are required', 'danger')
-                return render_template('verify_security_questions.html')
-            
-            # Get admin user
-            conn = get_db_connection('admin')
-            cursor = conn.cursor()
-            cursor.execute('SELECT id FROM admin_credentials WHERE username = %s', (username,))
-            admin = cursor.fetchone()
-            
-            if not admin:
-                flash('Invalid username or security answers', 'danger')
-                conn.close()
-                return render_template('verify_security_questions.html')
-            
-            # Verify security answers
-            if verify_security_questions(answer1, answer2, answer3):
-                # Answers correct - allow password reset
-                session['reset_user_id'] = admin[0]
-                session['reset_username'] = username
-                session['reset_verified'] = True
-                conn.close()
-                flash('Security verification successful! Please set your new password.', 'success')
-                return redirect(url_for('reset_password_after_security'))
-            else:
-                flash('Invalid security answers', 'danger')
-                conn.close()
-                return render_template('verify_security_questions.html')
-        
-        # GET request - show security questions form
-        questions = get_security_questions()
-        if not questions:
-            flash('Security questions not configured. Please use email reset.', 'warning')
-            return redirect(url_for('admin_forgot_password'))
-        
-        return render_template('verify_security_questions.html', questions=questions)
-        
-    except Exception as e:
-        print(f"[SECURITY-VERIFY] Error: {e}")
-        flash('An error occurred. Please try again.', 'error')
-        return redirect(url_for('admin_forgot_password'))
-
-@app.route('/admin/reset-password-security', methods=['GET', 'POST'])
-def reset_password_after_security():
-    """Reset password after security verification"""
-    # Check if security verification was successful
-    if not all([
-        session.get('reset_verified'),
-        session.get('reset_user_id'),
-        session.get('reset_username')
-    ]):
-        flash('Please verify your security questions first', 'warning')
-        return redirect(url_for('verify_security_reset'))
-    
-    if request.method == 'POST':
-        new_password = request.form.get('new_password', '').strip()
-        confirm_password = request.form.get('confirm_password', '').strip()
-        
-        if not new_password or not confirm_password:
-            flash('Both password fields are required', 'danger')
-            return render_template('reset_password.html')
-        
-        if new_password != confirm_password:
-            flash('Passwords do not match', 'danger')
-            return render_template('reset_password.html')
-        
-        if len(new_password) < 8:
-            flash('Password must be at least 8 characters long', 'danger')
-            return render_template('reset_password.html')
-        
-        try:
-            # Update password
-            conn = get_db_connection('admin')
-            cursor = conn.cursor()
-            new_hash = generate_password_hash(new_password)
-            cursor.execute(
-                'UPDATE admin_credentials SET password_hash = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
-                (new_hash, session['reset_user_id'])
-            )
-            conn.commit()
-            conn.close()
-            
-            # Clear reset session
-            session.pop('reset_verified', None)
-            session.pop('reset_user_id', None)
-            session.pop('reset_username', None)
-            
-            flash('Password reset successful! Please login with your new password.', 'success')
-            return redirect(url_for('admin_login'))
-            
-        except Exception as e:
-            print(f"[PASSWORD-RESET-SECURITY] Error: {e}")
-            flash('An error occurred. Please try again.', 'error')
-            return render_template('reset_password.html')
-    
-    return render_template('reset_password.html', username=session.get('reset_username'))
+# Security questions removed - using email-based password reset only
 
 @app.route('/admin/change-password', methods=['GET'])
 def change_admin_password():
@@ -2692,42 +2604,7 @@ def admin_profile_settings():
         flash('An error occurred', 'danger')
         return redirect(url_for('admin_dashboard'))
 
-@app.route('/admin/setup-security', methods=['GET', 'POST'])
-def setup_security_questions():
-    # Ensure user is logged in
-    if 'admin_logged_in' not in session:
-        flash('Please login to access this area', 'error')
-        return redirect('/admin-login')
-
-    if request.method == 'POST':
-        # Get form data
-        question1 = "What is your mother's maiden name?"  # Fixed question
-        answer1 = request.form.get('answer1')
-        question2 = "What was the name of your first pet?"  # Fixed question
-        answer2 = request.form.get('answer2')
-        question3 = "In which city were you born?"  # Fixed question
-        answer3 = request.form.get('answer3')
-        
-        # Validate answers
-        if not all([answer1, answer2, answer3]):
-            flash('All answers are required', 'danger')
-            return render_template('setup_security_questions.html')
-        
-        try:
-            # Save security questions
-            set_security_questions(question1, answer1, question2, answer2, question3, answer3)
-            flash('Security questions have been set successfully', 'success')
-            return redirect('/admin-dashboard')
-        except Exception as e:
-            print(f"Error setting security questions: {str(e)}")
-            flash('An error occurred while saving security questions', 'danger')
-            return render_template('setup_security_questions.html')
-            
-    # GET request - show the form
-    return render_template('setup_security_questions.html')
-            
-    # For GET request, show the form
-    return render_template('setup_security_questions.html')
+# Security questions setup removed - not needed with email-based reset
 
 @app.route('/admin-dashboard')
 @check_session_timeout
