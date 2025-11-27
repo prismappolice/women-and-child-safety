@@ -4242,14 +4242,13 @@ def admin_add_success_story():
             if file and file.filename != '':
                 if allowed_file(file.filename):
                     try:
-                        from image_manager import ImageManager
-                        image_manager = ImageManager()
-                        image_url = image_manager.save_image(file, 'success_story')
-                        if image_url:
-                            print(f"Success story image saved: {image_url}")
-                        else:
-                            print("Failed to save image using ImageManager")
-                            flash('Error uploading image', 'error')
+                        filename = secure_filename(file.filename)
+                        filename = f"success_story_{int(time.time())}_{filename}"
+                        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                        file_path = os.path.join(UPLOAD_FOLDER, filename)
+                        file.save(file_path)
+                        image_url = f'/static/uploads/{filename}'
+                        print(f"Success story image saved: {image_url}")
                     except Exception as e:
                         print(f"Error saving success story image: {e}")
                         flash(f'Error uploading image: {e}', 'error')
@@ -4310,15 +4309,13 @@ def admin_edit_success_story(story_id):
             if file and file.filename != '':
                 if allowed_file(file.filename):
                     try:
-                        from image_manager import ImageManager
-                        image_manager = ImageManager()
-                        new_image_url = image_manager.save_image(file, 'success_story')
-                        if new_image_url:
-                            image_url = new_image_url
-                            print(f"Success story image updated: {image_url}")
-                        else:
-                            print("Failed to update image using ImageManager")
-                            flash('Error uploading image', 'error')
+                        filename = secure_filename(file.filename)
+                        filename = f"success_story_{int(time.time())}_{filename}"
+                        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                        file_path = os.path.join(UPLOAD_FOLDER, filename)
+                        file.save(file_path)
+                        image_url = f'/static/uploads/{filename}'
+                        print(f"Success story image updated: {image_url}")
                     except Exception as e:
                         print(f"Error saving success story image: {e}")
                         flash(f'Error uploading image: {e}', 'error')
