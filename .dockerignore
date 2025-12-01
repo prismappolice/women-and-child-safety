@@ -1,0 +1,81 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Flask
+instance/
+.webassets-cache
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+database.db
+
+# Test files
+test_*.py
+check_*.py
+add_*.py
+clean_*.py
+commit_*.py
+complete_*.py
+analyze_*.py
+debug_*.py
+*_backup_*.py
+
+# Backups
+*.sql
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+
+# Git
+.git/
+.gitignore
+
+# Temporary files
+*.tmp
+*.bak
+tmp/
+temp/
+
+# Documentation
+*.md
+!README.md
+
+# Batch files
+*.bat
