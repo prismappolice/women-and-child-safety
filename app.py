@@ -7,6 +7,10 @@ from functools import wraps
 import secrets
 from urllib.parse import quote
 import time
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 csrf = CSRFProtect()
 from flask_mail import Mail, Message
@@ -20,7 +24,8 @@ import re
 from db_config import get_db_connection, adapt_query
 
 app = Flask(__name__)
-app.secret_key = 'AP-Women-Safety-Secret-Key-2025'  # Updated secure key
+# Use environment variable for secret key, fallback to default for backward compatibility
+app.secret_key = os.environ.get('SECRET_KEY', 'AP-Women-Safety-Secret-Key-2025')
 
 # File upload configuration
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max file size
@@ -33,7 +38,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
 
 # Initialize CSRF protection
 app.config['WTF_CSRF_ENABLED'] = True
-app.config['WTF_CSRF_SECRET_KEY'] = 'AP-Women-Safety-CSRF-Key-2025'
+app.config['WTF_CSRF_SECRET_KEY'] = os.environ.get('CSRF_SECRET_KEY', 'AP-Women-Safety-CSRF-Key-2025')
 app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour token expiry
 app.config['WTF_CSRF_SSL_STRICT'] = False  # Disable for development
 csrf.init_app(app)
@@ -608,18 +613,15 @@ def init_volunteer_db():
     
     conn.commit()
     conn.close()
-app.secret_key = 'your-secret-key-change-this'
 
-# Email Configuration - Using personal email for testing (change to department email later)
-# Email configuration for OTP
-# IMPORTANT: Update these with your Gmail credentials
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
+# Email Configuration - Using environment variables for security
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', '587'))
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'meta1.aihackathon@gmail.com'     # ⚠️ Replace with your Gmail
-app.config['MAIL_PASSWORD'] = 'hgsqrgfhuvqczvaa'   # ⚠️ App Password without spaces
-app.config['MAIL_DEFAULT_SENDER'] = 'meta1.aihackathon@gmail.com'  # Same as MAIL_USERNAME
-ADMIN_EMAIL = 'meta1.aihackathon@gmail.com'  # Admin email to receive notifications
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'meta1.aihackathon@gmail.com')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'hgsqrgfhuvqczvaa')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME', 'meta1.aihackathon@gmail.com')
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'meta1.aihackathon@gmail.com')
 
 mail = Mail(app)
 
