@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import secrets
@@ -35,6 +37,14 @@ app.config['WTF_CSRF_SECRET_KEY'] = 'AP-Women-Safety-CSRF-Key-2025'
 app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour token expiry
 app.config['WTF_CSRF_SSL_STRICT'] = False  # Disable for development
 csrf.init_app(app)
+
+# Initialize rate limiter
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 # Initialize database tables
 def init_db():
@@ -2040,6 +2050,7 @@ def test_forgot_link():
     return render_template('test_forgot_link.html')
 
 @app.route('/admin-login', methods=['GET', 'POST'])
+@limiter.limit("5 per 15 minutes", methods=['POST'])
 def admin_login():
     # Regenerate CSRF token on GET to avoid stale tokens
     if request.method == 'GET':
