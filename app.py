@@ -20,6 +20,9 @@ from db_config import get_db_connection, adapt_query
 app = Flask(__name__)
 app.secret_key = 'AP-Women-Safety-Secret-Key-2025'  # Updated secure key
 
+# File upload configuration
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max file size
+
 # Session configuration
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -6098,6 +6101,25 @@ def save_status():
         result += f"<p style='color:red;'>Error: {e}</p>"
     
     return result
+
+# Error handlers for better security
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    flash('File size exceeds 16MB limit. Please upload a smaller file.', 'error')
+    return redirect(request.referrer or url_for('index')), 413
+
+@app.errorhandler(500)
+def internal_error(error):
+    flash('An error occurred. Please try again later.', 'error')
+    return redirect(url_for('index')), 500
+
+# Security headers
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
 
 if __name__ == '__main__':
     # Create upload folder if it doesn't exist
